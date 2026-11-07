@@ -1,0 +1,4918 @@
+{
+  "_meta": {
+    "source": "richup.io - client bundle assets/confetti.module-Dt3tsJBH.js (game engine + map factories), API /api/game/maps and /api/store; values cross-checked against in-game Board preview tooltips (all purchasable tiles of all 4 maps) and a live private 2-player game on Classic.",
+    "extractedAt": "2026-11-07",
+    "note": "Riferimento di bilanciamento per PoorDown. Nomi di citta/aziende sono quelli di richup e vanno sostituiti con nomi originali.",
+    "levelOrder": [
+      "PLAIN",
+      "ONE_HOUSE",
+      "TWO_HOUSES",
+      "THREE_HOUSES",
+      "FOUR_HOUSES",
+      "HOTEL"
+    ],
+    "evidenceLegend": {
+      "VERIFIED": "osservato in gioco/UI",
+      "CODE": "estratto dal bundle JS",
+      "INFERRED": "dedotto"
+    },
+    "verifiedInUI": "Tooltip \"Board preview\" di tutte le 111 caselle acquistabili delle 4 mappe (prezzo, 6 livelli di affitto, costo casa/hotel, affitti aeroporti, prezzo aziende): 111/111 identici al codice. Elenco mappe e prezzo store da /api/game/maps e /api/store.",
+    "liveGameObservations": [
+      "Contante iniziale $1500 (1500 -> 1390 dopo acquisto Haifa $110)",
+      "Ipoteca Haifa: \"Mortgage for $55\", poi \"Get back for $60\"",
+      "Passaggio dal Via +$200; atterraggio sul Via (carta Advance to Start) +$300",
+      "Premium Tax: pagati $75",
+      "Affitti base pagati: Rio 4, Tel Aviv 6, Jerusalem 8, Venice 10, Frankfurt 14, Shanghai 20, Lyon 20, London 30 (uguali a rent.base)",
+      "Prigione: opzione \"get free for $50\"; uscita con doppio; dopo 3 tiri falliti si e liberi; 3 doppi di fila -> prigione",
+      "Vacation: salta un turno; piatto \"$X on hold\": 260 = 75+75+50+60 (tasse + carte a pagamento), poi \"$410 withdrawn\"",
+      "Bottone Buy disabilitato se il contante non basta (asta OFF di default)",
+      "Testi carte osservati identici al codice (lottery $15, sibling $100, gas $50, rental $60, business $25, birthday $10, Go to prison, Pardon, redesign, next company, Advance to Start, Advance to Venice)"
+    ],
+    "notVerifiedLive": [
+      "Earnings Tax 10% (UI mostra \"%10\", formula dal codice)",
+      "affitti con case/hotel e x2 su set completo",
+      "affitti aziende e aeroporti multipli",
+      "aste",
+      "mappe premium in partita (non acquistate: solo anteprima)"
+    ]
+  },
+  "globalRules": {
+    "startingCash": {
+      "default": 1500,
+      "options": [
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000
+      ],
+      "source": "code+UI"
+    },
+    "goReward": {
+      "landExactly": 300,
+      "pass": 200,
+      "note": "Ogni mappa definisce goReward {land:300, pass:200}. Passare via carta con collectGo da +200; carta \"Advance to Start\" = atterraggio = +300.",
+      "source": "code + verified live"
+    },
+    "cityRent": "rent = rentPrices[level]; se level 0 e regola x2 attiva e set completo -> rent*2; ipotecata o senza proprietario -> 0",
+    "airportRent": "rent = rentPrices[n-1], n = aeroporti NON ipotecati posseduti dal proprietario (o dal suo team). Default [25,50,100,200]",
+    "companyRent": "rent = (somma dadi) * [4,10,20][n-1], n = aziende NON ipotecate possedute dal proprietario (o team)",
+    "building": "Serve set completo, nessuna proprieta del set ipotecata, livelli 1-4 costano housePrice, livello 5 (hotel) costa hotelPrice; even build se regola attiva (default ON). Max livello 5.",
+    "sellBuilding": "Vendita: casa -> housePrice/2; hotel -> hotelPrice/2 (torna a 4 case).",
+    "mortgage": {
+      "value": "floor(price/2)",
+      "unmortgage": "floor(floor(price/2) * 1.1)",
+      "blockedIf": "set con edifici",
+      "requiresRule": "mortgage (default OFF)",
+      "source": "code + verified live (Haifa 110 -> 55 / 60)"
+    },
+    "sellPropertyToBank": "price/2 (0 se ipotecata); vietato se il set ha edifici",
+    "taxes": {
+      "earningsTax": "round(cash * 10%) sul contante attuale",
+      "premiumTax": 75,
+      "taxRefund": "+50 (solo Lucky Wheel)",
+      "vacationPot": "tasse, pagamenti carte e \"repairs\" vanno nel piatto Vacation se regola vacationCash attiva"
+    },
+    "prison": {
+      "bail": 50,
+      "maxTurns": 3,
+      "escape": [
+        "doppio ai dadi (si muove di quel tiro)",
+        "paga $50",
+        "carta Pardon"
+      ],
+      "afterThirdFail": "rilasciato senza pagare ma non si muove in quel turno",
+      "threeDoubles": "va in prigione",
+      "source": "code + verified live (bottone \"get free for $50\", 3 tentativi)"
+    },
+    "vacation": {
+      "skipTurns": 1,
+      "collectsPotIfRule": true,
+      "source": "code + verified live ($410 withdrawn)"
+    },
+    "cards": "Mazzi Treasure e Surprise mescolati a inizio partita, pescati in sequenza ciclica; la carta Pardon viene saltata mentre qualcuno la possiede.",
+    "auctionBidIncrements": [
+      2,
+      10,
+      100
+    ],
+    "netWorth": "contante + prezzo pieno proprieta non ipotecate + costo edifici + 50 per ogni carta Pardon",
+    "liquidationValue": "price/2 per proprieta non ipotecata + meta costo edifici + 50 per Pardon (usato per recupero crediti)",
+    "defaultRoomSettings": {
+      "maxPlayers": 4,
+      "maxPlayersOptions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        "7-8 (upgrade a pagamento)"
+      ],
+      "payDoubleRentWhenOwnFullSet": false,
+      "vacationCash": false,
+      "auction": false,
+      "noRentPaymentsWhileInPrison": false,
+      "mortgage": false,
+      "evenBuild": true,
+      "shufflePlayerOrder": true,
+      "startingCash": 1500,
+      "teams": false
+    }
+  },
+  "maps": {
+    "classic": {
+      "id": "classic",
+      "name": "Classic",
+      "free": true,
+      "storeId": null,
+      "storePriceCoins": 0,
+      "storeDescription": "Mappa gratuita di default",
+      "goReward": {
+        "land": 300,
+        "pass": 200
+      },
+      "summary": {
+        "tileCount": 40,
+        "countsByType": {
+          "corner": 4,
+          "city": 22,
+          "treasure": 3,
+          "tax": 1,
+          "airport": 4,
+          "surprise": 3,
+          "company": 2,
+          "premium-tax": 1
+        },
+        "purchasableCount": 28,
+        "totalPurchasePrice": 5700,
+        "groups": [
+          {
+            "group": "brazil",
+            "tiles": [
+              1,
+              3
+            ],
+            "names": [
+              "Salvador",
+              "Rio"
+            ],
+            "totalPrice": 120,
+            "housePrice": 50,
+            "hotelPrice": 50,
+            "size": 2,
+            "costToFullHotels": 620
+          },
+          {
+            "group": "israel",
+            "tiles": [
+              6,
+              7,
+              9
+            ],
+            "names": [
+              "Tel Aviv",
+              "Haifa",
+              "Jerusalem"
+            ],
+            "totalPrice": 330,
+            "housePrice": 50,
+            "hotelPrice": 50,
+            "size": 3,
+            "costToFullHotels": 1080
+          },
+          {
+            "group": "italy",
+            "tiles": [
+              11,
+              13,
+              14
+            ],
+            "names": [
+              "Venice",
+              "Milan",
+              "Rome"
+            ],
+            "totalPrice": 430,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 3,
+            "costToFullHotels": 1930
+          },
+          {
+            "group": "germany",
+            "tiles": [
+              16,
+              18,
+              19
+            ],
+            "names": [
+              "Frankfurt",
+              "Munich",
+              "Berlin"
+            ],
+            "totalPrice": 570,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 3,
+            "costToFullHotels": 2070
+          },
+          {
+            "group": "china",
+            "tiles": [
+              21,
+              23,
+              24
+            ],
+            "names": [
+              "Shenzhen",
+              "Beijing",
+              "Shanghai"
+            ],
+            "totalPrice": 670,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 3,
+            "costToFullHotels": 2920
+          },
+          {
+            "group": "france",
+            "tiles": [
+              26,
+              28,
+              29
+            ],
+            "names": [
+              "Lyon",
+              "Toulouse",
+              "Paris"
+            ],
+            "totalPrice": 810,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 3,
+            "costToFullHotels": 3060
+          },
+          {
+            "group": "united-kingdom",
+            "tiles": [
+              31,
+              32,
+              34
+            ],
+            "names": [
+              "Liverpool",
+              "Manchester",
+              "London"
+            ],
+            "totalPrice": 910,
+            "housePrice": 200,
+            "hotelPrice": 200,
+            "size": 3,
+            "costToFullHotels": 3910
+          },
+          {
+            "group": "united-states-of-america",
+            "tiles": [
+              37,
+              39
+            ],
+            "names": [
+              "San Francisco",
+              "New York"
+            ],
+            "totalPrice": 760,
+            "housePrice": 200,
+            "hotelPrice": 200,
+            "size": 2,
+            "costToFullHotels": 2760
+          }
+        ]
+      },
+      "tiles": [
+        {
+          "index": 0,
+          "type": "corner",
+          "name": "Start",
+          "cornerType": "go",
+          "effect": "land exactly: +$300; pass: +$200"
+        },
+        {
+          "index": 1,
+          "type": "city",
+          "name": "Salvador",
+          "group": "brazil",
+          "price": 60,
+          "rent": {
+            "base": 2,
+            "fullSetBaseIfRuleX2": 4,
+            "house1": 10,
+            "house2": 30,
+            "house3": 90,
+            "house4": 150,
+            "hotel": 240
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 30,
+          "unmortgageCost": 33,
+          "sellToBankValue": 30,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 310
+        },
+        {
+          "index": 2,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 3,
+          "type": "city",
+          "name": "Rio",
+          "group": "brazil",
+          "price": 60,
+          "rent": {
+            "base": 4,
+            "fullSetBaseIfRuleX2": 8,
+            "house1": 20,
+            "house2": 60,
+            "house3": 190,
+            "house4": 330,
+            "hotel": 460
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 30,
+          "unmortgageCost": 33,
+          "sellToBankValue": 30,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 310
+        },
+        {
+          "index": 4,
+          "type": "bonus",
+          "name": "Earnings Tax",
+          "bonusType": "tax",
+          "taxPercentage": 10,
+          "effect": "pay round(cash * 10%)"
+        },
+        {
+          "index": 5,
+          "type": "airport",
+          "name": "TLV Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 6,
+          "type": "city",
+          "name": "Tel Aviv",
+          "group": "israel",
+          "price": 100,
+          "rent": {
+            "base": 6,
+            "fullSetBaseIfRuleX2": 12,
+            "house1": 30,
+            "house2": 90,
+            "house3": 260,
+            "house4": 380,
+            "hotel": 540
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 50,
+          "unmortgageCost": 55,
+          "sellToBankValue": 50,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 350
+        },
+        {
+          "index": 7,
+          "type": "city",
+          "name": "Haifa",
+          "group": "israel",
+          "price": 110,
+          "rent": {
+            "base": 6,
+            "fullSetBaseIfRuleX2": 12,
+            "house1": 30,
+            "house2": 90,
+            "house3": 280,
+            "house4": 400,
+            "hotel": 560
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 55,
+          "unmortgageCost": 60,
+          "sellToBankValue": 55,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 360
+        },
+        {
+          "index": 8,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 9,
+          "type": "city",
+          "name": "Jerusalem",
+          "group": "israel",
+          "price": 120,
+          "rent": {
+            "base": 8,
+            "fullSetBaseIfRuleX2": 16,
+            "house1": 40,
+            "house2": 110,
+            "house3": 300,
+            "house4": 460,
+            "hotel": 610
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 60,
+          "unmortgageCost": 66,
+          "sellToBankValue": 60,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 370
+        },
+        {
+          "index": 10,
+          "type": "corner",
+          "name": "Prison",
+          "cornerType": "prison",
+          "effect": "just visiting / jail (3 turns max, bail $50)"
+        },
+        {
+          "index": 11,
+          "type": "city",
+          "name": "Venice",
+          "group": "italy",
+          "price": 130,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 50,
+            "house2": 140,
+            "house3": 440,
+            "house4": 600,
+            "hotel": 740
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 65,
+          "unmortgageCost": 71,
+          "sellToBankValue": 65,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 630
+        },
+        {
+          "index": 12,
+          "type": "company",
+          "name": "Power Company",
+          "group": "company",
+          "companyType": "electricity",
+          "price": 150,
+          "rentDiceMultiplierByCompaniesOwned": {
+            "1": 4,
+            "2": 10,
+            "3": 20
+          },
+          "mortgageValue": 75,
+          "unmortgageCost": 82,
+          "sellToBankValue": 75
+        },
+        {
+          "index": 13,
+          "type": "city",
+          "name": "Milan",
+          "group": "italy",
+          "price": 140,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 50,
+            "house2": 160,
+            "house3": 460,
+            "house4": 630,
+            "hotel": 760
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 70,
+          "unmortgageCost": 77,
+          "sellToBankValue": 70,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 640
+        },
+        {
+          "index": 14,
+          "type": "city",
+          "name": "Rome",
+          "group": "italy",
+          "price": 160,
+          "rent": {
+            "base": 12,
+            "fullSetBaseIfRuleX2": 24,
+            "house1": 60,
+            "house2": 180,
+            "house3": 500,
+            "house4": 700,
+            "hotel": 900
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 80,
+          "unmortgageCost": 88,
+          "sellToBankValue": 80,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 660
+        },
+        {
+          "index": 15,
+          "type": "airport",
+          "name": "MUC Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 16,
+          "type": "city",
+          "name": "Frankfurt",
+          "group": "germany",
+          "price": 180,
+          "rent": {
+            "base": 14,
+            "fullSetBaseIfRuleX2": 28,
+            "house1": 70,
+            "house2": 190,
+            "house3": 540,
+            "house4": 760,
+            "hotel": 950
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 90,
+          "unmortgageCost": 99,
+          "sellToBankValue": 90,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 680
+        },
+        {
+          "index": 17,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 18,
+          "type": "city",
+          "name": "Munich",
+          "group": "germany",
+          "price": 190,
+          "rent": {
+            "base": 15,
+            "fullSetBaseIfRuleX2": 30,
+            "house1": 70,
+            "house2": 210,
+            "house3": 560,
+            "house4": 760,
+            "hotel": 960
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 95,
+          "unmortgageCost": 104,
+          "sellToBankValue": 95,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 690
+        },
+        {
+          "index": 19,
+          "type": "city",
+          "name": "Berlin",
+          "group": "germany",
+          "price": 200,
+          "rent": {
+            "base": 15,
+            "fullSetBaseIfRuleX2": 30,
+            "house1": 80,
+            "house2": 220,
+            "house3": 600,
+            "house4": 780,
+            "hotel": 1000
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 700
+        },
+        {
+          "index": 20,
+          "type": "corner",
+          "name": "Vacation",
+          "cornerType": "vacation",
+          "effect": "skip next turn; collects vacation pot if rule on"
+        },
+        {
+          "index": 21,
+          "type": "city",
+          "name": "Shenzhen",
+          "group": "china",
+          "price": 210,
+          "rent": {
+            "base": 18,
+            "fullSetBaseIfRuleX2": 36,
+            "house1": 90,
+            "house2": 240,
+            "house3": 680,
+            "house4": 850,
+            "hotel": 1000
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 105,
+          "unmortgageCost": 115,
+          "sellToBankValue": 105,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 960
+        },
+        {
+          "index": 22,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 23,
+          "type": "city",
+          "name": "Beijing",
+          "group": "china",
+          "price": 220,
+          "rent": {
+            "base": 20,
+            "fullSetBaseIfRuleX2": 40,
+            "house1": 90,
+            "house2": 260,
+            "house3": 710,
+            "house4": 900,
+            "hotel": 1100
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 110,
+          "unmortgageCost": 121,
+          "sellToBankValue": 110,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 970
+        },
+        {
+          "index": 24,
+          "type": "city",
+          "name": "Shanghai",
+          "group": "china",
+          "price": 240,
+          "rent": {
+            "base": 20,
+            "fullSetBaseIfRuleX2": 40,
+            "house1": 100,
+            "house2": 290,
+            "house3": 740,
+            "house4": 920,
+            "hotel": 1100
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 120,
+          "unmortgageCost": 132,
+          "sellToBankValue": 120,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 990
+        },
+        {
+          "index": 25,
+          "type": "airport",
+          "name": "CDG Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 26,
+          "type": "city",
+          "name": "Lyon",
+          "group": "france",
+          "price": 260,
+          "rent": {
+            "base": 20,
+            "fullSetBaseIfRuleX2": 40,
+            "house1": 100,
+            "house2": 320,
+            "house3": 800,
+            "house4": 950,
+            "hotel": 1100
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 130,
+          "unmortgageCost": 143,
+          "sellToBankValue": 130,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1010
+        },
+        {
+          "index": 27,
+          "type": "company",
+          "name": "Water Company",
+          "group": "company",
+          "companyType": "water",
+          "price": 150,
+          "rentDiceMultiplierByCompaniesOwned": {
+            "1": 4,
+            "2": 10,
+            "3": 20
+          },
+          "mortgageValue": 75,
+          "unmortgageCost": 82,
+          "sellToBankValue": 75
+        },
+        {
+          "index": 28,
+          "type": "city",
+          "name": "Toulouse",
+          "group": "france",
+          "price": 270,
+          "rent": {
+            "base": 20,
+            "fullSetBaseIfRuleX2": 40,
+            "house1": 120,
+            "house2": 350,
+            "house3": 825,
+            "house4": 1000,
+            "hotel": 1150
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 135,
+          "unmortgageCost": 148,
+          "sellToBankValue": 135,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1020
+        },
+        {
+          "index": 29,
+          "type": "city",
+          "name": "Paris",
+          "group": "france",
+          "price": 280,
+          "rent": {
+            "base": 25,
+            "fullSetBaseIfRuleX2": 50,
+            "house1": 120,
+            "house2": 350,
+            "house3": 850,
+            "house4": 1000,
+            "hotel": 1200
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 140,
+          "unmortgageCost": 154,
+          "sellToBankValue": 140,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1030
+        },
+        {
+          "index": 30,
+          "type": "corner",
+          "name": "Go to prison",
+          "cornerType": "go-to-prison",
+          "effect": "go directly to prison (no Start reward)"
+        },
+        {
+          "index": 31,
+          "type": "city",
+          "name": "Liverpool",
+          "group": "united-kingdom",
+          "price": 290,
+          "rent": {
+            "base": 25,
+            "fullSetBaseIfRuleX2": 50,
+            "house1": 120,
+            "house2": 380,
+            "house3": 850,
+            "house4": 1050,
+            "hotel": 1250
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 145,
+          "unmortgageCost": 159,
+          "sellToBankValue": 145,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1290
+        },
+        {
+          "index": 32,
+          "type": "city",
+          "name": "Manchester",
+          "group": "united-kingdom",
+          "price": 300,
+          "rent": {
+            "base": 26,
+            "fullSetBaseIfRuleX2": 52,
+            "house1": 140,
+            "house2": 400,
+            "house3": 950,
+            "house4": 1150,
+            "hotel": 1300
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 150,
+          "unmortgageCost": 165,
+          "sellToBankValue": 150,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1300
+        },
+        {
+          "index": 33,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 34,
+          "type": "city",
+          "name": "London",
+          "group": "united-kingdom",
+          "price": 320,
+          "rent": {
+            "base": 30,
+            "fullSetBaseIfRuleX2": 60,
+            "house1": 140,
+            "house2": 440,
+            "house3": 1000,
+            "house4": 1200,
+            "hotel": 1400
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 160,
+          "unmortgageCost": 176,
+          "sellToBankValue": 160,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1320
+        },
+        {
+          "index": 35,
+          "type": "airport",
+          "name": "JFK Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 36,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 37,
+          "type": "city",
+          "name": "San Francisco",
+          "group": "united-states-of-america",
+          "price": 360,
+          "rent": {
+            "base": 35,
+            "fullSetBaseIfRuleX2": 70,
+            "house1": 180,
+            "house2": 550,
+            "house3": 1150,
+            "house4": 1350,
+            "hotel": 1525
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 180,
+          "unmortgageCost": 198,
+          "sellToBankValue": 180,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1360
+        },
+        {
+          "index": 38,
+          "type": "bonus",
+          "name": "Premium Tax",
+          "bonusType": "premium-tax",
+          "taxAmount": 75,
+          "effect": "pay $75"
+        },
+        {
+          "index": 39,
+          "type": "city",
+          "name": "New York",
+          "group": "united-states-of-america",
+          "price": 400,
+          "rent": {
+            "base": 50,
+            "fullSetBaseIfRuleX2": 100,
+            "house1": 200,
+            "house2": 600,
+            "house3": 1400,
+            "house4": 1700,
+            "hotel": 2000
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 200,
+          "unmortgageCost": 220,
+          "sellToBankValue": 200,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1400
+        }
+      ],
+      "cards": {
+        "treasure": [
+          {
+            "id": "treasure-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "treasure-1",
+            "text": "You found a wallet containing some cash. Collect $200.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 200
+            }
+          },
+          {
+            "id": "treasure-2",
+            "text": "Your car has ran out of gas. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-3",
+            "text": "From trading stocks you earned $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-4",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "treasure-5",
+            "text": "You host a party. Collect $50 from every player for equipment.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-6",
+            "text": "Happy holidays! Receive $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 20
+            }
+          },
+          {
+            "id": "treasure-7",
+            "text": "Tax refund. Collect $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-8",
+            "text": "Happy birthday! Collect $10 from every player.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 10
+            }
+          },
+          {
+            "id": "treasure-9",
+            "text": "From gift cards you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-10",
+            "text": "Car rental insurance. Pay $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 60
+            }
+          },
+          {
+            "id": "treasure-11",
+            "text": "Your phone died. Pay $50 for a repair.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-12",
+            "text": "Beneficial business decisions. You made a profit of $25.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 25
+            }
+          },
+          {
+            "id": "treasure-13",
+            "text": "It's time to renovate your properties. Pay $30 per house and $120 per hotel you own.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 30,
+              "perHotel": 120
+            }
+          },
+          {
+            "id": "treasure-14",
+            "text": "You have won third prize in a lottery. Collect $15.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 15
+            }
+          },
+          {
+            "id": "treasure-15",
+            "text": "You received $100 from your sibling.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-16",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "treasure"
+            }
+          }
+        ],
+        "surprise": [
+          {
+            "id": "surprise-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-1",
+            "text": "Advance to Shanghai.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 24,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-2",
+            "text": "Advance to Venice.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 11,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-3",
+            "text": "Advance to the next company.",
+            "effect": {
+              "type": "move-to-next-grouped",
+              "group": "company"
+            }
+          },
+          {
+            "id": "surprise-4",
+            "text": "Advance to the next airport.",
+            "effect": {
+              "type": "move-to-next-grouped",
+              "group": "airport"
+            }
+          },
+          {
+            "id": "surprise-5",
+            "text": "Stock agency pays you dividend of $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 60
+            }
+          },
+          {
+            "id": "surprise-6",
+            "text": "Go back 3 steps.",
+            "effect": {
+              "type": "move-steps",
+              "steps": -3
+            }
+          },
+          {
+            "id": "surprise-7",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "surprise-8",
+            "text": "Have a redesign for your properties. Pay $25 for each house and $100 for each hotel.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 25,
+              "perHotel": 100
+            }
+          },
+          {
+            "id": "surprise-9",
+            "text": "Pay tax of $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 20
+            }
+          },
+          {
+            "id": "surprise-10",
+            "text": "Take a trip to TLV Airport.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 5,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-11",
+            "text": "Have an adventure to New York.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 39,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-12",
+            "text": "You lost a bet. Pay each player $50.",
+            "effect": {
+              "type": "pay-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-13",
+            "text": "You have a new investment. Receive $150.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 150
+            }
+          },
+          {
+            "id": "surprise-14",
+            "text": "From a scholarship you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "surprise-15",
+            "text": "Your cousin needs some financial assistance. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-16",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "surprise"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "previewTilesScraped": 40,
+        "allPurchasableTilesMatchCode": true
+      }
+    },
+    "mr-worldwide": {
+      "id": "mr-worldwide",
+      "name": "Mr. Worldwide",
+      "free": false,
+      "storeId": "6289420d8e44343ae5eb4b22",
+      "storePriceCoins": 180,
+      "storeDescription": "The world is wide enough for both Hamilton and you!",
+      "goReward": {
+        "land": 300,
+        "pass": 200
+      },
+      "summary": {
+        "tileCount": 48,
+        "countsByType": {
+          "corner": 4,
+          "city": 28,
+          "treasure": 4,
+          "tax": 1,
+          "airport": 4,
+          "surprise": 3,
+          "company": 3,
+          "premium-tax": 1
+        },
+        "purchasableCount": 35,
+        "totalPurchasePrice": 7200,
+        "groups": [
+          {
+            "group": "brazil",
+            "tiles": [
+              1,
+              3
+            ],
+            "names": [
+              "Salvador",
+              "Rio"
+            ],
+            "totalPrice": 120,
+            "housePrice": 50,
+            "hotelPrice": 50,
+            "size": 2,
+            "costToFullHotels": 620
+          },
+          {
+            "group": "israel",
+            "tiles": [
+              5,
+              7,
+              8
+            ],
+            "names": [
+              "Tel Aviv",
+              "Haifa",
+              "Jerusalem"
+            ],
+            "totalPrice": 310,
+            "housePrice": 50,
+            "hotelPrice": 50,
+            "size": 3,
+            "costToFullHotels": 1060
+          },
+          {
+            "group": "india",
+            "tiles": [
+              10,
+              11
+            ],
+            "names": [
+              "Mumbai",
+              "New Delhi"
+            ],
+            "totalPrice": 250,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 2,
+            "costToFullHotels": 1250
+          },
+          {
+            "group": "italy",
+            "tiles": [
+              13,
+              14,
+              16,
+              17
+            ],
+            "names": [
+              "Venice",
+              "Bologna",
+              "Milan",
+              "Rome"
+            ],
+            "totalPrice": 600,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 4,
+            "costToFullHotels": 2600
+          },
+          {
+            "group": "germany",
+            "tiles": [
+              19,
+              21,
+              23
+            ],
+            "names": [
+              "Frankfurt",
+              "Munich",
+              "Berlin"
+            ],
+            "totalPrice": 560,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 3,
+            "costToFullHotels": 2060
+          },
+          {
+            "group": "china",
+            "tiles": [
+              25,
+              27,
+              29
+            ],
+            "names": [
+              "Shenzhen",
+              "Beijing",
+              "Shanghai"
+            ],
+            "totalPrice": 680,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 3,
+            "costToFullHotels": 2930
+          },
+          {
+            "group": "france",
+            "tiles": [
+              31,
+              32
+            ],
+            "names": [
+              "Toulouse",
+              "Paris"
+            ],
+            "totalPrice": 520,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 2,
+            "costToFullHotels": 2020
+          },
+          {
+            "group": "japan",
+            "tiles": [
+              34,
+              35
+            ],
+            "names": [
+              "Yokohama",
+              "Tokyo"
+            ],
+            "totalPrice": 560,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 2,
+            "costToFullHotels": 2060
+          },
+          {
+            "group": "united-kingdom",
+            "tiles": [
+              37,
+              38,
+              40,
+              41
+            ],
+            "names": [
+              "Liverpool",
+              "Manchester",
+              "Birmingham",
+              "London"
+            ],
+            "totalPrice": 1240,
+            "housePrice": 200,
+            "hotelPrice": 200,
+            "size": 4,
+            "costToFullHotels": 5240
+          },
+          {
+            "group": "united-states-of-america",
+            "tiles": [
+              43,
+              45,
+              47
+            ],
+            "names": [
+              "Los Angeles",
+              "San Francisco",
+              "New York"
+            ],
+            "totalPrice": 1110,
+            "housePrice": 200,
+            "hotelPrice": 200,
+            "size": 3,
+            "costToFullHotels": 4110
+          }
+        ]
+      },
+      "tiles": [
+        {
+          "index": 0,
+          "type": "corner",
+          "name": "Start",
+          "cornerType": "go",
+          "effect": "land exactly: +$300; pass: +$200"
+        },
+        {
+          "index": 1,
+          "type": "city",
+          "name": "Salvador",
+          "group": "brazil",
+          "price": 60,
+          "rent": {
+            "base": 2,
+            "fullSetBaseIfRuleX2": 4,
+            "house1": 10,
+            "house2": 30,
+            "house3": 90,
+            "house4": 160,
+            "hotel": 250
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 30,
+          "unmortgageCost": 33,
+          "sellToBankValue": 30,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 310
+        },
+        {
+          "index": 2,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 3,
+          "type": "city",
+          "name": "Rio",
+          "group": "brazil",
+          "price": 60,
+          "rent": {
+            "base": 4,
+            "fullSetBaseIfRuleX2": 8,
+            "house1": 20,
+            "house2": 60,
+            "house3": 180,
+            "house4": 320,
+            "hotel": 450
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 30,
+          "unmortgageCost": 33,
+          "sellToBankValue": 30,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 310
+        },
+        {
+          "index": 4,
+          "type": "bonus",
+          "name": "Earnings Tax",
+          "bonusType": "tax",
+          "taxPercentage": 10,
+          "effect": "pay round(cash * 10%)"
+        },
+        {
+          "index": 5,
+          "type": "city",
+          "name": "Tel Aviv",
+          "group": "israel",
+          "price": 100,
+          "rent": {
+            "base": 6,
+            "fullSetBaseIfRuleX2": 12,
+            "house1": 30,
+            "house2": 90,
+            "house3": 270,
+            "house4": 400,
+            "hotel": 550
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 50,
+          "unmortgageCost": 55,
+          "sellToBankValue": 50,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 350
+        },
+        {
+          "index": 6,
+          "type": "airport",
+          "name": "TLV Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 7,
+          "type": "city",
+          "name": "Haifa",
+          "group": "israel",
+          "price": 100,
+          "rent": {
+            "base": 6,
+            "fullSetBaseIfRuleX2": 12,
+            "house1": 30,
+            "house2": 90,
+            "house3": 270,
+            "house4": 400,
+            "hotel": 550
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 50,
+          "unmortgageCost": 55,
+          "sellToBankValue": 50,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 350
+        },
+        {
+          "index": 8,
+          "type": "city",
+          "name": "Jerusalem",
+          "group": "israel",
+          "price": 110,
+          "rent": {
+            "base": 8,
+            "fullSetBaseIfRuleX2": 16,
+            "house1": 40,
+            "house2": 100,
+            "house3": 300,
+            "house4": 450,
+            "hotel": 600
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 55,
+          "unmortgageCost": 60,
+          "sellToBankValue": 55,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 360
+        },
+        {
+          "index": 9,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 10,
+          "type": "city",
+          "name": "Mumbai",
+          "group": "india",
+          "price": 120,
+          "rent": {
+            "base": 8,
+            "fullSetBaseIfRuleX2": 16,
+            "house1": 45,
+            "house2": 120,
+            "house3": 350,
+            "house4": 500,
+            "hotel": 650
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 60,
+          "unmortgageCost": 66,
+          "sellToBankValue": 60,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 620
+        },
+        {
+          "index": 11,
+          "type": "city",
+          "name": "New Delhi",
+          "group": "india",
+          "price": 130,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 45,
+            "house2": 130,
+            "house3": 400,
+            "house4": 575,
+            "hotel": 700
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 65,
+          "unmortgageCost": 71,
+          "sellToBankValue": 65,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 630
+        },
+        {
+          "index": 12,
+          "type": "corner",
+          "name": "Prison",
+          "cornerType": "prison",
+          "effect": "just visiting / jail (3 turns max, bail $50)"
+        },
+        {
+          "index": 13,
+          "type": "city",
+          "name": "Venice",
+          "group": "italy",
+          "price": 140,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 50,
+            "house2": 150,
+            "house3": 450,
+            "house4": 625,
+            "hotel": 750
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 70,
+          "unmortgageCost": 77,
+          "sellToBankValue": 70,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 640
+        },
+        {
+          "index": 14,
+          "type": "city",
+          "name": "Bologna",
+          "group": "italy",
+          "price": 140,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 50,
+            "house2": 150,
+            "house3": 450,
+            "house4": 625,
+            "hotel": 750
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 70,
+          "unmortgageCost": 77,
+          "sellToBankValue": 70,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 640
+        },
+        {
+          "index": 15,
+          "type": "company",
+          "name": "Power Company",
+          "group": "company",
+          "companyType": "electricity",
+          "price": 150,
+          "rentDiceMultiplierByCompaniesOwned": {
+            "1": 4,
+            "2": 10,
+            "3": 20
+          },
+          "mortgageValue": 75,
+          "unmortgageCost": 82,
+          "sellToBankValue": 75
+        },
+        {
+          "index": 16,
+          "type": "city",
+          "name": "Milan",
+          "group": "italy",
+          "price": 160,
+          "rent": {
+            "base": 12,
+            "fullSetBaseIfRuleX2": 24,
+            "house1": 60,
+            "house2": 180,
+            "house3": 500,
+            "house4": 700,
+            "hotel": 900
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 80,
+          "unmortgageCost": 88,
+          "sellToBankValue": 80,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 660
+        },
+        {
+          "index": 17,
+          "type": "city",
+          "name": "Rome",
+          "group": "italy",
+          "price": 160,
+          "rent": {
+            "base": 12,
+            "fullSetBaseIfRuleX2": 24,
+            "house1": 60,
+            "house2": 180,
+            "house3": 500,
+            "house4": 700,
+            "hotel": 900
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 80,
+          "unmortgageCost": 88,
+          "sellToBankValue": 80,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 660
+        },
+        {
+          "index": 18,
+          "type": "airport",
+          "name": "MUC Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 19,
+          "type": "city",
+          "name": "Frankfurt",
+          "group": "germany",
+          "price": 180,
+          "rent": {
+            "base": 14,
+            "fullSetBaseIfRuleX2": 28,
+            "house1": 70,
+            "house2": 200,
+            "house3": 550,
+            "house4": 750,
+            "hotel": 950
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 90,
+          "unmortgageCost": 99,
+          "sellToBankValue": 90,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 680
+        },
+        {
+          "index": 20,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 21,
+          "type": "city",
+          "name": "Munich",
+          "group": "germany",
+          "price": 180,
+          "rent": {
+            "base": 14,
+            "fullSetBaseIfRuleX2": 28,
+            "house1": 70,
+            "house2": 200,
+            "house3": 550,
+            "house4": 750,
+            "hotel": 950
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 90,
+          "unmortgageCost": 99,
+          "sellToBankValue": 90,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 680
+        },
+        {
+          "index": 22,
+          "type": "company",
+          "name": "Gas Company",
+          "group": "company",
+          "companyType": "gas",
+          "price": 150,
+          "rentDiceMultiplierByCompaniesOwned": {
+            "1": 4,
+            "2": 10,
+            "3": 20
+          },
+          "mortgageValue": 75,
+          "unmortgageCost": 82,
+          "sellToBankValue": 75
+        },
+        {
+          "index": 23,
+          "type": "city",
+          "name": "Berlin",
+          "group": "germany",
+          "price": 200,
+          "rent": {
+            "base": 16,
+            "fullSetBaseIfRuleX2": 32,
+            "house1": 80,
+            "house2": 220,
+            "house3": 600,
+            "house4": 800,
+            "hotel": 1000
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 700
+        },
+        {
+          "index": 24,
+          "type": "corner",
+          "name": "Vacation",
+          "cornerType": "vacation",
+          "effect": "skip next turn; collects vacation pot if rule on"
+        },
+        {
+          "index": 25,
+          "type": "city",
+          "name": "Shenzhen",
+          "group": "china",
+          "price": 220,
+          "rent": {
+            "base": 18,
+            "fullSetBaseIfRuleX2": 36,
+            "house1": 90,
+            "house2": 250,
+            "house3": 700,
+            "house4": 875,
+            "hotel": 1050
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 110,
+          "unmortgageCost": 121,
+          "sellToBankValue": 110,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 970
+        },
+        {
+          "index": 26,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 27,
+          "type": "city",
+          "name": "Beijing",
+          "group": "china",
+          "price": 220,
+          "rent": {
+            "base": 18,
+            "fullSetBaseIfRuleX2": 36,
+            "house1": 90,
+            "house2": 250,
+            "house3": 700,
+            "house4": 875,
+            "hotel": 1050
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 110,
+          "unmortgageCost": 121,
+          "sellToBankValue": 110,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 970
+        },
+        {
+          "index": 28,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 29,
+          "type": "city",
+          "name": "Shanghai",
+          "group": "china",
+          "price": 240,
+          "rent": {
+            "base": 20,
+            "fullSetBaseIfRuleX2": 40,
+            "house1": 100,
+            "house2": 300,
+            "house3": 750,
+            "house4": 925,
+            "hotel": 1100
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 120,
+          "unmortgageCost": 132,
+          "sellToBankValue": 120,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 990
+        },
+        {
+          "index": 30,
+          "type": "airport",
+          "name": "CDG Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 31,
+          "type": "city",
+          "name": "Toulouse",
+          "group": "france",
+          "price": 260,
+          "rent": {
+            "base": 22,
+            "fullSetBaseIfRuleX2": 44,
+            "house1": 110,
+            "house2": 330,
+            "house3": 800,
+            "house4": 975,
+            "hotel": 1150
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 130,
+          "unmortgageCost": 143,
+          "sellToBankValue": 130,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1010
+        },
+        {
+          "index": 32,
+          "type": "city",
+          "name": "Paris",
+          "group": "france",
+          "price": 260,
+          "rent": {
+            "base": 22,
+            "fullSetBaseIfRuleX2": 44,
+            "house1": 110,
+            "house2": 330,
+            "house3": 800,
+            "house4": 975,
+            "hotel": 1150
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 130,
+          "unmortgageCost": 143,
+          "sellToBankValue": 130,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1010
+        },
+        {
+          "index": 33,
+          "type": "company",
+          "name": "Water Company",
+          "group": "company",
+          "companyType": "water",
+          "price": 150,
+          "rentDiceMultiplierByCompaniesOwned": {
+            "1": 4,
+            "2": 10,
+            "3": 20
+          },
+          "mortgageValue": 75,
+          "unmortgageCost": 82,
+          "sellToBankValue": 75
+        },
+        {
+          "index": 34,
+          "type": "city",
+          "name": "Yokohama",
+          "group": "japan",
+          "price": 280,
+          "rent": {
+            "base": 24,
+            "fullSetBaseIfRuleX2": 48,
+            "house1": 120,
+            "house2": 360,
+            "house3": 850,
+            "house4": 1025,
+            "hotel": 1200
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 140,
+          "unmortgageCost": 154,
+          "sellToBankValue": 140,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1030
+        },
+        {
+          "index": 35,
+          "type": "city",
+          "name": "Tokyo",
+          "group": "japan",
+          "price": 280,
+          "rent": {
+            "base": 24,
+            "fullSetBaseIfRuleX2": 48,
+            "house1": 120,
+            "house2": 360,
+            "house3": 850,
+            "house4": 1025,
+            "hotel": 1200
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 140,
+          "unmortgageCost": 154,
+          "sellToBankValue": 140,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1030
+        },
+        {
+          "index": 36,
+          "type": "corner",
+          "name": "Go to prison",
+          "cornerType": "go-to-prison",
+          "effect": "go directly to prison (no Start reward)"
+        },
+        {
+          "index": 37,
+          "type": "city",
+          "name": "Liverpool",
+          "group": "united-kingdom",
+          "price": 300,
+          "rent": {
+            "base": 26,
+            "fullSetBaseIfRuleX2": 52,
+            "house1": 130,
+            "house2": 390,
+            "house3": 900,
+            "house4": 1100,
+            "hotel": 1275
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 150,
+          "unmortgageCost": 165,
+          "sellToBankValue": 150,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1300
+        },
+        {
+          "index": 38,
+          "type": "city",
+          "name": "Manchester",
+          "group": "united-kingdom",
+          "price": 300,
+          "rent": {
+            "base": 26,
+            "fullSetBaseIfRuleX2": 52,
+            "house1": 130,
+            "house2": 390,
+            "house3": 900,
+            "house4": 1100,
+            "hotel": 1275
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 150,
+          "unmortgageCost": 165,
+          "sellToBankValue": 150,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1300
+        },
+        {
+          "index": 39,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 40,
+          "type": "city",
+          "name": "Birmingham",
+          "group": "united-kingdom",
+          "price": 320,
+          "rent": {
+            "base": 28,
+            "fullSetBaseIfRuleX2": 56,
+            "house1": 150,
+            "house2": 450,
+            "house3": 1000,
+            "house4": 1200,
+            "hotel": 1400
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 160,
+          "unmortgageCost": 176,
+          "sellToBankValue": 160,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1320
+        },
+        {
+          "index": 41,
+          "type": "city",
+          "name": "London",
+          "group": "united-kingdom",
+          "price": 320,
+          "rent": {
+            "base": 28,
+            "fullSetBaseIfRuleX2": 56,
+            "house1": 150,
+            "house2": 450,
+            "house3": 1000,
+            "house4": 1200,
+            "hotel": 1400
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 160,
+          "unmortgageCost": 176,
+          "sellToBankValue": 160,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1320
+        },
+        {
+          "index": 42,
+          "type": "airport",
+          "name": "JFK Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 43,
+          "type": "city",
+          "name": "Los Angeles",
+          "group": "united-states-of-america",
+          "price": 350,
+          "rent": {
+            "base": 35,
+            "fullSetBaseIfRuleX2": 70,
+            "house1": 175,
+            "house2": 500,
+            "house3": 1100,
+            "house4": 1300,
+            "hotel": 1500
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 175,
+          "unmortgageCost": 192,
+          "sellToBankValue": 175,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1350
+        },
+        {
+          "index": 44,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 45,
+          "type": "city",
+          "name": "San Francisco",
+          "group": "united-states-of-america",
+          "price": 360,
+          "rent": {
+            "base": 40,
+            "fullSetBaseIfRuleX2": 80,
+            "house1": 180,
+            "house2": 540,
+            "house3": 1200,
+            "house4": 1450,
+            "hotel": 1675
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 180,
+          "unmortgageCost": 198,
+          "sellToBankValue": 180,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1360
+        },
+        {
+          "index": 46,
+          "type": "bonus",
+          "name": "Premium Tax",
+          "bonusType": "premium-tax",
+          "taxAmount": 75,
+          "effect": "pay $75"
+        },
+        {
+          "index": 47,
+          "type": "city",
+          "name": "New York",
+          "group": "united-states-of-america",
+          "price": 400,
+          "rent": {
+            "base": 50,
+            "fullSetBaseIfRuleX2": 100,
+            "house1": 200,
+            "house2": 600,
+            "house3": 1400,
+            "house4": 1700,
+            "hotel": 2000
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 200,
+          "unmortgageCost": 220,
+          "sellToBankValue": 200,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1400
+        }
+      ],
+      "cards": {
+        "treasure": [
+          {
+            "id": "treasure-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "treasure-1",
+            "text": "You found a wallet containing some cash. Collect $200.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 200
+            }
+          },
+          {
+            "id": "treasure-2",
+            "text": "Your car has ran out of gas. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-3",
+            "text": "From trading stocks you earned $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-4",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "treasure-5",
+            "text": "You host a party. Collect $50 from every player for equipment.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-6",
+            "text": "Happy holidays! Receive $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 20
+            }
+          },
+          {
+            "id": "treasure-7",
+            "text": "Tax refund. Collect $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-8",
+            "text": "Happy birthday! Collect $10 from every player.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 10
+            }
+          },
+          {
+            "id": "treasure-9",
+            "text": "From gift cards you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-10",
+            "text": "Car rental insurance. Pay $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 60
+            }
+          },
+          {
+            "id": "treasure-11",
+            "text": "Your phone died. Pay $50 for a repair.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-12",
+            "text": "Beneficial business decisions. You made a profit of $25.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 25
+            }
+          },
+          {
+            "id": "treasure-13",
+            "text": "It's time to renovate your properties. Pay $30 per house and $120 per hotel you own.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 30,
+              "perHotel": 120
+            }
+          },
+          {
+            "id": "treasure-14",
+            "text": "You have won third prize in a lottery. Collect $15.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 15
+            }
+          },
+          {
+            "id": "treasure-15",
+            "text": "You received $100 from your sibling.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-16",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "treasure"
+            }
+          }
+        ],
+        "surprise": [
+          {
+            "id": "surprise-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-1",
+            "text": "Advance to Toulouse.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 31,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-2",
+            "text": "Advance to Rome.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 17,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-3",
+            "text": "Advance to the next company.",
+            "effect": {
+              "type": "move-to-next-grouped",
+              "group": "company"
+            }
+          },
+          {
+            "id": "surprise-4",
+            "text": "Advance to the next airport.",
+            "effect": {
+              "type": "move-to-next-grouped",
+              "group": "airport"
+            }
+          },
+          {
+            "id": "surprise-5",
+            "text": "Stock agency pays you dividend of $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 60
+            }
+          },
+          {
+            "id": "surprise-6",
+            "text": "Go back 3 steps.",
+            "effect": {
+              "type": "move-steps",
+              "steps": -3
+            }
+          },
+          {
+            "id": "surprise-7",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "surprise-8",
+            "text": "Have a redesign for your properties. Pay $25 for each house and $100 for each hotel.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 25,
+              "perHotel": 100
+            }
+          },
+          {
+            "id": "surprise-9",
+            "text": "Pay tax of $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 20
+            }
+          },
+          {
+            "id": "surprise-10",
+            "text": "Take a trip to Tel Aviv.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 5,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-11",
+            "text": "Have an adventure to San Francisco.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 45,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-12",
+            "text": "You lost a bet. Pay each player $50.",
+            "effect": {
+              "type": "pay-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-13",
+            "text": "You have a new investment. Receive $150.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 150
+            }
+          },
+          {
+            "id": "surprise-14",
+            "text": "From a scholarship you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "surprise-15",
+            "text": "Your cousin needs some financial assistance. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-16",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "surprise"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "previewTilesScraped": 48,
+        "allPurchasableTilesMatchCode": true
+      }
+    },
+    "death-valley": {
+      "id": "death-valley",
+      "name": "Death Valley",
+      "free": false,
+      "storeId": "62cb385f36cbccd7e0fbd3c1",
+      "storePriceCoins": 180,
+      "storeDescription": "Each side of the board is a full property set. Be careful with your landings.",
+      "goReward": {
+        "land": 300,
+        "pass": 200
+      },
+      "summary": {
+        "tileCount": 40,
+        "countsByType": {
+          "corner": 4,
+          "city": 22,
+          "treasure": 3,
+          "tax": 1,
+          "airport": 4,
+          "surprise": 3,
+          "company": 2,
+          "premium-tax": 1
+        },
+        "purchasableCount": 28,
+        "totalPurchasePrice": 5690,
+        "groups": [
+          {
+            "group": "canada",
+            "tiles": [
+              1,
+              3,
+              6,
+              8,
+              9
+            ],
+            "names": [
+              "Ottawa",
+              "Quebec City",
+              "Montreal",
+              "Vancouver",
+              "Toronto"
+            ],
+            "totalPrice": 440,
+            "housePrice": 50,
+            "hotelPrice": 50,
+            "size": 5,
+            "costToFullHotels": 1690
+          },
+          {
+            "group": "germany",
+            "tiles": [
+              11,
+              13,
+              14,
+              16,
+              18,
+              19
+            ],
+            "names": [
+              "Wolfsburg",
+              "Cologne",
+              "Hamburg",
+              "Frankfurt",
+              "Munich",
+              "Berlin"
+            ],
+            "totalPrice": 1000,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 6,
+            "costToFullHotels": 4000
+          },
+          {
+            "group": "united-kingdom",
+            "tiles": [
+              21,
+              23,
+              24,
+              26,
+              27,
+              29
+            ],
+            "names": [
+              "Glasgow",
+              "Cambridge",
+              "Liverpool",
+              "Birmingham",
+              "Manchester",
+              "London"
+            ],
+            "totalPrice": 1480,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 6,
+            "costToFullHotels": 5980
+          },
+          {
+            "group": "united-states-of-america",
+            "tiles": [
+              31,
+              32,
+              34,
+              37,
+              39
+            ],
+            "names": [
+              "Boston",
+              "Seattle",
+              "Chicago",
+              "San Francisco",
+              "New York"
+            ],
+            "totalPrice": 1670,
+            "housePrice": 200,
+            "hotelPrice": 200,
+            "size": 5,
+            "costToFullHotels": 6670
+          }
+        ]
+      },
+      "tiles": [
+        {
+          "index": 0,
+          "type": "corner",
+          "name": "Start",
+          "cornerType": "go",
+          "effect": "land exactly: +$300; pass: +$200"
+        },
+        {
+          "index": 1,
+          "type": "city",
+          "name": "Ottawa",
+          "group": "canada",
+          "price": 60,
+          "rent": {
+            "base": 2,
+            "fullSetBaseIfRuleX2": 4,
+            "house1": 10,
+            "house2": 30,
+            "house3": 90,
+            "house4": 160,
+            "hotel": 250
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 30,
+          "unmortgageCost": 33,
+          "sellToBankValue": 30,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 310
+        },
+        {
+          "index": 2,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 3,
+          "type": "city",
+          "name": "Quebec City",
+          "group": "canada",
+          "price": 60,
+          "rent": {
+            "base": 4,
+            "fullSetBaseIfRuleX2": 8,
+            "house1": 20,
+            "house2": 60,
+            "house3": 180,
+            "house4": 320,
+            "hotel": 450
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 30,
+          "unmortgageCost": 33,
+          "sellToBankValue": 30,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 310
+        },
+        {
+          "index": 4,
+          "type": "bonus",
+          "name": "Earnings Tax",
+          "bonusType": "tax",
+          "taxPercentage": 10,
+          "effect": "pay round(cash * 10%)"
+        },
+        {
+          "index": 5,
+          "type": "airport",
+          "name": "YYZ Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 6,
+          "type": "city",
+          "name": "Montreal",
+          "group": "canada",
+          "price": 100,
+          "rent": {
+            "base": 6,
+            "fullSetBaseIfRuleX2": 12,
+            "house1": 30,
+            "house2": 90,
+            "house3": 270,
+            "house4": 400,
+            "hotel": 550
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 50,
+          "unmortgageCost": 55,
+          "sellToBankValue": 50,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 350
+        },
+        {
+          "index": 7,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 8,
+          "type": "city",
+          "name": "Vancouver",
+          "group": "canada",
+          "price": 100,
+          "rent": {
+            "base": 6,
+            "fullSetBaseIfRuleX2": 12,
+            "house1": 30,
+            "house2": 90,
+            "house3": 270,
+            "house4": 400,
+            "hotel": 550
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 50,
+          "unmortgageCost": 55,
+          "sellToBankValue": 50,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 350
+        },
+        {
+          "index": 9,
+          "type": "city",
+          "name": "Toronto",
+          "group": "canada",
+          "price": 120,
+          "rent": {
+            "base": 8,
+            "fullSetBaseIfRuleX2": 16,
+            "house1": 40,
+            "house2": 100,
+            "house3": 300,
+            "house4": 450,
+            "hotel": 600
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 60,
+          "unmortgageCost": 66,
+          "sellToBankValue": 60,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 370
+        },
+        {
+          "index": 10,
+          "type": "corner",
+          "name": "Prison",
+          "cornerType": "prison",
+          "effect": "just visiting / jail (3 turns max, bail $50)"
+        },
+        {
+          "index": 11,
+          "type": "city",
+          "name": "Wolfsburg",
+          "group": "germany",
+          "price": 140,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 50,
+            "house2": 150,
+            "house3": 450,
+            "house4": 625,
+            "hotel": 750
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 70,
+          "unmortgageCost": 77,
+          "sellToBankValue": 70,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 640
+        },
+        {
+          "index": 12,
+          "type": "company",
+          "name": "Power Company",
+          "group": "company",
+          "companyType": "electricity",
+          "price": 150,
+          "rentDiceMultiplierByCompaniesOwned": {
+            "1": 4,
+            "2": 10,
+            "3": 20
+          },
+          "mortgageValue": 75,
+          "unmortgageCost": 82,
+          "sellToBankValue": 75
+        },
+        {
+          "index": 13,
+          "type": "city",
+          "name": "Cologne",
+          "group": "germany",
+          "price": 140,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 50,
+            "house2": 150,
+            "house3": 450,
+            "house4": 625,
+            "hotel": 750
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 70,
+          "unmortgageCost": 77,
+          "sellToBankValue": 70,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 640
+        },
+        {
+          "index": 14,
+          "type": "city",
+          "name": "Hamburg",
+          "group": "germany",
+          "price": 160,
+          "rent": {
+            "base": 12,
+            "fullSetBaseIfRuleX2": 24,
+            "house1": 60,
+            "house2": 180,
+            "house3": 500,
+            "house4": 700,
+            "hotel": 900
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 80,
+          "unmortgageCost": 88,
+          "sellToBankValue": 80,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 660
+        },
+        {
+          "index": 15,
+          "type": "airport",
+          "name": "MUC Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 16,
+          "type": "city",
+          "name": "Frankfurt",
+          "group": "germany",
+          "price": 180,
+          "rent": {
+            "base": 14,
+            "fullSetBaseIfRuleX2": 28,
+            "house1": 70,
+            "house2": 200,
+            "house3": 550,
+            "house4": 750,
+            "hotel": 950
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 90,
+          "unmortgageCost": 99,
+          "sellToBankValue": 90,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 680
+        },
+        {
+          "index": 17,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 18,
+          "type": "city",
+          "name": "Munich",
+          "group": "germany",
+          "price": 180,
+          "rent": {
+            "base": 14,
+            "fullSetBaseIfRuleX2": 28,
+            "house1": 70,
+            "house2": 200,
+            "house3": 550,
+            "house4": 750,
+            "hotel": 950
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 90,
+          "unmortgageCost": 99,
+          "sellToBankValue": 90,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 680
+        },
+        {
+          "index": 19,
+          "type": "city",
+          "name": "Berlin",
+          "group": "germany",
+          "price": 200,
+          "rent": {
+            "base": 16,
+            "fullSetBaseIfRuleX2": 32,
+            "house1": 80,
+            "house2": 220,
+            "house3": 600,
+            "house4": 800,
+            "hotel": 1000
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 700
+        },
+        {
+          "index": 20,
+          "type": "corner",
+          "name": "Vacation",
+          "cornerType": "vacation",
+          "effect": "skip next turn; collects vacation pot if rule on"
+        },
+        {
+          "index": 21,
+          "type": "city",
+          "name": "Glasgow",
+          "group": "united-kingdom",
+          "price": 220,
+          "rent": {
+            "base": 18,
+            "fullSetBaseIfRuleX2": 36,
+            "house1": 90,
+            "house2": 250,
+            "house3": 700,
+            "house4": 875,
+            "hotel": 1050
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 110,
+          "unmortgageCost": 121,
+          "sellToBankValue": 110,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 970
+        },
+        {
+          "index": 22,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 23,
+          "type": "city",
+          "name": "Cambridge",
+          "group": "united-kingdom",
+          "price": 220,
+          "rent": {
+            "base": 18,
+            "fullSetBaseIfRuleX2": 36,
+            "house1": 90,
+            "house2": 250,
+            "house3": 700,
+            "house4": 875,
+            "hotel": 1050
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 110,
+          "unmortgageCost": 121,
+          "sellToBankValue": 110,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 970
+        },
+        {
+          "index": 24,
+          "type": "city",
+          "name": "Liverpool",
+          "group": "united-kingdom",
+          "price": 240,
+          "rent": {
+            "base": 20,
+            "fullSetBaseIfRuleX2": 40,
+            "house1": 100,
+            "house2": 300,
+            "house3": 750,
+            "house4": 925,
+            "hotel": 1100
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 120,
+          "unmortgageCost": 132,
+          "sellToBankValue": 120,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 990
+        },
+        {
+          "index": 25,
+          "type": "airport",
+          "name": "LHR Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 26,
+          "type": "city",
+          "name": "Birmingham",
+          "group": "united-kingdom",
+          "price": 260,
+          "rent": {
+            "base": 22,
+            "fullSetBaseIfRuleX2": 44,
+            "house1": 110,
+            "house2": 330,
+            "house3": 800,
+            "house4": 975,
+            "hotel": 1150
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 130,
+          "unmortgageCost": 143,
+          "sellToBankValue": 130,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1010
+        },
+        {
+          "index": 27,
+          "type": "city",
+          "name": "Manchester",
+          "group": "united-kingdom",
+          "price": 260,
+          "rent": {
+            "base": 22,
+            "fullSetBaseIfRuleX2": 44,
+            "house1": 110,
+            "house2": 330,
+            "house3": 800,
+            "house4": 975,
+            "hotel": 1150
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 130,
+          "unmortgageCost": 143,
+          "sellToBankValue": 130,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1010
+        },
+        {
+          "index": 28,
+          "type": "company",
+          "name": "Water Company",
+          "group": "company",
+          "companyType": "water",
+          "price": 150,
+          "rentDiceMultiplierByCompaniesOwned": {
+            "1": 4,
+            "2": 10,
+            "3": 20
+          },
+          "mortgageValue": 75,
+          "unmortgageCost": 82,
+          "sellToBankValue": 75
+        },
+        {
+          "index": 29,
+          "type": "city",
+          "name": "London",
+          "group": "united-kingdom",
+          "price": 280,
+          "rent": {
+            "base": 24,
+            "fullSetBaseIfRuleX2": 48,
+            "house1": 120,
+            "house2": 360,
+            "house3": 850,
+            "house4": 1025,
+            "hotel": 1200
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 140,
+          "unmortgageCost": 154,
+          "sellToBankValue": 140,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1030
+        },
+        {
+          "index": 30,
+          "type": "corner",
+          "name": "Go to prison",
+          "cornerType": "go-to-prison",
+          "effect": "go directly to prison (no Start reward)"
+        },
+        {
+          "index": 31,
+          "type": "city",
+          "name": "Boston",
+          "group": "united-states-of-america",
+          "price": 300,
+          "rent": {
+            "base": 26,
+            "fullSetBaseIfRuleX2": 52,
+            "house1": 130,
+            "house2": 390,
+            "house3": 900,
+            "house4": 1100,
+            "hotel": 1275
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 150,
+          "unmortgageCost": 165,
+          "sellToBankValue": 150,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1300
+        },
+        {
+          "index": 32,
+          "type": "city",
+          "name": "Seattle",
+          "group": "united-states-of-america",
+          "price": 300,
+          "rent": {
+            "base": 26,
+            "fullSetBaseIfRuleX2": 52,
+            "house1": 130,
+            "house2": 390,
+            "house3": 900,
+            "house4": 1100,
+            "hotel": 1275
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 150,
+          "unmortgageCost": 165,
+          "sellToBankValue": 150,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1300
+        },
+        {
+          "index": 33,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 34,
+          "type": "city",
+          "name": "Chicago",
+          "group": "united-states-of-america",
+          "price": 320,
+          "rent": {
+            "base": 28,
+            "fullSetBaseIfRuleX2": 56,
+            "house1": 150,
+            "house2": 450,
+            "house3": 1000,
+            "house4": 1200,
+            "hotel": 1400
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 160,
+          "unmortgageCost": 176,
+          "sellToBankValue": 160,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1320
+        },
+        {
+          "index": 35,
+          "type": "airport",
+          "name": "JFK Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 36,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 37,
+          "type": "city",
+          "name": "San Francisco",
+          "group": "united-states-of-america",
+          "price": 350,
+          "rent": {
+            "base": 35,
+            "fullSetBaseIfRuleX2": 70,
+            "house1": 175,
+            "house2": 500,
+            "house3": 1100,
+            "house4": 1300,
+            "hotel": 1500
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 175,
+          "unmortgageCost": 192,
+          "sellToBankValue": 175,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1350
+        },
+        {
+          "index": 38,
+          "type": "bonus",
+          "name": "Premium Tax",
+          "bonusType": "premium-tax",
+          "taxAmount": 75,
+          "effect": "pay $75"
+        },
+        {
+          "index": 39,
+          "type": "city",
+          "name": "New York",
+          "group": "united-states-of-america",
+          "price": 400,
+          "rent": {
+            "base": 50,
+            "fullSetBaseIfRuleX2": 100,
+            "house1": 200,
+            "house2": 600,
+            "house3": 1400,
+            "house4": 1700,
+            "hotel": 2000
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 200,
+          "unmortgageCost": 220,
+          "sellToBankValue": 200,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1400
+        }
+      ],
+      "cards": {
+        "treasure": [
+          {
+            "id": "treasure-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "treasure-1",
+            "text": "You found a wallet containing some cash. Collect $200.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 200
+            }
+          },
+          {
+            "id": "treasure-2",
+            "text": "Your car has ran out of gas. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-3",
+            "text": "From trading stocks you earned $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-4",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "treasure-5",
+            "text": "You host a party. Collect $50 from every player for equipment.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-6",
+            "text": "Happy holidays! Receive $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 20
+            }
+          },
+          {
+            "id": "treasure-7",
+            "text": "Tax refund. Collect $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-8",
+            "text": "Happy birthday! Collect $10 from every player.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 10
+            }
+          },
+          {
+            "id": "treasure-9",
+            "text": "From gift cards you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-10",
+            "text": "Car rental insurance. Pay $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 60
+            }
+          },
+          {
+            "id": "treasure-11",
+            "text": "Your phone died. Pay $50 for a repair.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-12",
+            "text": "Beneficial business decisions. You made a profit of $25.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 25
+            }
+          },
+          {
+            "id": "treasure-13",
+            "text": "It's time to renovate your properties. Pay $30 per house and $120 per hotel you own.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 30,
+              "perHotel": 120
+            }
+          },
+          {
+            "id": "treasure-14",
+            "text": "You have won third prize in a lottery. Collect $15.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 15
+            }
+          },
+          {
+            "id": "treasure-15",
+            "text": "You received $100 from your sibling.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-16",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "treasure"
+            }
+          }
+        ],
+        "surprise": [
+          {
+            "id": "surprise-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-1",
+            "text": "Advance to Liverpool.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 24,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-2",
+            "text": "Advance to Wolfsburg.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 11,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-3",
+            "text": "Advance to the next company.",
+            "effect": {
+              "type": "move-to-next-grouped",
+              "group": "company"
+            }
+          },
+          {
+            "id": "surprise-4",
+            "text": "Advance to the next airport.",
+            "effect": {
+              "type": "move-to-next-grouped",
+              "group": "airport"
+            }
+          },
+          {
+            "id": "surprise-5",
+            "text": "Stock agency pays you dividend of $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 60
+            }
+          },
+          {
+            "id": "surprise-6",
+            "text": "Go back 3 steps.",
+            "effect": {
+              "type": "move-steps",
+              "steps": -3
+            }
+          },
+          {
+            "id": "surprise-7",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "surprise-8",
+            "text": "Have a redesign for your properties. Pay $25 for each house and $100 for each hotel.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 25,
+              "perHotel": 100
+            }
+          },
+          {
+            "id": "surprise-9",
+            "text": "Pay tax of $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 20
+            }
+          },
+          {
+            "id": "surprise-10",
+            "text": "Take a trip to YYZ Airport.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 5,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-11",
+            "text": "Have an adventure to New York.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 39,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-12",
+            "text": "You lost a bet. Pay each player $50.",
+            "effect": {
+              "type": "pay-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-13",
+            "text": "You have a new investment. Receive $150.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 150
+            }
+          },
+          {
+            "id": "surprise-14",
+            "text": "From a scholarship you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "surprise-15",
+            "text": "Your cousin needs some financial assistance. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-16",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "surprise"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "previewTilesScraped": 40,
+        "allPurchasableTilesMatchCode": true
+      }
+    },
+    "lucky-wheel": {
+      "id": "lucky-wheel",
+      "name": "Lucky Wheel",
+      "free": false,
+      "storeId": "62cc5d0636cbccd7e0fbd3c2",
+      "storePriceCoins": 180,
+      "storeDescription": "Wish for the best and hope today is your lucky day.",
+      "goReward": {
+        "land": 300,
+        "pass": 200
+      },
+      "summary": {
+        "tileCount": 40,
+        "countsByType": {
+          "corner": 4,
+          "city": 16,
+          "airport": 4,
+          "treasure": 6,
+          "tax": 1,
+          "surprise": 6,
+          "premium-tax": 2,
+          "tax-refund": 1
+        },
+        "purchasableCount": 20,
+        "totalPurchasePrice": 4210,
+        "groups": [
+          {
+            "group": "turkey",
+            "tiles": [
+              1,
+              2
+            ],
+            "names": [
+              "Antalya",
+              "Istanbul"
+            ],
+            "totalPrice": 140,
+            "housePrice": 50,
+            "hotelPrice": 50,
+            "size": 2,
+            "costToFullHotels": 640
+          },
+          {
+            "group": "romania",
+            "tiles": [
+              3,
+              4
+            ],
+            "names": [
+              "Brasov",
+              "Bucharest"
+            ],
+            "totalPrice": 220,
+            "housePrice": 50,
+            "hotelPrice": 50,
+            "size": 2,
+            "costToFullHotels": 720
+          },
+          {
+            "group": "italy",
+            "tiles": [
+              6,
+              7
+            ],
+            "names": [
+              "Milan",
+              "Rome"
+            ],
+            "totalPrice": 300,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 2,
+            "costToFullHotels": 1300
+          },
+          {
+            "group": "germany",
+            "tiles": [
+              8,
+              9
+            ],
+            "names": [
+              "Munich",
+              "Berlin"
+            ],
+            "totalPrice": 380,
+            "housePrice": 100,
+            "hotelPrice": 100,
+            "size": 2,
+            "costToFullHotels": 1380
+          },
+          {
+            "group": "china",
+            "tiles": [
+              21,
+              22
+            ],
+            "names": [
+              "Beijing",
+              "Shanghai"
+            ],
+            "totalPrice": 460,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 2,
+            "costToFullHotels": 1960
+          },
+          {
+            "group": "ireland",
+            "tiles": [
+              23,
+              24
+            ],
+            "names": [
+              "Belfast",
+              "Dublin"
+            ],
+            "totalPrice": 540,
+            "housePrice": 150,
+            "hotelPrice": 150,
+            "size": 2,
+            "costToFullHotels": 2040
+          },
+          {
+            "group": "united-kingdom",
+            "tiles": [
+              26,
+              27
+            ],
+            "names": [
+              "Manchester",
+              "London"
+            ],
+            "totalPrice": 620,
+            "housePrice": 200,
+            "hotelPrice": 200,
+            "size": 2,
+            "costToFullHotels": 2620
+          },
+          {
+            "group": "united-states-of-america",
+            "tiles": [
+              28,
+              29
+            ],
+            "names": [
+              "San Francisco",
+              "New York"
+            ],
+            "totalPrice": 750,
+            "housePrice": 200,
+            "hotelPrice": 200,
+            "size": 2,
+            "costToFullHotels": 2750
+          }
+        ]
+      },
+      "tiles": [
+        {
+          "index": 0,
+          "type": "corner",
+          "name": "Start",
+          "cornerType": "go",
+          "effect": "land exactly: +$300; pass: +$200"
+        },
+        {
+          "index": 1,
+          "type": "city",
+          "name": "Antalya",
+          "group": "turkey",
+          "price": 60,
+          "rent": {
+            "base": 2,
+            "fullSetBaseIfRuleX2": 4,
+            "house1": 10,
+            "house2": 30,
+            "house3": 90,
+            "house4": 160,
+            "hotel": 250
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 30,
+          "unmortgageCost": 33,
+          "sellToBankValue": 30,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 310
+        },
+        {
+          "index": 2,
+          "type": "city",
+          "name": "Istanbul",
+          "group": "turkey",
+          "price": 80,
+          "rent": {
+            "base": 4,
+            "fullSetBaseIfRuleX2": 8,
+            "house1": 20,
+            "house2": 60,
+            "house3": 180,
+            "house4": 320,
+            "hotel": 450
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 40,
+          "unmortgageCost": 44,
+          "sellToBankValue": 40,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 330
+        },
+        {
+          "index": 3,
+          "type": "city",
+          "name": "Brasov",
+          "group": "romania",
+          "price": 100,
+          "rent": {
+            "base": 6,
+            "fullSetBaseIfRuleX2": 12,
+            "house1": 30,
+            "house2": 90,
+            "house3": 270,
+            "house4": 400,
+            "hotel": 550
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 50,
+          "unmortgageCost": 55,
+          "sellToBankValue": 50,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 350
+        },
+        {
+          "index": 4,
+          "type": "city",
+          "name": "Bucharest",
+          "group": "romania",
+          "price": 120,
+          "rent": {
+            "base": 8,
+            "fullSetBaseIfRuleX2": 16,
+            "house1": 40,
+            "house2": 100,
+            "house3": 300,
+            "house4": 450,
+            "hotel": 600
+          },
+          "housePrice": 50,
+          "hotelPrice": 50,
+          "mortgageValue": 60,
+          "unmortgageCost": 66,
+          "sellToBankValue": 60,
+          "houseSellRefund": 25,
+          "hotelSellRefund": 25,
+          "totalCostToHotel": 370
+        },
+        {
+          "index": 5,
+          "type": "airport",
+          "name": "TLV Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 6,
+          "type": "city",
+          "name": "Milan",
+          "group": "italy",
+          "price": 140,
+          "rent": {
+            "base": 10,
+            "fullSetBaseIfRuleX2": 20,
+            "house1": 50,
+            "house2": 150,
+            "house3": 450,
+            "house4": 625,
+            "hotel": 750
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 70,
+          "unmortgageCost": 77,
+          "sellToBankValue": 70,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 640
+        },
+        {
+          "index": 7,
+          "type": "city",
+          "name": "Rome",
+          "group": "italy",
+          "price": 160,
+          "rent": {
+            "base": 12,
+            "fullSetBaseIfRuleX2": 24,
+            "house1": 60,
+            "house2": 180,
+            "house3": 500,
+            "house4": 700,
+            "hotel": 900
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 80,
+          "unmortgageCost": 88,
+          "sellToBankValue": 80,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 660
+        },
+        {
+          "index": 8,
+          "type": "city",
+          "name": "Munich",
+          "group": "germany",
+          "price": 180,
+          "rent": {
+            "base": 14,
+            "fullSetBaseIfRuleX2": 28,
+            "house1": 70,
+            "house2": 200,
+            "house3": 550,
+            "house4": 750,
+            "hotel": 950
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 90,
+          "unmortgageCost": 99,
+          "sellToBankValue": 90,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 680
+        },
+        {
+          "index": 9,
+          "type": "city",
+          "name": "Berlin",
+          "group": "germany",
+          "price": 200,
+          "rent": {
+            "base": 16,
+            "fullSetBaseIfRuleX2": 32,
+            "house1": 80,
+            "house2": 220,
+            "house3": 600,
+            "house4": 800,
+            "hotel": 1000
+          },
+          "housePrice": 100,
+          "hotelPrice": 100,
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100,
+          "houseSellRefund": 50,
+          "hotelSellRefund": 50,
+          "totalCostToHotel": 700
+        },
+        {
+          "index": 10,
+          "type": "corner",
+          "name": "Prison",
+          "cornerType": "prison",
+          "effect": "just visiting / jail (3 turns max, bail $50)"
+        },
+        {
+          "index": 11,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 12,
+          "type": "bonus",
+          "name": "Earnings Tax",
+          "bonusType": "tax",
+          "taxPercentage": 10,
+          "effect": "pay round(cash * 10%)"
+        },
+        {
+          "index": 13,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 14,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 15,
+          "type": "airport",
+          "name": "MUC Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 16,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 17,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 18,
+          "type": "bonus",
+          "name": "Premium Tax",
+          "bonusType": "premium-tax",
+          "taxAmount": 75,
+          "effect": "pay $75"
+        },
+        {
+          "index": 19,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 20,
+          "type": "corner",
+          "name": "Vacation",
+          "cornerType": "vacation",
+          "effect": "skip next turn; collects vacation pot if rule on"
+        },
+        {
+          "index": 21,
+          "type": "city",
+          "name": "Beijing",
+          "group": "china",
+          "price": 220,
+          "rent": {
+            "base": 18,
+            "fullSetBaseIfRuleX2": 36,
+            "house1": 90,
+            "house2": 250,
+            "house3": 700,
+            "house4": 875,
+            "hotel": 1050
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 110,
+          "unmortgageCost": 121,
+          "sellToBankValue": 110,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 970
+        },
+        {
+          "index": 22,
+          "type": "city",
+          "name": "Shanghai",
+          "group": "china",
+          "price": 240,
+          "rent": {
+            "base": 20,
+            "fullSetBaseIfRuleX2": 40,
+            "house1": 100,
+            "house2": 300,
+            "house3": 750,
+            "house4": 925,
+            "hotel": 1100
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 120,
+          "unmortgageCost": 132,
+          "sellToBankValue": 120,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 990
+        },
+        {
+          "index": 23,
+          "type": "city",
+          "name": "Belfast",
+          "group": "ireland",
+          "price": 260,
+          "rent": {
+            "base": 22,
+            "fullSetBaseIfRuleX2": 44,
+            "house1": 110,
+            "house2": 330,
+            "house3": 800,
+            "house4": 975,
+            "hotel": 1150
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 130,
+          "unmortgageCost": 143,
+          "sellToBankValue": 130,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1010
+        },
+        {
+          "index": 24,
+          "type": "city",
+          "name": "Dublin",
+          "group": "ireland",
+          "price": 280,
+          "rent": {
+            "base": 24,
+            "fullSetBaseIfRuleX2": 48,
+            "house1": 120,
+            "house2": 360,
+            "house3": 850,
+            "house4": 1025,
+            "hotel": 1200
+          },
+          "housePrice": 150,
+          "hotelPrice": 150,
+          "mortgageValue": 140,
+          "unmortgageCost": 154,
+          "sellToBankValue": 140,
+          "houseSellRefund": 75,
+          "hotelSellRefund": 75,
+          "totalCostToHotel": 1030
+        },
+        {
+          "index": 25,
+          "type": "airport",
+          "name": "CDG Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 26,
+          "type": "city",
+          "name": "Manchester",
+          "group": "united-kingdom",
+          "price": 300,
+          "rent": {
+            "base": 26,
+            "fullSetBaseIfRuleX2": 52,
+            "house1": 130,
+            "house2": 390,
+            "house3": 900,
+            "house4": 1100,
+            "hotel": 1275
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 150,
+          "unmortgageCost": 165,
+          "sellToBankValue": 150,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1300
+        },
+        {
+          "index": 27,
+          "type": "city",
+          "name": "London",
+          "group": "united-kingdom",
+          "price": 320,
+          "rent": {
+            "base": 28,
+            "fullSetBaseIfRuleX2": 56,
+            "house1": 150,
+            "house2": 450,
+            "house3": 1000,
+            "house4": 1200,
+            "hotel": 1400
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 160,
+          "unmortgageCost": 176,
+          "sellToBankValue": 160,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1320
+        },
+        {
+          "index": 28,
+          "type": "city",
+          "name": "San Francisco",
+          "group": "united-states-of-america",
+          "price": 350,
+          "rent": {
+            "base": 35,
+            "fullSetBaseIfRuleX2": 70,
+            "house1": 175,
+            "house2": 500,
+            "house3": 1100,
+            "house4": 1300,
+            "hotel": 1500
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 175,
+          "unmortgageCost": 192,
+          "sellToBankValue": 175,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1350
+        },
+        {
+          "index": 29,
+          "type": "city",
+          "name": "New York",
+          "group": "united-states-of-america",
+          "price": 400,
+          "rent": {
+            "base": 50,
+            "fullSetBaseIfRuleX2": 100,
+            "house1": 200,
+            "house2": 600,
+            "house3": 1400,
+            "house4": 1700,
+            "hotel": 2000
+          },
+          "housePrice": 200,
+          "hotelPrice": 200,
+          "mortgageValue": 200,
+          "unmortgageCost": 220,
+          "sellToBankValue": 200,
+          "houseSellRefund": 100,
+          "hotelSellRefund": 100,
+          "totalCostToHotel": 1400
+        },
+        {
+          "index": 30,
+          "type": "corner",
+          "name": "Go to prison",
+          "cornerType": "go-to-prison",
+          "effect": "go directly to prison (no Start reward)"
+        },
+        {
+          "index": 31,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 32,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 33,
+          "type": "bonus",
+          "name": "Premium Tax",
+          "bonusType": "premium-tax",
+          "taxAmount": 75,
+          "effect": "pay $75"
+        },
+        {
+          "index": 34,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 35,
+          "type": "airport",
+          "name": "JFK Airport",
+          "group": "airport",
+          "price": 200,
+          "rentByAirportsOwned": {
+            "1": 25,
+            "2": 50,
+            "3": 100,
+            "4": 200
+          },
+          "mortgageValue": 100,
+          "unmortgageCost": 110,
+          "sellToBankValue": 100
+        },
+        {
+          "index": 36,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        },
+        {
+          "index": 37,
+          "type": "bonus",
+          "name": "Tax Refund",
+          "bonusType": "tax-refund",
+          "taxAmount": 50,
+          "effect": "receive $50"
+        },
+        {
+          "index": 38,
+          "type": "bonus",
+          "name": "Treasure",
+          "bonusType": "treasure",
+          "effect": "draw-card:treasure"
+        },
+        {
+          "index": 39,
+          "type": "bonus",
+          "name": "Surprise",
+          "bonusType": "surprise",
+          "effect": "draw-card:surprise"
+        }
+      ],
+      "cards": {
+        "treasure": [
+          {
+            "id": "treasure-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "treasure-1",
+            "text": "You found a wallet containing some cash. Collect $200.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 200
+            }
+          },
+          {
+            "id": "treasure-2",
+            "text": "Your car has ran out of gas. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-3",
+            "text": "From trading stocks you earned $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-4",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "treasure-5",
+            "text": "You host a party. Collect $50 from every player for equipment.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-6",
+            "text": "Happy holidays! Receive $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 20
+            }
+          },
+          {
+            "id": "treasure-7",
+            "text": "Tax refund. Collect $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-8",
+            "text": "Happy birthday! Collect $10 from every player.",
+            "effect": {
+              "type": "collect-from-each-player",
+              "amount": 10
+            }
+          },
+          {
+            "id": "treasure-9",
+            "text": "From gift cards you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-10",
+            "text": "Car rental insurance. Pay $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 60
+            }
+          },
+          {
+            "id": "treasure-11",
+            "text": "Your phone died. Pay $50 for a repair.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "treasure-12",
+            "text": "Beneficial business decisions. You made a profit of $25.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 25
+            }
+          },
+          {
+            "id": "treasure-13",
+            "text": "It's time to renovate your properties. Pay $30 per house and $120 per hotel you own.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 30,
+              "perHotel": 120
+            }
+          },
+          {
+            "id": "treasure-14",
+            "text": "You have won third prize in a lottery. Collect $15.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 15
+            }
+          },
+          {
+            "id": "treasure-15",
+            "text": "You received $100 from your sibling.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "treasure-16",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "treasure"
+            }
+          }
+        ],
+        "surprise": [
+          {
+            "id": "surprise-0",
+            "text": "Advance to Start.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 0,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-1",
+            "text": "Advance to Beijing.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 21,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-2",
+            "text": "Advance to Istanbul.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 2,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-3",
+            "text": "Take a trip to Belfast.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 23,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-4",
+            "text": "Take a trip to Bucharest.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 4,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-5",
+            "text": "Have an adventure to Manchester.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 26,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-6",
+            "text": "Have an adventure to Rome.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 7,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-7",
+            "text": "Travel to San Francisco.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 28,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-8",
+            "text": "Travel to Berlin.",
+            "effect": {
+              "type": "move-to-block",
+              "blockIndex": 9,
+              "collectGo": true
+            }
+          },
+          {
+            "id": "surprise-9",
+            "text": "Advance to the next airport.",
+            "effect": {
+              "type": "move-to-next-grouped",
+              "group": "airport"
+            }
+          },
+          {
+            "id": "surprise-10",
+            "text": "Stock agency pays you dividend of $60.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 60
+            }
+          },
+          {
+            "id": "surprise-11",
+            "text": "Go back one step.",
+            "effect": {
+              "type": "move-steps",
+              "steps": -1
+            }
+          },
+          {
+            "id": "surprise-12",
+            "text": "Go to prison.",
+            "effect": {
+              "type": "go-to-prison"
+            }
+          },
+          {
+            "id": "surprise-13",
+            "text": "Have a redesign for your properties. Pay $25 for each house and $100 for each hotel.",
+            "effect": {
+              "type": "repairs",
+              "perHouse": 25,
+              "perHotel": 100
+            }
+          },
+          {
+            "id": "surprise-14",
+            "text": "Pay tax of $20.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 20
+            }
+          },
+          {
+            "id": "surprise-15",
+            "text": "You lost a bet. Pay each player $50.",
+            "effect": {
+              "type": "pay-each-player",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-16",
+            "text": "You have a new investment. Receive $150.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 150
+            }
+          },
+          {
+            "id": "surprise-17",
+            "text": "From a scholarship you get $100.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "earn",
+              "amount": 100
+            }
+          },
+          {
+            "id": "surprise-18",
+            "text": "Your cousin needs some financial assistance. Pay $50.",
+            "effect": {
+              "type": "money-event",
+              "moneyType": "pay",
+              "amount": 50
+            }
+          },
+          {
+            "id": "surprise-19",
+            "text": "Received a Pardon card.",
+            "effect": {
+              "type": "get-pardon-card",
+              "deck": "surprise"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "previewTilesScraped": 40,
+        "allPurchasableTilesMatchCode": true
+      }
+    }
+  }
+}

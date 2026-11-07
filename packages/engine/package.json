@@ -1,0 +1,13 @@
+{
+  "name": "@poordown/engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Regole del gioco, condivise tra server e browser.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

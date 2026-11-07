@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+*.log
+*.tsbuildinfo
+.vite/
+.playwright-cli/
+Thumbs.db
+
+# Screenshot di richup.io raccolti durante l'analisi: solo riferimento locale, non vanno pubblicati
+docs/analisi/img/
