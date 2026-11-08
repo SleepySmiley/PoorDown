@@ -17,6 +17,10 @@ export async function collegaSito(app: Express, server: ServerHttp, sviluppo: bo
     const vite = await createServer({
       root: cartellaWeb,
       appType: 'spa',
+      // Legge vite.config.ts con l'import normale (qui ci pensa tsx). Il caricatore predefinito
+      // scrive un file temporaneo in node_modules/.vite-temp e lo cancella subito: tsx watch vede
+      // sparire un file importato e riavvia il server, che lo riscrive, all'infinito.
+      configLoader: 'native',
       server: { middlewareMode: true, hmr: { server } },
     });
     app.use(vite.middlewares);
