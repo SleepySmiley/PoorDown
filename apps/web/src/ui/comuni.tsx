@@ -1,35 +1,74 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { motion } from 'motion/react';
 import { euro, type Regione } from '@poordown/engine';
 import { Icona, type NomeIcona } from './icone';
-import { variabili } from './utili';
+import { SCORRE } from './movimento';
+import { ritardiPalette, SEPARATORE_PALETTE, variabili } from './utili';
 
 /**
- * Caratteri a palette, come nei tabelloni delle partenze. Girano quando compaiono;
- * quando il testo cambia gira solo il carattere diverso (la chiave conta da destra,
- * così le cifre restano allineate anche se il numero cambia lunghezza).
+ * Una paletta del tabellone delle partenze. Quando il carattere cambia, la metà alta vecchia cade
+ * e poi la metà bassa nuova si apre: la cifra vecchia resta visibile finché la nuova non la copre.
+ * La prima volta che compare gira partendo da una paletta vuota.
  */
-export function Palette({ testo, unita, className }: { testo: string; unita?: string; className?: string }): ReactNode {
-  const caratteri = [...testo];
+function Paletta({ carattere, ritardo }: { carattere: string; ritardo: number }): ReactNode {
+  const [stato, setStato] = useState({ attuale: carattere, precedente: '', giro: 0 });
+  if (stato.attuale !== carattere) setStato({ attuale: carattere, precedente: stato.attuale, giro: stato.giro + 1 });
+  const { attuale, precedente, giro } = stato;
   return (
-    <span className={className ? `palette ${className}` : 'palette'}>
+    <span className="paletta" style={variabili({ '--ritardo': `${ritardo}ms` })} aria-hidden="true">
+      <span className="paletta__meta paletta__meta--alta">
+        <span className="paletta__carattere">{attuale}</span>
+      </span>
+      <span className="paletta__meta paletta__meta--bassa">
+        <span className="paletta__carattere">{precedente}</span>
+      </span>
+      {/* Le due metà che girano rinascono a ogni cambio, così l'animazione riparte. */}
+      <span key={`cade-${giro}`} className="paletta__lembo paletta__lembo--cade">
+        <span className="paletta__carattere">{precedente}</span>
+      </span>
+      <span key={`apre-${giro}`} className="paletta__lembo paletta__lembo--apre">
+        <span className="paletta__carattere">{attuale}</span>
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Caratteri a palette, come nei tabelloni delle partenze: larghezze fisse, cifre tabellari, separatori
+ * stampati su mezze palette ferme. Quando il testo cambia girano solo le palette diverse, da destra
+ * verso sinistra (la prima subito, poi una ogni 30 ms); le posizioni contano da destra, così le cifre
+ * restano in colonna anche se il numero si allunga. Misure: s (16 px), m (22), l (36); senza misura
+ * prende la grandezza del testo intorno.
+ */
+export function Palette({
+  testo,
+  unita,
+  misura,
+  className,
+}: {
+  testo: string;
+  unita?: string;
+  misura?: 's' | 'm' | 'l';
+  className?: string;
+}): ReactNode {
+  const [visto, setVisto] = useState(() => ({ testo, ritardi: ritardiPalette('', testo) }));
+  if (visto.testo !== testo) setVisto({ testo, ritardi: ritardiPalette(visto.testo, testo) });
+  const caratteri = [...testo];
+  const n = caratteri.length;
+  const classi = ['palette', misura ? `palette--${misura}` : '', className ?? ''].filter(Boolean).join(' ');
+  return (
+    <span className={classi}>
       <span className="solo-lettori">
         {testo}
         {unita ? ` ${unita}` : ''}
       </span>
       {caratteri.map((carattere, i) =>
-        /[.:,]/.test(carattere) ? (
-          <span key={`${caratteri.length - i}-sep`} className="palette__separatore" aria-hidden="true">
+        SEPARATORE_PALETTE.test(carattere) ? (
+          <span key={`s${n - i}`} className="palette__separatore" aria-hidden="true">
             {carattere}
           </span>
         ) : (
-          <span
-            key={`${caratteri.length - i}-${carattere}`}
-            className="paletta"
-            style={variabili({ '--i': String(i) })}
-            aria-hidden="true"
-          >
-            {carattere}
-          </span>
+          <Paletta key={`p${n - i}`} carattere={carattere} ritardo={visto.ritardi[i] ?? 0} />
         ),
       )}
       {unita && (
@@ -42,9 +81,9 @@ export function Palette({ testo, unita, className }: { testo: string; unita?: st
 }
 
 /** Un importo in euro a palette: le cifre girano, il simbolo resta stampato. */
-export function Soldi({ valore, className }: { valore: number; className?: string }): ReactNode {
+export function Soldi({ valore, misura, className }: { valore: number; misura?: 's' | 'm' | 'l'; className?: string }): ReactNode {
   const testo = euro(valore).replace(' €', '');
-  return <Palette testo={testo} unita="€" className={className} />;
+  return <Palette testo={testo} unita="€" misura={misura} className={className} />;
 }
 
 export function Pedina({
@@ -111,41 +150,72 @@ export interface RigaRegistro {
   testo: ReactNode;
 }
 
-/** Registro eventi al centro del tabellone: il più recente in alto, gli altri sbiadiscono. */
+/** Le righe del registro che si vedono (le altre sono sotto la sfumatura): solo queste scorrono con Motion. */
+const REGISTRO_VISIBILI = 12;
+
+/**
+ * Registro eventi al centro del tabellone: il più recente in alto, gli altri sbiadiscono.
+ * Quando arriva una voce nuova le altre scendono al loro posto, senza saltare.
+ */
 export function Registro({ righe }: { righe: RigaRegistro[] }): ReactNode {
   return (
     <ol className="registro" aria-label="Ultimi eventi" aria-live="polite">
       {righe.slice(0, 50).map((v, i) => (
-        <li key={v.n} className="registro__voce" style={variabili({ '--eta': String(Math.min(i, 9)) })}>
+        <motion.li
+          key={v.n}
+          layout={i < REGISTRO_VISIBILI ? 'position' : false}
+          transition={SCORRE}
+          className="registro__voce"
+          style={variabili({ '--eta': String(Math.min(i, 9)) })}
+        >
           {v.colore !== undefined && <Pedina colore={v.colore} className="pedina--mini" />}
           <span>{v.testo}</span>
-        </li>
+        </motion.li>
       ))}
     </ol>
   );
 }
 
+/**
+ * Pulsante con la sola icona (36 px, piccolo 32). Varianti: normale (trasparente), pieno (blu),
+ * secondario (con l'anello), pericolo (anello rosso). L'etichetta è anche il suggerimento.
+ */
 export function PulsanteIcona({
   icona,
   etichetta,
   onClick,
   pressato,
+  variante = 'normale',
+  misura = 'normale',
+  disattivo,
   className,
 }: {
   icona: NomeIcona;
   etichetta: string;
   onClick?: () => void;
   pressato?: boolean;
+  variante?: 'normale' | 'pieno' | 'secondario' | 'pericolo';
+  misura?: 'normale' | 'piccolo';
+  disattivo?: boolean;
   className?: string;
 }): ReactNode {
+  const classi = [
+    'pulsante-icona',
+    variante === 'normale' ? '' : `pulsante-icona--${variante}`,
+    misura === 'piccolo' ? 'pulsante-icona--piccolo' : '',
+    className ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
     <button
       type="button"
-      className={className ? `pulsante-icona ${className}` : 'pulsante-icona'}
+      className={classi}
       aria-label={etichetta}
       title={etichetta}
       onClick={onClick}
       aria-pressed={pressato}
+      disabled={disattivo}
     >
       <Icona nome={icona} />
     </button>

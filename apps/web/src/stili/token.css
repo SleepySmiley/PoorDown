@@ -1,0 +1,215 @@
+/*
+ * PoorDown · token del sistema grafico «Partenze, di sera».
+ * Si importa per primo (main.tsx): tutti gli altri fogli usano solo questi nomi.
+ *
+ * Due materiali:
+ * - Smalto: il cartello blu con il filetto bianco (marchio, pittogrammi, cartelli).
+ * - Quadro: il tabellone nero delle partenze, con le cifre a palette (soldi, tempo, codici, classifiche).
+ *
+ * Un significato per tinta:
+ * - blu segnale  = azioni e controlli (pulsante primario, interruttore acceso, campo attivo);
+ * - ambra        = «adesso, tocca a te» (azione del turno, timer, vincitore, carte);
+ * - rosso        = solo pericolo e saldi negativi;
+ * - verde        = soldi in arrivo e «Accetta»;
+ * - colori --g*  = solo le regioni (stemmi, testate delle schede città);
+ * - colori --p*  = solo i giocatori (pedine, blocchi delle proprietà).
+ */
+
+:root {
+  /* ---------- Superfici: dal fondo verso chi guarda ---------- */
+  --sfondo: #0e1014;
+  /* Pannelli e colonne. */
+  --sup-1: #161920;
+  /* Popover, schede, campi, righe in evidenza. */
+  --sup-2: #1e222a;
+  /* Pulsanti secondari, passaggio del mouse. */
+  --sup-3: #282d36;
+  /* Passaggio del mouse sopra --sup-3. */
+  --sup-4: #323843;
+  --linea: #262b33;
+  --linea-forte: #363c47;
+  /* Sotto finestre e riquadri. */
+  --velo: rgb(8 10 13 / 0.72);
+
+  /* ---------- Quadro: il tabellone nero delle partenze ---------- */
+  --quadro: #14161a;
+  --quadro-hover: #262a31;
+  --quadro-linea: #2b3039;
+  --quadro-testo: #f4f1e8;
+  --quadro-tenue: #9aa1ad;
+  /* Anello dei controlli sul quadro nero. */
+  --quadro-anello: #4f5664;
+
+  /* ---------- Testo ---------- */
+  --testo-1: #eef0f3;
+  --testo-2: #a3abb8;
+  --testo-3: #6c7482;
+  /* Testo scuro sopra i colori chiari (pedine, regioni chiare). */
+  --inchiostro: #14243d;
+
+  /* ---------- Ruoli dei colori ---------- */
+  /* Blu segnale: azioni e controlli. Il passaggio del mouse schiarisce, non scurisce mai. */
+  --segnale: #2a64c8;
+  --segnale-hover: #3471d6;
+  --segnale-velo: rgb(42 100 200 / 0.16);
+  /* Solo per lo spessore dei tasti grandi (bordo inferiore), mai per il passaggio del mouse. */
+  --segnale-scuro: #1f50a6;
+  /* Collegamenti e icone blu su fondo scuro. */
+  --link: #8db4ff;
+  /* Blu segnaletica: solo cartelli e pittogrammi (per esempio gli angoli del tabellone). */
+  --segnaletica: #14427f;
+  /* Il cartello del marchio e dei pittogrammi: oggi il blu segnale, più leggibile sullo scuro. */
+  --cartello: var(--segnale);
+
+  /* Ambra: adesso, tocca a te. */
+  --ambra: #ffb81c;
+  --ambra-hover: #ffc84d;
+  --ambra-velo: rgb(255 184 28 / 0.14);
+  --ambra-testo: #ffd47a;
+  --su-ambra: #1a1406;
+
+  /* Rosso: pericolo e saldi negativi. */
+  --rosso: #ef4b3f;
+  --rosso-hover: #f26158;
+  --rosso-velo: rgb(239 75 63 / 0.14);
+  --rosso-testo: #ff8f85;
+
+  /* Verde: soldi in arrivo, Accetta. */
+  --verde: #2fbf71;
+  --verde-hover: #45cf84;
+  --verde-velo: rgb(47 191 113 / 0.14);
+  --verde-testo: #7ee0ae;
+  --su-verde: #0b1f14;
+
+  /* ---------- Palette: le cifre del tabellone delle partenze ---------- */
+  --flap-alto: #262a31;
+  --flap-basso: #1b1e24;
+  --flap-testo: #f4f1e8;
+  --flap-fessura: rgb(0 0 0 / 0.65);
+
+  /* ---------- Regioni (gruppi 1–10: il tabellone Europa ne ha 10) ---------- */
+  --g1: #8c5a3c;
+  --g2: #3db2e8;
+  --g3: #00965e;
+  --g4: #f08c00;
+  --g5: #8e44ad;
+  --g6: #e2231a;
+  --g7: #f5c400;
+  --g8: #2a56c6;
+  --g9: #00838f;
+  --g10: #b0127a;
+  /* Testo sopra le regioni chiare (le altre hanno il bianco). */
+  --su-g2: var(--inchiostro);
+  --su-g4: var(--inchiostro);
+  --su-g7: var(--inchiostro);
+
+  /* ---------- I 12 colori dei giocatori ----------
+     Chiari, mentre le regioni sono scure e piene: il blocco del proprietario non si confonde mai con lo stemma. */
+  --p1: #ff8f80;
+  --p2: #7ee0ae;
+  --p3: #ffb47a;
+  --p4: #8cb4ff;
+  --p5: #cfa2ff;
+  --p6: #f0e27a;
+  --p7: #ff9fd0;
+  --p8: #74e0e4;
+  --p9: #c9a37e;
+  --p10: #bfe86e;
+  --p11: #ff6b9a;
+  --p12: #c9d1db;
+
+  /* ---------- Caratteri ---------- */
+  --stretto: 'Barlow Condensed', system-ui, sans-serif;
+  --normale: 'Barlow', system-ui, sans-serif;
+
+  /* Scala tipografica a 8 passi (in rem: cresce con la pagina a 1920). Si usa con `font: var(--t-…)`.
+     Fuori dal tabellone nessun testo scende sotto --t-piccolo (13 px). */
+  --t-display: 700 4rem/0.95 var(--stretto);
+  --t-titolo-1: 700 2.5rem/1 var(--stretto);
+  --t-titolo-2: 700 1.5rem/1.1 var(--stretto);
+  --t-titolo-3: 700 1.25rem/1.1 var(--stretto);
+  --t-nome: 600 1.0625rem/1.15 var(--stretto);
+  /* Etichetta: va in maiuscolo con spaziatura (classe .etichetta). */
+  --t-etichetta: 600 0.8125rem/1.2 var(--stretto);
+  --t-corpo: 400 0.9375rem/1.45 var(--normale);
+  --t-piccolo: 400 0.8125rem/1.35 var(--normale);
+  /* Misure delle palette: S, M, L. */
+  --palette-s: 1rem;
+  --palette-m: 1.375rem;
+  --palette-l: 2.25rem;
+
+  /* ---------- Spazi: multipli di 4 px ---------- */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+  --s-8: 4rem;
+
+  /* ---------- Raggi ----------
+     Controlli (pulsanti, campi, chip) 4, contenitori (pannelli, popover, avvisi, schede) 8, finestre 12. */
+  --r-1: 4px;
+  --r-2: 8px;
+  --r-3: 12px;
+  --r-tondo: 999px;
+
+  /* ---------- Movimento ----------
+     Entrate lente, uscite rapide. Gli stessi valori per Motion sono in ui/movimento.ts. */
+  /* Passaggio del mouse, pressione. */
+  --d-rapida: 120ms;
+  /* Chiusure: finestre, popover, avvisi. */
+  --d-uscita: 160ms;
+  /* Righe che scorrono, veli. */
+  --d-lista: 200ms;
+  /* Aperture: finestre, popover, avvisi. */
+  --d-entrata: 220ms;
+  /* Timbri, comparse con rimbalzo. */
+  --d-timbro: 300ms;
+  --d-lenta: 400ms;
+  /* Oggetti che viaggiano da un punto all'altro. */
+  --d-viaggio: 500ms;
+  /* Arrivo: rallenta alla fine (entrate). */
+  --c-arrivo: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Partenza: accelera (uscite). */
+  --c-partenza: cubic-bezier(0.4, 0, 1, 1);
+  /* Viaggio: parte e arriva piano. */
+  --c-viaggio: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Molla: supera di poco e torna. */
+  --c-molla: cubic-bezier(0.3, 0.7, 0.3, 1.25);
+  /* Timbro: colpo deciso con rimbalzo. */
+  --c-timbro: cubic-bezier(0.3, 1.5, 0.5, 1);
+
+  /* ---------- Profondità ----------
+     e0 piatto · e1 posato (pannelli) · e2 sollevato (popover, avvisi, schede) · e3 sopra tutto (finestre).
+     Ombre fisiche vere solo per dadi, pedine e palette. */
+  --e0: none;
+  --e1: inset 0 0 0 1px var(--linea);
+  --e2: inset 0 0 0 1px var(--linea-forte), 0 8px 24px rgb(0 0 0 / 0.45);
+  --e3: inset 0 0 0 1px var(--linea-forte), 0 24px 64px rgb(0 0 0 / 0.55);
+  /* Lo spessore dei tasti: si abbassa di 1 px alla pressione. */
+  --tasto: inset 0 -2px 0 rgb(0 0 0 / 0.28);
+  /* Anello del fuoco da tastiera. */
+  --fuoco: var(--link);
+
+  /* ---------- Vecchi nomi: alias dei nuovi, per il codice non ancora migrato. Non usarli nel codice nuovo. ---------- */
+  --cemento: var(--sfondo);
+  --cemento-scuro: var(--linea-forte);
+  --smalto: var(--sup-1);
+  --riga: var(--linea);
+  --bordo: var(--linea);
+  --segnale-chiaro: var(--segnale-velo);
+  --accento: var(--link);
+  --testo: var(--testo-1);
+  --testo-tenue: var(--testo-2);
+  --palette: var(--quadro);
+  --palette-chiara: var(--quadro-hover);
+  --palette-bordo: var(--quadro-linea);
+  --carta-palette: var(--flap-testo);
+}
+
+/* La pagina cresce con lo schermo: 16 px a 1440, 17,5 px a 1920. Il tabellone segue la sua scala (--k). */
+html {
+  font-size: clamp(16px, calc(0.3125vw + 11.5px), 17.5px);
+}

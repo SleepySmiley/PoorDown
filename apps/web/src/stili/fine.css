@@ -69,7 +69,7 @@
 
 .fine-partita__annuncio {
   margin-top: calc(var(--k) * 10);
-  color: var(--testo);
+  color: var(--testo-1);
   font: 500 calc(var(--k) * 30) / 1.1 var(--stretto);
 }
 
@@ -108,7 +108,7 @@
 
 .fine-partita__nota {
   max-width: 34em;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font-size: 0.9375rem;
   text-wrap: pretty;
 }
@@ -164,12 +164,7 @@
   }
 }
 
-@keyframes sale {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-}
+
 
 /* ---------- Classifica nella colonna destra ---------- */
 
@@ -186,17 +181,17 @@
 }
 
 .classifica caption {
-  padding-bottom: 8px;
-  color: var(--testo-tenue);
-  font: 600 0.8125rem/1 var(--normale);
-  letter-spacing: 0.06em;
+  padding-bottom: var(--s-2);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
   text-align: left;
   text-transform: uppercase;
 }
 
 .classifica thead th {
-  padding: 0 8px 6px 0;
-  color: var(--testo-tenue);
+  padding: 0 var(--s-2) 6px 0;
+  color: var(--testo-2);
   font-size: 0.8125rem;
   font-weight: 500;
   text-align: left;
@@ -217,7 +212,7 @@
 
 .classifica .classifica__posto {
   width: 1.4em;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -247,8 +242,8 @@
 .classifica .classifica__barra {
   display: block;
   width: var(--quota);
-  padding: 3px 8px;
-  border-radius: 3px;
+  padding: 3px var(--s-2);
+  border-radius: var(--r-1);
   background: var(--colore);
   color: var(--inchiostro);
   font: 600 0.9375rem/1.25 var(--stretto);
@@ -258,7 +253,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .classifica .classifica__barra {
-    animation: barra-cresce 0.7s 0.3s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+    animation: barra-cresce 0.7s 0.3s var(--c-arrivo) both;
   }
 }
 
@@ -302,11 +297,9 @@
 .scheda-stat {
   min-width: 0;
   padding: 22px 26px;
-  border-radius: 8px;
-  background: var(--smalto);
-  box-shadow:
-    inset 0 0 0 1px var(--bordo),
-    0 18px 44px rgb(0 0 0 / 0.4);
+  border-radius: var(--r-2);
+  background: var(--sup-1);
+  box-shadow: var(--e2);
 }
 
 .scheda-stat--vincitore {
@@ -327,10 +320,10 @@
   width: 46%;
   background:
     linear-gradient(28deg, transparent 30%, var(--ambra) 30% 70%, transparent 70%) 78% 22% / 12px 7px no-repeat,
-    linear-gradient(-35deg, transparent 30%, var(--accento) 30% 70%, transparent 70%) 46% 62% / 11px 6px no-repeat,
+    linear-gradient(-35deg, transparent 30%, var(--link) 30% 70%, transparent 70%) 46% 62% / 11px 6px no-repeat,
     linear-gradient(70deg, transparent 30%, var(--rosso) 30% 70%, transparent 70%) 90% 70% / 10px 6px no-repeat,
     linear-gradient(-10deg, transparent 30%, var(--verde) 30% 70%, transparent 70%) 60% 18% / 9px 6px no-repeat,
-    linear-gradient(50deg, transparent 30%, var(--carta-palette) 30% 70%, transparent 70%) 30% 30% / 8px 5px no-repeat,
+    linear-gradient(50deg, transparent 30%, var(--flap-testo) 30% 70%, transparent 70%) 30% 30% / 8px 5px no-repeat,
     linear-gradient(-60deg, transparent 30%, var(--ambra) 30% 70%, transparent 70%) 24% 80% / 10px 6px no-repeat;
   opacity: 0.85;
   pointer-events: none;
@@ -345,7 +338,7 @@
 }
 
 .scheda-stat__etichetta {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font: 500 1rem/1.2 var(--normale);
 }
 
@@ -363,7 +356,7 @@
 }
 
 .scheda-stat__chi small {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font: 500 0.9375rem/1.2 var(--normale);
 }
 
@@ -395,13 +388,13 @@
   width: 34px;
   height: 34px;
   padding: 6px;
-  border-radius: 4px;
-  background: var(--segnale);
+  border-radius: var(--r-1);
+  background: var(--cartello);
   color: #fff;
 }
 
 .numero dt {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font-size: 0.9375rem;
 }
 
@@ -419,10 +412,9 @@
 }
 
 .scheda-stat__titolo {
-  margin-bottom: 12px;
-  color: var(--accento);
-  font: 700 1.375rem/1.1 var(--stretto);
-  text-align: center;
+  margin-bottom: var(--s-3);
+  color: var(--testo-1);
+  font: var(--t-titolo-3);
 }
 
 .scheda-stat--visitata {
@@ -443,22 +435,18 @@
   flex: none;
   width: 40px;
   height: 40px;
-  color: var(--accento);
+  color: var(--testo-2);
 }
 
 .scheda-stat .scheda-stat__piccola {
   width: 22px;
   height: 22px;
-  color: var(--accento);
+  color: var(--testo-2);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .statistiche {
-    animation: velo 0.2s ease-out;
-  }
-
   .scheda-stat {
-    animation: sale 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+    animation: sale 0.35s var(--c-arrivo) both;
   }
 
   .scheda-stat--numeri,
@@ -498,18 +486,18 @@
 }
 
 .grafico__griglia {
-  stroke: var(--riga);
+  stroke: var(--linea);
   stroke-width: 1;
 }
 
 .grafico__zero {
-  stroke: var(--cemento-scuro);
+  stroke: var(--linea-forte);
   stroke-width: 1;
 }
 
 .grafico__tacca,
 .grafico__asse {
-  fill: var(--testo-tenue);
+  fill: var(--testo-2);
   font: 500 13px var(--normale);
   font-variant-numeric: tabular-nums;
 }
@@ -524,7 +512,7 @@
 
 .grafico__fine {
   fill: currentColor;
-  stroke: var(--smalto);
+  stroke: var(--sup-1);
   stroke-width: 2;
 }
 
@@ -542,13 +530,13 @@
 }
 
 .grafico__mirino {
-  stroke: var(--testo-tenue);
+  stroke: var(--testo-2);
   stroke-width: 1;
 }
 
 .grafico__punto {
   fill: currentColor;
-  stroke: var(--smalto);
+  stroke: var(--sup-1);
   stroke-width: 2;
 }
 
@@ -562,12 +550,12 @@
   top: 0;
   z-index: 2;
   min-width: 170px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--palette);
+  padding: var(--s-2) 10px;
+  border-radius: var(--r-2);
+  background: var(--quadro);
   box-shadow:
-    inset 0 0 0 1px var(--palette-bordo),
-    0 10px 24px rgb(0 0 0 / 0.45);
+    inset 0 0 0 1px var(--quadro-linea),
+    0 8px 24px rgb(0 0 0 / 0.45);
   font-size: 0.875rem;
   pointer-events: none;
 }
@@ -606,7 +594,7 @@
 }
 
 .grafico__suggerimento .grafico__fuori {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
 }
 
 .grafico__legenda {
@@ -625,15 +613,15 @@
   gap: 7px;
   padding: 3px 7px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--r-1);
   background: none;
-  color: var(--testo);
+  color: var(--testo-1);
   font: 500 0.9375rem/1.2 var(--normale);
 }
 
 .grafico__voce:hover,
 .grafico__voce:focus-visible {
-  background: var(--riga);
+  background: var(--sup-3);
 }
 
 .pedina.pedina--legenda {
@@ -644,8 +632,8 @@
 }
 
 .grafico__vuoto {
-  padding: 48px 0;
-  color: var(--testo-tenue);
+  padding: var(--s-7) 0;
+  color: var(--testo-2);
   text-align: center;
 }
 
@@ -698,16 +686,16 @@
   justify-self: start;
   margin-bottom: 6px;
   padding: 3px;
-  border-radius: 6px;
-  background: var(--palette);
+  border-radius: var(--r-2);
+  background: var(--quadro);
 }
 
 .grafico__vista .grafico__scelta {
-  padding: 4px 12px;
+  padding: var(--s-1) var(--s-3);
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--r-1);
   background: transparent;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font: 600 0.9375rem/1.2 var(--stretto);
 }
 

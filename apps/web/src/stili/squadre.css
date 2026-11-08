@@ -10,8 +10,8 @@
   min-width: 26px;
   height: 26px;
   padding: 0 5px;
-  border-radius: 4px;
-  background: var(--segnale);
+  border-radius: var(--r-1);
+  background: var(--cartello);
   color: #fff;
   font: 700 1.0625rem/1 var(--stretto);
   box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.85);
@@ -34,7 +34,7 @@
 }
 
 .giocatore__bot:focus-visible {
-  outline: 2px solid var(--ambra);
+  outline: 2px solid var(--fuoco);
   outline-offset: 2px;
 }
 
@@ -49,7 +49,7 @@
 }
 
 .squadre .squadra + .squadra {
-  border-top: 2px solid var(--palette-bordo);
+  border-top: 2px solid var(--quadro-linea);
 }
 
 .squadra .squadra__testa {
@@ -78,10 +78,11 @@
 .squadra__rinomina input {
   width: 100%;
   padding: 3px 8px;
-  border: 2px solid var(--ambra);
-  border-radius: 4px;
-  background: var(--palette);
+  border: 1px solid var(--segnale);
+  border-radius: var(--r-1);
+  background: var(--quadro);
   color: #fff;
+  box-shadow: 0 0 0 3px var(--segnale-velo);
   font: 700 1.125rem/1.1 var(--stretto);
 }
 
@@ -91,8 +92,8 @@
 
 .squadra .squadra__vuota {
   padding: 2px 14px 14px 50px;
-  color: #9aa1ad;
-  font-size: 0.8125rem;
+  color: var(--quadro-tenue);
+  font: var(--t-piccolo);
 }
 
 /* Pulsanti per spostare un giocatore: binari vuoti, si riempiono al passaggio del mouse. */
@@ -105,9 +106,10 @@
 .binario.binario--azione {
   border: 0;
   background: transparent;
-  color: #c9d1db;
-  box-shadow: inset 0 0 0 1.5px #6b7383;
+  color: var(--quadro-testo);
+  box-shadow: inset 0 0 0 1.5px var(--quadro-anello);
   cursor: pointer;
+  transition: background-color var(--d-rapida);
 }
 
 .binario.binario--azione:hover,
@@ -129,7 +131,7 @@
 /* ---------- Scelta del tabellone ---------- */
 
 .finestra__riquadro:has(.tabelloni) {
-  width: 640px;
+  width: 40rem;
 }
 
 .tabelloni .tabelloni__lista {
@@ -142,15 +144,16 @@
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 12px 14px 12px 12px;
-  border-radius: 6px;
-  background: var(--smalto);
-  box-shadow: inset 0 0 0 1px var(--bordo);
+  gap: var(--s-4);
+  padding: var(--s-3) 14px var(--s-3) var(--s-3);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+  box-shadow: var(--e1);
 }
 
+/* Il tabellone in uso: una scelta accesa, quindi blu. */
 .tabelloni .tabelloni__voce--scelta {
-  background: var(--segnale-chiaro);
+  background: var(--segnale-velo);
   box-shadow: inset 0 0 0 2px var(--segnale);
 }
 
@@ -158,8 +161,8 @@
   width: 112px;
   height: 112px;
   padding: 5px;
-  border-radius: 6px;
-  background: var(--cemento);
+  border-radius: var(--r-2);
+  background: var(--sfondo);
 }
 
 .tabelloni .tabelloni__nome {
@@ -174,20 +177,19 @@
 
 .tabelloni .tabelloni__numeri {
   margin-top: 6px;
-  color: var(--accento);
+  color: var(--testo-1);
   font: 600 0.8125rem/1.2 var(--normale);
 }
 
 .tabelloni .tabelloni__regioni {
   margin-top: 3px;
-  color: var(--testo-tenue);
-  font-size: 0.75rem;
-  line-height: 1.3;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
 }
 
 .tabelloni .tabelloni__in-uso {
-  background: var(--segnale);
-  color: #fff;
+  --chip-fondo: var(--segnale);
+  --chip-testo: #fff;
 }
 
 .tabelloni .impostazioni__nota {
@@ -198,11 +200,11 @@
 
 .chat .chat__canali {
   display: flex;
-  gap: 4px;
-  margin: 0 12px 6px;
+  gap: var(--s-1);
+  margin: var(--s-2) var(--s-3) 6px;
   padding: 3px;
-  border-radius: 6px;
-  background: var(--palette);
+  border-radius: var(--r-2);
+  background: var(--quadro);
 }
 
 .chat__canali .chat__canale {
@@ -213,27 +215,34 @@
   gap: 6px;
   padding: 4px 8px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--r-1);
   background: transparent;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font: 600 0.9375rem/1.2 var(--stretto);
+  transition:
+    background-color var(--d-rapida),
+    color var(--d-rapida);
+}
+
+.chat__canali .chat__canale:hover {
+  color: var(--testo-1);
 }
 
 .chat__canali .chat__canale--attivo {
-  background: var(--segnale-chiaro);
-  color: #fff;
-  box-shadow: inset 0 0 0 1px var(--segnale);
+  background: var(--sup-3);
+  color: var(--testo-1);
+  box-shadow: inset 0 0 0 1px var(--linea-forte);
 }
 
 .messaggio.messaggio--squadra .messaggio__testo {
-  box-shadow: inset 3px 0 0 var(--segnale);
+  box-shadow: inset 3px 0 0 var(--link);
 }
 
 .messaggio__testo .messaggio__canale {
   margin-right: 6px;
-  color: var(--accento);
-  font: 700 0.6875rem/1 var(--normale);
-  letter-spacing: 0.05em;
+  color: var(--link);
+  font: var(--t-etichetta);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -260,5 +269,5 @@
   font-size: 0.75rem;
   box-shadow:
     inset 0 0 0 1.5px rgb(255 255 255 / 0.9),
-    0 0 0 2px var(--palette);
+    0 0 0 2px var(--quadro);
 }

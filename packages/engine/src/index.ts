@@ -92,6 +92,7 @@ export {
   type Piazzamento,
 } from './statistiche';
 export { tabellone, TABELLONI } from './tabelloni';
+export { DADI_MS, durataEvento, EVENTI_CON_PAUSA, percorso, TEMPI } from './tempi';
 export {
   ASSENZA_MS,
   BANCA_INIZIALE_MS,

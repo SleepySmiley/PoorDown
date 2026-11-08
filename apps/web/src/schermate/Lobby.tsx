@@ -1,5 +1,6 @@
 import '../stili/lobby.css';
 import { useEffect, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   COLORI,
   GIOCATORI_MIN,
@@ -14,6 +15,8 @@ import { collegamento, preferenze } from '../rete/sessione';
 import { avvisa } from '../ui/avvisi';
 import { Dado, Pedina, Registro } from '../ui/comuni';
 import { Icona } from '../ui/icone';
+import { COMPARSA } from '../ui/movimento';
+import { Pannello } from '../ui/Pannello';
 import { variabili, iniziale } from '../ui/utili';
 import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
 import { PannelloSquadre } from './Squadre';
@@ -243,27 +246,24 @@ export function Lobby({
                   ))}
                 </ul>
               )}
-              {popoverColore && seduto && (
-                <div className="popover-colori">
-                  <p>Cambia colore</p>
-                  <SceltaColore
-                    presi={presiDaAltri}
-                    scelto={mioColore}
-                    onScegli={(c) => {
-                      setPopoverColore(false);
-                      preferenze.salvaColore(c);
-                      comando(collegamento.comando('cambia_colore', { colore: c }));
-                    }}
-                  />
-                </div>
-              )}
+              <AnimatePresence>
+                {popoverColore && seduto && (
+                  <motion.div key="colori" className="popover-colori" {...COMPARSA}>
+                    <p>Cambia colore</p>
+                    <SceltaColore
+                      presi={presiDaAltri}
+                      scelto={mioColore}
+                      onScegli={(c) => {
+                        setPopoverColore(false);
+                        preferenze.salvaColore(c);
+                        comando(collegamento.comando('cambia_colore', { colore: c }));
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </section>
-            <section className="pannello pannello--impostazioni" aria-labelledby="titolo-impostazioni">
-              <header className="pannello__testa pannello__testa--centrata">
-                <h2 id="titolo-impostazioni" className="pannello__titolo">
-                  Impostazioni di gioco
-                </h2>
-              </header>
+            <Pannello titolo="Impostazioni di gioco" className="pannello--impostazioni">
               <div className="pannello__scorri">
                 {!sonoHost && (
                   <p className="impostazioni__nota">
@@ -277,48 +277,53 @@ export function Lobby({
                   onTabelloni={() => setTabelloni(true)}
                 />
               </div>
-            </section>
+            </Pannello>
           </>
         }
       />
-      {tabelloni && (
-        <SceltaTabellone
-          attuale={stanza.impostazioni.mappa}
-          modificabile={sonoHost}
-          onScegli={(mappa) => {
-            cambiaImpostazioni({ mappa });
-            setTabelloni(false);
-          }}
-          onChiudi={() => setTabelloni(false)}
-        />
-      )}
-      {daEspellere && (
-        <Finestra titolo="Espelli giocatore" onChiudi={() => setDaEspellere(null)}>
-          <div className="finestra__corpo">
-            <p className="espelli">
-              <Pedina colore={daEspellere.colore} iniziale={iniziale(daEspellere.nome)} className="pedina--media" />
-              <span>
-                Vuoi davvero espellere <b>{daEspellere.nome}</b>? Non si può annullare.
-              </span>
-            </p>
-          </div>
-          <div className="finestra__azioni">
-            <button type="button" className="pulsante pulsante--fantasma" onClick={() => setDaEspellere(null)}>
-              Annulla
-            </button>
-            <button
-              type="button"
-              className="pulsante pulsante--rosso"
-              onClick={() => {
-                comando(collegamento.comando('espelli', { giocatore: daEspellere.id }));
-                setDaEspellere(null);
-              }}
-            >
-              Espelli
-            </button>
-          </div>
-        </Finestra>
-      )}
+      <AnimatePresence>
+        {tabelloni && (
+          <SceltaTabellone
+            key="tabelloni"
+            attuale={stanza.impostazioni.mappa}
+            modificabile={sonoHost}
+            onScegli={(mappa) => {
+              cambiaImpostazioni({ mappa });
+              setTabelloni(false);
+            }}
+            onChiudi={() => setTabelloni(false)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {daEspellere && (
+          <Finestra key="espelli" titolo="Espelli giocatore" tono="pericolo" onChiudi={() => setDaEspellere(null)}>
+            <div className="finestra__corpo">
+              <p className="espelli">
+                <Pedina colore={daEspellere.colore} iniziale={iniziale(daEspellere.nome)} className="pedina--media" />
+                <span>
+                  Vuoi davvero espellere <b>{daEspellere.nome}</b>? Non si può annullare.
+                </span>
+              </p>
+            </div>
+            <div className="finestra__azioni">
+              <button type="button" className="pulsante pulsante--fantasma" onClick={() => setDaEspellere(null)}>
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="pulsante pulsante--rosso"
+                onClick={() => {
+                  comando(collegamento.comando('espelli', { giocatore: daEspellere.id }));
+                  setDaEspellere(null);
+                }}
+              >
+                Espelli
+              </button>
+            </div>
+          </Finestra>
+        )}
+      </AnimatePresence>
     </>
   );
 }

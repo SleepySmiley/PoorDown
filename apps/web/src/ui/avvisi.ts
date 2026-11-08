@@ -1,6 +1,8 @@
 /* Avvisi a comparsa in basso al centro: errori dei comandi, stanza non trovata, espulsione… */
 
-export type TipoAvviso = 'info' | 'errore';
+/** info (blu), errore (rosso), successo (verde), attenzione (ambra): il colore della barra dell'avviso. */
+/** Il tono dell'avviso, cioè il colore della barra: info (blu), errore (rosso), successo (verde), attenzione (ambra). */
+export type TipoAvviso = 'info' | 'errore' | 'successo' | 'attenzione';
 
 export interface Avviso {
   id: number;

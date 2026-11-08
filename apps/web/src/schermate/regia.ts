@@ -10,7 +10,17 @@
  */
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { tabellone, type EventoStanza, type IdGiocatore, type Stato, type VoceRegistro } from '@poordown/engine';
+import {
+  EVENTI_CON_PAUSA,
+  percorso,
+  tabellone,
+  TEMPI,
+  type Evento,
+  type EventoStanza,
+  type IdGiocatore,
+  type Stato,
+  type VoceRegistro,
+} from '@poordown/engine';
 import type { Collegamento } from '../rete/collegamento';
 
 export interface PosizioneMostrata {
@@ -35,9 +45,6 @@ export interface Scena {
   occupata: boolean;
 }
 
-const PASSO_MS = 180;
-const ROTOLA_MS = 95;
-const FACCE_ROTOLANDO = 7;
 /** Con più eventi di così in un colpo solo (es. dopo una risincronizzazione) non si anima. */
 const MAX_ANIMATI = 25;
 /**
@@ -46,22 +53,14 @@ const MAX_ANIMATI = 25;
  */
 const RITARDO_MAX_MS = 2_000;
 
-/** Eventi che fermano la scena per un attimo, giusto il tempo di leggerli. */
-const CON_PAUSA = new Set<EventoStanza['tipo']>([
-  'acquisto',
-  'asta_vinta',
-  'costruzione',
-  'affitto',
-  'tassa',
-  'premio',
-  'partenza',
-  'prigione_fallita',
-  'vacanza',
-]);
+/** Eventi che fermano la scena per un attimo, giusto il tempo di leggerli (le durate sono in TEMPI, nel motore). */
+function conPausa(e: EventoStanza): boolean {
+  return EVENTI_CON_PAUSA.has(e.tipo as Evento['tipo']);
+}
 
 /** L'evento ha una scena sul tabellone (gli stessi casi di `anima`, tranne quelli istantanei). */
 function animabile(e: EventoStanza): boolean {
-  return e.tipo === 'dadi' || e.tipo === 'movimento' || e.tipo === 'prigione' || e.tipo === 'carta' || CON_PAUSA.has(e.tipo);
+  return e.tipo === 'dadi' || e.tipo === 'movimento' || e.tipo === 'prigione' || e.tipo === 'carta' || conPausa(e);
 }
 
 function ultimoNumero(registro: readonly VoceRegistro[]): number {
@@ -216,35 +215,31 @@ export class Regia {
     switch (e.tipo) {
       case 'dadi': {
         this.cambia({ rotola: true, lanci: this.scena.lanci + 1 });
-        for (let i = 0; i < FACCE_ROTOLANDO && gen === this.generazione; i++) {
+        for (let i = 0; i < TEMPI.facceDado && gen === this.generazione; i++) {
           this.cambia({ dadi: [faccia(), faccia()] });
-          await this.attendi(ROTOLA_MS);
+          await this.attendi(TEMPI.facciaDado);
         }
         // Scena interrotta: i dadi giusti li ha già messi `allinea`.
         if (gen !== this.generazione) return;
         this.cambia({ dadi: e.dadi, rotola: false });
-        await this.attendi(150);
+        await this.attendi(TEMPI.dadiFermi);
         return;
       }
       case 'movimento': {
         const n = tabellone(partita.mappa).caselle.length;
-        const avanti = (e.a - e.da + n) % n;
-        const indietro = (e.da - e.a + n) % n;
-        // Le carte "Torna indietro di 3 caselle" sono l'unico spostamento all'indietro.
-        const verso = !e.dadi && indietro < avanti && indietro <= 3 ? -1 : 1;
-        const passi = verso === 1 ? avanti : indietro;
+        const { passi, verso } = percorso(e, n);
         let casella = e.da;
         for (let i = 0; i < passi && gen === this.generazione; i++) {
           casella = (casella + verso + n) % n;
           this.muovi(e.giocatore, { casella, prigione: false });
-          await this.attendi(PASSO_MS);
+          await this.attendi(TEMPI.passo);
         }
-        await this.attendi(200);
+        await this.attendi(TEMPI.fineMovimento);
         return;
       }
       case 'prigione':
         this.muovi(e.giocatore, { casella: tabellone(partita.mappa).prigione, prigione: true });
-        await this.attendi(450);
+        await this.attendi(TEMPI.prigione);
         return;
       case 'uscita_prigione': {
         const casella = this.scena.posizioni[e.giocatore]?.casella ?? partita.giocatori.find((g) => g.id === e.giocatore)?.posizione;
@@ -252,10 +247,10 @@ export class Regia {
         return;
       }
       case 'carta':
-        await this.attendi(600);
+        await this.attendi(TEMPI.carta);
         return;
       default:
-        if (CON_PAUSA.has(e.tipo)) await this.attendi(250);
+        if (conPausa(e)) await this.attendi(TEMPI.pausa);
         return;
     }
   }

@@ -1,6 +1,7 @@
 import '../stili/tavolo.css';
 import '../stili/squadre.css';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AnimatePresence } from 'motion/react';
 import {
   euro,
   GIOCATORI_MAX,
@@ -14,7 +15,9 @@ import {
 } from '@poordown/engine';
 import { CodiceQr } from '../CodiceQr';
 import { linkStanza, useInfoServer } from '../rete/sessione';
+import { Chip } from '../ui/Chip';
 import { Interruttore, Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
+import { Finestra } from '../ui/Finestra';
 import { iniziale } from '../ui/utili';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { PassiDelGioco } from '../ui/Regole';
@@ -33,104 +36,10 @@ export function Tavolo({ sinistra, centro, destra }: { sinistra: ReactNode; cent
   );
 }
 
-/* ---------------- Finestra (modale) ---------------- */
+/* ---------------- Finestre ---------------- */
 
-export function Finestra({
-  titolo,
-  onChiudi,
-  children,
-  larga,
-}: {
-  titolo: string;
-  onChiudi: () => void;
-  children: ReactNode;
-  larga?: boolean;
-}): ReactNode {
-  const riquadro = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onChiudi();
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onChiudi]);
-  // Il fuoco entra nella finestra e torna dov'era quando si chiude.
-  useEffect(() => {
-    const prima = document.activeElement as HTMLElement | null;
-    riquadro.current?.focus();
-    return () => prima?.focus();
-  }, []);
-  return (
-    <div className="finestra" role="presentation" onClick={onChiudi}>
-      <div
-        ref={riquadro}
-        tabIndex={-1}
-        className={larga ? 'finestra__riquadro finestra__riquadro--larga' : 'finestra__riquadro'}
-        role="dialog"
-        aria-modal="true"
-        aria-label={titolo}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="finestra__testa">
-          <h2>{titolo}</h2>
-          <PulsanteIcona icona="chiudi" etichetta="Chiudi" onClick={onChiudi} />
-        </header>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- Finestra sopra il tabellone ---------------- */
-
-/**
- * Finestra sopra il tabellone (asta, scambi), come in richup: copre solo il tabellone,
- * così chat e colonne restano usabili. Senza `onChiudi` non si chiude (l'asta finisce da sola).
- * Non ruba il fuoco a chi sta scrivendo in chat.
- */
-export function RiquadroTabellone({
-  titolo,
-  onChiudi,
-  children,
-  className,
-}: {
-  titolo: string;
-  onChiudi?: () => void;
-  children: ReactNode;
-  className?: string;
-}): ReactNode {
-  const riquadro = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!onChiudi) return;
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onChiudi();
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onChiudi]);
-  useEffect(() => {
-    const prima = document.activeElement;
-    if (prima instanceof HTMLInputElement || prima instanceof HTMLTextAreaElement) return;
-    riquadro.current?.focus();
-    return () => {
-      if (prima instanceof HTMLElement) prima.focus();
-    };
-  }, []);
-  return (
-    <div className="sul-tabellone" role="presentation" onClick={onChiudi}>
-      <div
-        ref={riquadro}
-        tabIndex={-1}
-        className={className ? `sul-tabellone__riquadro ${className}` : 'sul-tabellone__riquadro'}
-        role="dialog"
-        aria-label={titolo}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="sul-tabellone__testa">
-          <h2>{titolo}</h2>
-          {onChiudi && <PulsanteIcona icona="chiudi" etichetta="Chiudi" onClick={onChiudi} />}
-        </header>
-        {children}
-      </div>
-    </div>
-  );
-}
+// Finestra e RiquadroTabellone stanno in ui/Finestra.tsx: restano importabili anche da qui.
+export { Finestra, RiquadroTabellone } from '../ui/Finestra';
 
 /* ---------------- Colonna sinistra ---------------- */
 
@@ -271,13 +180,15 @@ export function ColonnaSinistra({
       ) : (
         <Chat stanza={stanza} io={io} messaggi={chat} scrivono={scrivono} onRiduci={() => setChatRidotta(true)} />
       )}
-      {aiuto && (
-        <Finestra titolo="Come si gioca" onChiudi={() => setAiuto(false)} larga>
-          <div className="finestra__scorri come-si-gioca come-si-gioca--finestra">
-            <PassiDelGioco subito />
-          </div>
-        </Finestra>
-      )}
+      <AnimatePresence>
+        {aiuto && (
+          <Finestra key="aiuto" titolo="Come si gioca" onChiudi={() => setAiuto(false)} larga>
+            <div className="finestra__scorri come-si-gioca come-si-gioca--finestra">
+              <PassiDelGioco subito />
+            </div>
+          </Finestra>
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -365,10 +276,9 @@ export function RigaGiocatore({
             </span>
           )}
           {g.host && !mostraSaldo && (
-            <span className="distintivo distintivo--host">
-              <Icona nome="corona" />
+            <Chip icona="corona" className="distintivo--host">
               Host
-            </span>
+            </Chip>
           )}
           {g.host && mostraSaldo && <Icona nome="corona" className="giocatore__segno giocatore__corona" titolo="Host" />}
           {!g.connesso &&
@@ -593,9 +503,9 @@ function RigaImpostazione(props: {
         <p className="impostazione__nome">
           {voce.nome}
           {voce.presto && (
-            <span className="distintivo distintivo--prova" title="Arriva con un prossimo aggiornamento">
+            <Chip tono="segnale" className="distintivo--prova" title="Arriva con un prossimo aggiornamento">
               Presto
-            </span>
+            </Chip>
           )}
         </p>
         <p className="impostazione__descrizione">{voce.descrizione}</p>

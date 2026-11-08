@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DADI_MS, TEMPI } from './tempi';
 import { durataScena, guadagnoScambio, mossaBot, mosseDeiBot, riserva, TURNI_TRA_PROPOSTE_BOT, valoreCasella } from './bot';
 import { casoDaSeme } from './caso';
 import { IMPOSTAZIONI_PREDEFINITE, SOLDI_INIZIALI_POSSIBILI } from './impostazioni';
@@ -325,7 +326,7 @@ describe('decisioni dei bot', () => {
   it('la durata della scena segue le animazioni dei browser', () => {
     const s = partitaDiProva(2);
     expect(durataScena(s, [{ tipo: 'dadi', giocatore: 'a', dadi: [3, 4] }, { tipo: 'movimento', giocatore: 'a', da: 0, a: 7, dadi: [3, 4] }])).toBe(
-      820 + 7 * 180 + 200,
+      DADI_MS + TEMPI.margineDadi + 7 * TEMPI.passo + TEMPI.fineMovimento,
     );
   });
 });

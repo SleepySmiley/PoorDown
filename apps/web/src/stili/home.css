@@ -21,15 +21,18 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  color: var(--testo-tenue);
+  border-radius: var(--r-1);
+  color: var(--testo-2);
   font: 500 1.0625rem/1 var(--normale);
   text-decoration: none;
+  transition:
+    background-color var(--d-rapida),
+    color var(--d-rapida);
 }
 
 .home__link:hover {
-  background: var(--riga);
-  color: var(--testo);
+  background: var(--sup-3);
+  color: var(--testo-1);
 }
 
 /* ---------- Cartelli sparsi in fondo ---------- */
@@ -53,12 +56,12 @@
   width: calc(58px * var(--d));
   height: calc(58px * var(--d));
   border-radius: calc(7px * var(--d));
-  background: var(--segnale);
+  background: var(--cartello);
   color: #fff;
   opacity: calc(0.25 + var(--d) * 0.6);
   transform: translate(-50%, -50%) rotate(var(--r));
   box-shadow:
-    inset 0 0 0 calc(3px * var(--d)) var(--segnale),
+    inset 0 0 0 calc(3px * var(--d)) var(--cartello),
     inset 0 0 0 calc(5px * var(--d)) #fff;
 }
 
@@ -173,13 +176,13 @@
 .marchio__nome {
   margin-top: 30px;
   padding: 6px 30px 12px;
-  border-radius: 12px;
-  background: var(--segnale);
+  border-radius: var(--r-3);
+  background: var(--cartello);
   color: #fff;
   font: 700 88px/1 var(--stretto);
   letter-spacing: 0.005em;
   box-shadow:
-    inset 0 0 0 5px var(--segnale),
+    inset 0 0 0 5px var(--cartello),
     inset 0 0 0 8px #fff;
   transition:
     font-size 0.4s cubic-bezier(0.3, 0.7, 0.3, 1),
@@ -189,7 +192,7 @@
 
 .marchio__motto {
   margin-top: 14px;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font: 500 1.375rem/1.2 var(--normale);
   transition: font-size 0.4s cubic-bezier(0.3, 0.7, 0.3, 1);
 }
@@ -223,12 +226,7 @@
   }
 }
 
-@keyframes compare {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.98);
-  }
-}
+
 
 .campo-nome {
   position: relative;
@@ -251,14 +249,17 @@
   height: 38px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--r-1);
   background: transparent;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
+  transition:
+    background-color var(--d-rapida),
+    color var(--d-rapida);
 }
 
 .campo-nome__dado:hover {
-  background: var(--segnale-chiaro);
-  color: var(--accento);
+  background: var(--sup-3);
+  color: var(--testo-1);
 }
 
 .campo-nome__dado .icona {
@@ -278,16 +279,17 @@
   }
 }
 
+/* Il tasto grande della home: lo spessore è un bordo inferiore blu scuro che si abbassa alla pressione. */
 .pulsante--gioca {
   width: 100%;
   height: 80px;
-  border-radius: 6px;
+  border-radius: var(--r-2);
   font-size: 2.25rem;
-  gap: 0.75rem;
+  gap: var(--s-3);
   box-shadow: 0 5px 0 var(--segnale-scuro);
 }
 
-.pulsante--gioca:active {
+.pulsante.pulsante--gioca:active:not(:disabled) {
   box-shadow: 0 2px 0 var(--segnale-scuro);
   transform: translateY(3px);
 }
@@ -304,16 +306,12 @@
   margin-top: 24px;
 }
 
+/* Ingressi secondari della home: pulsanti secondari (vecchio nome «tenue»). */
 .pulsante--tenue {
-  padding: 0.5rem 1rem;
-  background: var(--smalto);
-  color: var(--accento);
-  font-size: 1.125rem;
-  box-shadow: 0 2px 0 var(--cemento-scuro);
-}
-
-.pulsante--tenue:hover {
-  background: var(--segnale-chiaro);
+  --pulsante-fondo: var(--sup-2);
+  --pulsante-testo: var(--testo-1);
+  --pulsante-hover: var(--sup-3);
+  --pulsante-anello: var(--linea-forte);
 }
 
 /* ---------- Tutte le stanze (stesso riquadro) ---------- */
@@ -323,10 +321,12 @@
   max-width: calc(100vw - 32px);
   margin-top: 40px;
   padding: 30px 30px 24px;
-  border-radius: 12px;
-  background: var(--palette);
-  color: var(--carta-palette);
-  box-shadow: 0 0 0 3px #3a3f48;
+  border-radius: var(--r-3);
+  background: var(--quadro);
+  color: var(--quadro-testo);
+  box-shadow:
+    0 0 0 1px var(--quadro-linea),
+    var(--e3);
 }
 
 .elenco-stanze__barra {
@@ -339,32 +339,31 @@
   flex: 1;
 }
 
+/* Sul quadro nero: pulsanti secondari con l'anello chiaro (vecchio nome «contorno chiaro»). */
 .pulsante--contorno-chiaro {
-  background: transparent;
-  color: var(--carta-palette);
-  box-shadow: inset 0 0 0 2px #59606d;
+  --pulsante-fondo: var(--quadro-hover);
+  --pulsante-testo: var(--quadro-testo);
+  --pulsante-hover: var(--sup-4);
+  --pulsante-anello: var(--quadro-anello);
 }
 
-.pulsante--contorno-chiaro:hover {
-  background: var(--palette-chiara);
+.pulsante-icona.pulsante-icona--contorno {
+  width: 2rem;
+  height: 2rem;
+  background: var(--quadro-hover);
+  color: var(--quadro-testo);
+  box-shadow: inset 0 0 0 1px var(--quadro-anello);
 }
 
-.pulsante-icona--contorno {
-  width: 38px;
-  height: 38px;
-  color: var(--carta-palette);
-  box-shadow: inset 0 0 0 2px #59606d;
-}
-
-.pulsante-icona--contorno:hover {
-  background: var(--palette-chiara);
+.pulsante-icona.pulsante-icona--contorno:hover {
+  background: var(--sup-4);
   color: #fff;
 }
 
 .elenco-stanze__invito {
-  margin: 24px 0 12px;
+  margin: var(--s-5) 0 var(--s-3);
   text-align: center;
-  color: #c3c8d1;
+  color: var(--testo-2);
 }
 
 .elenco-stanze__lista {
@@ -373,7 +372,7 @@
   max-height: 292px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #4a505b transparent;
+  scrollbar-color: var(--linea-forte) transparent;
 }
 
 .stanza-card {
@@ -382,16 +381,16 @@
   min-height: 76px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-2);
   overflow: hidden;
-  background: #2a2e36;
-  color: var(--carta-palette);
+  background: var(--sup-3);
+  color: var(--quadro-testo);
   text-align: left;
-  transition: background-color 0.15s;
+  transition: background-color var(--d-rapida);
 }
 
 .stanza-card:hover {
-  background: #353a45;
+  background: var(--sup-4);
 }
 
 .stanza-card__sinistra {
@@ -420,13 +419,7 @@
   height: 8px;
   margin: 0 4px;
   border-radius: 50%;
-  background: #59606d;
-}
-
-.posto-ospite {
-  width: 18px;
-  height: 18px;
-  color: var(--carta-palette);
+  background: var(--testo-3);
 }
 
 .stanza-card__destra {
@@ -434,15 +427,15 @@
   justify-items: end;
   align-content: center;
   gap: 8px;
-  padding: 12px 16px;
-  background: #22262d;
+  padding: var(--s-3) var(--s-4);
+  background: var(--sup-2);
 }
 
 .stanza-card__mappa {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #aab1bd;
+  color: var(--quadro-tenue);
   font: 600 1rem/1 var(--stretto);
 }
 
@@ -452,10 +445,10 @@
 }
 
 .stanza-card__standard {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #3a3f49;
-  font-size: 0.8125rem;
+  padding: 2px var(--s-2);
+  border-radius: var(--r-tondo);
+  background: var(--sup-4);
+  font: var(--t-piccolo);
 }
 
 .stanza-card__regole {
@@ -485,12 +478,12 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #ff6b5e;
-  box-shadow: 0 0 0 2px #22262d;
+  background: var(--rosso);
+  box-shadow: 0 0 0 2px var(--sup-2);
 }
 
 .regola-icona.regola-icona--attiva::after {
-  background: #3ccf7f;
+  background: var(--verde);
 }
 
 .elenco-stanze__nota {
@@ -499,7 +492,7 @@
   justify-content: center;
   gap: 8px;
   margin-top: 18px;
-  color: #9aa1ad;
+  color: var(--quadro-tenue);
   font-size: 0.875rem;
 }
 
@@ -519,9 +512,9 @@
 }
 
 .come-si-gioca__titolo {
+  color: var(--testo-1);
+  font: var(--t-titolo-1);
   text-align: center;
-  font: 700 2.5rem/1 var(--stretto);
-  color: var(--accento);
 }
 
 .come-si-gioca__passi {
@@ -537,8 +530,9 @@
   gap: 24px;
   min-height: 132px;
   padding: 22px 28px;
-  border-radius: 8px;
-  background: var(--smalto);
+  border-radius: var(--r-2);
+  background: var(--sup-1);
+  box-shadow: var(--e1);
   opacity: 0;
   transform: translateY(28px);
   transition:
@@ -565,11 +559,11 @@
   width: 52px;
   height: 52px;
   border-radius: 6px;
-  background: var(--segnale);
+  background: var(--cartello);
   color: #fff;
   font: 700 2rem/1 var(--stretto);
   box-shadow:
-    inset 0 0 0 3px var(--segnale),
+    inset 0 0 0 3px var(--cartello),
     inset 0 0 0 5px #fff;
 }
 
@@ -580,7 +574,7 @@
 
 .passo__testo .passo__dettaglio {
   margin-top: 4px;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font-size: 1rem;
 }
 
@@ -618,8 +612,8 @@
   display: flex;
   gap: 4px;
   padding: 18px 4px 4px;
-  border-radius: 8px;
-  background: #121418;
+  border-radius: var(--r-2);
+  background: var(--quadro);
 }
 
 .mini-casella {
@@ -631,7 +625,7 @@
   height: 92px;
   border-radius: 4px;
   background: linear-gradient(#272c35, #1f232a 70%);
-  color: #f4f1e8;
+  color: var(--quadro-testo);
   text-align: center;
 }
 
@@ -653,7 +647,7 @@
   margin: auto 0 7px;
   padding: 3px 7px;
   border-radius: 3px;
-  background: #363c47;
+  background: var(--linea-forte);
   font: 600 0.875rem/1 var(--stretto);
 }
 
@@ -667,7 +661,7 @@
   width: 44px;
   height: 44px;
   fill: var(--g3);
-  color: var(--testo);
+  color: var(--testo-1);
   stroke-width: 1.4;
 }
 

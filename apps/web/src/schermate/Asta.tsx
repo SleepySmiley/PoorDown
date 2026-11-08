@@ -6,12 +6,14 @@
 
 import '../stili/economia.css';
 import type { ReactNode } from 'react';
+import { motion } from 'motion/react';
 import { ASTA_MS, euro, RILANCI, tabellone, verifica, type IdGiocatore, type Stato } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
 import { useBattito } from '../ui/battito';
 import { caselleVista } from '../ui/caselle';
 import { Pedina, Soldi, Stemma } from '../ui/comuni';
 import { Icona } from '../ui/icone';
+import { SCORRE } from '../ui/movimento';
 import { iniziale, variabili } from '../ui/utili';
 import { RiquadroTabellone } from './Colonne';
 import { SchedaProprieta } from './Tabellone';
@@ -122,10 +124,10 @@ export function Asta({
             {asta.offerte.map((o, i) => {
               const chi = nome(o.giocatore);
               return (
-                <li key={asta.offerte.length - i} className="asta__offerta">
+                <motion.li key={asta.offerte.length - i} layout="position" transition={SCORRE} className="asta__offerta">
                   {chi && <Pedina colore={chi.colore} className="pedina--mini" />}
                   <b>{chi?.nome ?? '?'}</b> offre {euro(o.importo)}
-                </li>
+                </motion.li>
               );
             })}
           </ol>

@@ -28,6 +28,7 @@ import { RILANCI } from './economia';
 import { azioniPossibili, verifica } from './regole';
 import { problemiScambio, type BozzaScambio } from './scambi';
 import { tabellone } from './tabelloni';
+import { durataEvento } from './tempi';
 import type { Azione, Citta, Evento, Giocatore, IdGiocatore, Pacchetto, Scambio, Stato } from './tipi';
 
 /* ------------------------------------------------------------------ */
@@ -408,43 +409,13 @@ export function mosseDeiBot(
 /* Ritmo                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Quanto dura nei browser la scena di questi eventi (dadi che rotolano, pedine che avanzano): vedi regia.ts. */
+/**
+ * Quanto dura nei browser la scena di questi eventi (dadi che rotolano, pedine che avanzano):
+ * le durate sono in tempi.ts, le stesse che usa la regia del browser.
+ */
 export function durataScena(s: Stato, eventi: readonly Evento[]): number {
-  const n = tabellone(s.mappa).caselle.length;
-  let ms = 0;
-  for (const e of eventi) {
-    switch (e.tipo) {
-      case 'dadi':
-        ms += 820;
-        break;
-      case 'movimento': {
-        const avanti = (e.a - e.da + n) % n;
-        const indietro = (e.da - e.a + n) % n;
-        ms += (!e.dadi && indietro < avanti && indietro <= 3 ? indietro : avanti) * 180 + 200;
-        break;
-      }
-      case 'prigione':
-        ms += 450;
-        break;
-      case 'carta':
-        ms += 600;
-        break;
-      case 'acquisto':
-      case 'asta_vinta':
-      case 'costruzione':
-      case 'affitto':
-      case 'tassa':
-      case 'premio':
-      case 'partenza':
-      case 'prigione_fallita':
-      case 'vacanza':
-        ms += 250;
-        break;
-      default:
-        break;
-    }
-  }
-  return ms;
+  const caselle = tabellone(s.mappa).caselle.length;
+  return eventi.reduce((ms, e) => ms + durataEvento(e, caselle), 0);
 }
 
 /** Il tempo di "pensare" di un bot prima della prossima mossa, oltre alla scena. */

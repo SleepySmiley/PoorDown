@@ -3,7 +3,9 @@ import {
   applica,
   casoDaSeme,
   creaPartita,
+  durataScena,
   IMPOSTAZIONI_PREDEFINITE,
+  TEMPI,
   vistaPartita,
   type Evento,
   type Stato,
@@ -226,6 +228,31 @@ describe('Regia della partita', () => {
     expect(regia.leggi().occupata).toBe(true);
     expect(regia.leggi().partita?.giocatori[0]?.posizione).toBe(0);
     await vi.advanceTimersByTimeAsync(10_000);
+    expect(regia.leggi().occupata).toBe(false);
+    regia.ferma();
+  });
+
+  it('la scena dura quanto dice durataScena: browser e bot leggono gli stessi tempi', async () => {
+    const prima = partitaIniziale();
+    // Una scena con tutti i tipi di attesa: dadi, passi, una pausa, una carta, la prigione.
+    const eventi: Evento[] = [
+      { tipo: 'dadi', giocatore: 'a', dadi: [2, 3] },
+      { tipo: 'movimento', giocatore: 'a', da: 0, a: 5, dadi: [2, 3] },
+      { tipo: 'acquisto', giocatore: 'a', casella: 5, prezzo: 200 },
+      { tipo: 'carta', giocatore: 'a', mazzo: 'busta', carta: 0, testo: 'Prova' },
+      { tipo: 'prigione', giocatore: 'a', motivo: 'carta' },
+    ];
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    coll.cambia({ stanza: stanzaCon(prima, 2), registro: voci(eventi, 1) });
+    expect(regia.leggi().occupata).toBe(true);
+
+    // Il server conta un piccolo margine in più per ogni lancio: il bot non anticipa mai l'animazione.
+    const durata = durataScena(prima, eventi) - TEMPI.margineDadi;
+    await vi.advanceTimersByTimeAsync(durata - 1);
+    expect(regia.leggi().occupata).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
     expect(regia.leggi().occupata).toBe(false);
     regia.ferma();
   });

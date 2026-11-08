@@ -1,142 +1,6 @@
-/* Elementi delle schermate vere che i mockup non avevano: avvisi, caricamento, stanza piena,
-   fine partita, collegamento perso, suggerimenti dei pulsanti disattivati. */
-
-/* ---------- Suggerimento sopra un pulsante (anche disattivato) ---------- */
-
-.con-suggerimento {
-  position: relative;
-  display: inline-flex;
-}
-
-.con-suggerimento[data-testo]::after {
-  content: attr(data-testo);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  z-index: 40;
-  width: max-content;
-  max-width: 260px;
-  padding: 8px 10px;
-  border-radius: 4px;
-  background: var(--palette);
-  color: var(--carta-palette);
-  box-shadow:
-    inset 0 0 0 1px var(--palette-bordo),
-    0 6px 16px rgb(0 0 0 / 0.4);
-  font: 400 0.8125rem/1.35 var(--normale);
-  text-align: left;
-  white-space: normal;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 4px);
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
-}
-
-.con-suggerimento[data-testo]:hover::after,
-.con-suggerimento[data-testo]:focus-within::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-/* Vicino al bordo destro della pagina: allineato a destra del pulsante, non centrato. */
-.con-suggerimento.con-suggerimento--destra[data-testo]::after {
-  left: auto;
-  right: 0;
-  transform: translateY(4px);
-}
-
-.con-suggerimento.con-suggerimento--destra[data-testo]:hover::after,
-.con-suggerimento.con-suggerimento--destra[data-testo]:focus-within::after {
-  transform: none;
-}
-
-/* ---------- Avvisi a comparsa ---------- */
-
-.avvisi {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  z-index: 200;
-  display: grid;
-  gap: 8px;
-  width: min(460px, calc(100vw - 32px));
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.avviso {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 8px 10px 14px;
-  border-radius: 6px;
-  background: var(--smalto);
-  color: var(--testo);
-  box-shadow:
-    inset 4px 0 0 var(--segnale),
-    inset 0 0 0 1px var(--bordo),
-    0 10px 28px rgb(0 0 0 / 0.5);
-  font-size: 0.9375rem;
-  pointer-events: auto;
-}
-
-.avviso--errore {
-  box-shadow:
-    inset 4px 0 0 var(--rosso),
-    inset 0 0 0 1px var(--bordo),
-    0 10px 28px rgb(0 0 0 / 0.5);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .avviso {
-    animation: avviso-entra 0.25s cubic-bezier(0.3, 0.7, 0.3, 1);
-  }
-}
-
-@keyframes avviso-entra {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-}
-
-.avviso__icona {
-  color: var(--accento);
-}
-
-.avviso--errore .avviso__icona {
-  color: var(--rosso);
-}
-
-.avviso__testo {
-  flex: 1;
-  text-wrap: pretty;
-}
-
-.avviso__chiudi {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--testo-tenue);
-}
-
-.avviso__chiudi:hover {
-  background: var(--riga);
-  color: var(--testo);
-}
-
-.avviso__chiudi .icona {
-  width: 16px;
-  height: 16px;
-}
+/* Elementi delle schermate vere che i mockup non avevano: caricamento, stanza piena, collegamento perso,
+   ritocchi alle colonne. Si importa per ultimo (App.tsx): le regole qui correggono quelle delle schermate.
+   I componenti condivisi (suggerimenti, avvisi, pulsanti…) sono in partenze.css. */
 
 /* ---------- Collegamento perso ---------- */
 
@@ -146,10 +10,10 @@
   left: 0;
   right: 0;
   z-index: 150;
-  padding: 8px 16px;
+  padding: var(--s-2) var(--s-4);
   background: #4a1f1b;
   color: #ffd9d4;
-  font-size: 0.9375rem;
+  font: var(--t-corpo);
   text-align: center;
   box-shadow: 0 2px 0 var(--rosso);
 }
@@ -162,7 +26,7 @@
   justify-items: center;
   gap: 18px;
   min-height: 100vh;
-  padding: 24px;
+  padding: var(--s-5);
   text-align: center;
 }
 
@@ -170,7 +34,7 @@
   width: 72px;
   height: 72px;
   padding: 13px;
-  border-radius: 12px;
+  border-radius: var(--r-3);
 }
 
 .caricamento__dado .dado .punto {
@@ -205,19 +69,19 @@
 
 .caricamento__consiglio {
   max-width: 440px;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   text-wrap: pretty;
 }
 
 .caricamento__consiglio b {
   margin-right: 6px;
   padding: 1px 6px;
-  border-radius: 3px;
-  background: var(--segnale-chiaro);
-  color: var(--accento);
-  font: 600 0.8125rem/1.4 var(--normale);
-  text-transform: uppercase;
+  border-radius: var(--r-1);
+  background: var(--segnale-velo);
+  color: var(--link);
+  font: var(--t-etichetta);
   letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* ---------- Home: ingresso da un link ---------- */
@@ -232,30 +96,34 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  color: var(--testo-tenue);
+  gap: var(--s-2);
+  margin-bottom: var(--s-1);
+  color: var(--testo-2);
   text-align: center;
 }
 
 .ingresso__invito .palette {
-  font-size: 1.125rem;
+  font-size: var(--palette-m);
 }
 
 .stanza-card__codice {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-2);
 }
 
+/* «In partita»: chip ambra, la partita è in corso adesso. */
 .stanza-card__fase {
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: #2b2412;
-  color: #ffd47a;
-  font: 600 0.6875rem/1.2 var(--normale);
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 6px;
+  border-radius: var(--r-1);
+  background: var(--ambra-velo);
+  color: var(--ambra-testo);
+  font: var(--t-etichetta);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .elenco-stanze__vuoto {
@@ -268,14 +136,12 @@
 .stanza-piena {
   display: grid;
   justify-items: center;
-  gap: 12px;
+  gap: var(--s-3);
   max-width: 420px;
   padding: 26px 28px;
-  border-radius: 10px;
-  background: rgb(15 17 21 / 0.92);
-  box-shadow:
-    inset 0 0 0 1px var(--bordo),
-    0 16px 40px rgb(0 0 0 / 0.55);
+  border-radius: var(--r-3);
+  background: var(--sup-1);
+  box-shadow: var(--e3);
   text-align: center;
 }
 
@@ -284,7 +150,7 @@
 }
 
 .stanza-piena__testo {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
 }
 
 .stanza-piena__azioni {
@@ -298,17 +164,17 @@
 /* ---------- Colonne ---------- */
 
 .condividi__nota {
-  margin-top: 8px;
+  margin-top: var(--s-2);
   color: var(--ambra);
-  font-size: 0.8125rem;
+  font: var(--t-piccolo);
 }
 
 .chat__scrive {
   flex: none;
   min-height: 1.5em;
   padding: 0 14px;
-  color: var(--testo-tenue);
-  font-size: 0.8125rem;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
   font-style: italic;
 }
 
@@ -326,10 +192,10 @@
 }
 
 .giocatore__esito {
-  color: var(--rosso);
+  color: var(--rosso-testo);
   font: 600 0.9375rem/1 var(--stretto);
-  text-transform: uppercase;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .impostazione--presto .impostazione__nome,
@@ -341,7 +207,7 @@
 /* Doppia classe: deve vincere sul .come-si-gioca della home, che arriva dopo. */
 .finestra__scorri.come-si-gioca--finestra {
   max-height: min(70vh, 640px);
-  padding: 16px 20px 20px;
+  padding: var(--s-4) var(--s-5) var(--s-5);
 }
 
 /* Nella finestra stretta la figura va sotto il testo, come sul telefono. */
@@ -352,9 +218,9 @@
 
 .come-si-gioca--finestra .passo {
   grid-template-columns: 44px minmax(0, 1fr);
-  gap: 8px 16px;
+  gap: var(--s-2) var(--s-4);
   min-height: 0;
-  padding: 16px 18px;
+  padding: var(--s-4) 18px;
 }
 
 .come-si-gioca--finestra .passo__binario {
@@ -389,12 +255,13 @@
 }
 
 .centro-gioco__nota--rosso {
-  color: #ff8f85;
+  color: var(--rosso-testo);
 }
 
 .mie__vuoto {
-  padding: 12px 16px;
-  color: var(--testo-tenue);
+  padding: var(--s-3) var(--s-4);
+  color: var(--testo-2);
+  font: var(--t-piccolo);
   font-size: 0.875rem;
   text-align: center;
   text-wrap: pretty;
@@ -404,11 +271,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: 6px;
-  background: var(--smalto);
-  color: var(--testo-tenue);
-  box-shadow: inset 0 0 0 1px var(--bordo);
+  padding: 14px var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--sup-1);
+  color: var(--testo-2);
+  box-shadow: var(--e1);
 }
 
 /* ---------- Tempo, assenze e moderazione (Fase 6) ---------- */
@@ -430,7 +297,7 @@
 
 .bancarotta.bancarotta {
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--s-2);
 }
 
 .giocatore__nome .giocatore__assenza {
@@ -454,10 +321,10 @@
   border: 0;
   border-radius: 3px;
   background: transparent;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--d-rapida);
 }
 
 .messaggio__silenzia .icona {
@@ -471,8 +338,8 @@
 }
 
 .messaggio__autore .messaggio__silenzia:hover {
-  background: var(--riga);
-  color: var(--testo);
+  background: var(--sup-3);
+  color: var(--testo-1);
 }
 
 .chat .chat__silenziati {
@@ -480,10 +347,10 @@
   flex: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 6px;
+  gap: var(--s-1) 6px;
   padding: 6px 14px 0;
-  color: var(--testo-tenue);
-  font-size: 0.8125rem;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
 }
 
 .chat__silenziati > .icona {
@@ -495,11 +362,11 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 4px 2px 7px;
+  padding: 2px var(--s-1) 2px 7px;
   border: 0;
-  border-radius: 3px;
-  background: var(--riga);
-  color: var(--testo);
+  border-radius: var(--r-1);
+  background: var(--sup-3);
+  color: var(--testo-1);
   font: 600 0.8125rem/1.2 var(--stretto);
   cursor: pointer;
 }
@@ -510,7 +377,7 @@
 }
 
 .chat__silenziati .chat__riattiva:hover {
-  background: var(--cemento-scuro);
+  background: var(--sup-4);
 }
 
 .giocatore .giocatore__senza-x {

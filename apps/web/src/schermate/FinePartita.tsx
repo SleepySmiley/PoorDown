@@ -7,6 +7,7 @@
 
 import '../stili/fine.css';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { motion, useIsPresent } from 'motion/react';
 import {
   classifica,
   durata,
@@ -22,6 +23,7 @@ import { avvisa } from '../ui/avvisi';
 import { caselleVista } from '../ui/caselle';
 import { Dado, Pedina, Stemma } from '../ui/comuni';
 import { Icona, type NomeIcona } from '../ui/icone';
+import { COMPARSA, VELO } from '../ui/movimento';
 import { iniziale, variabili } from '../ui/utili';
 import { Binario } from './Colonne';
 import { GraficoPatrimonio } from './Grafico';
@@ -214,11 +216,13 @@ function Numero({ icona, etichetta, children }: { icona: NomeIcona; etichetta: s
 
 export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onChiudi: () => void }): ReactNode {
   const riquadro = useRef<HTMLDivElement>(null);
+  const presente = useIsPresent();
   useEffect(() => {
+    if (!presente) return;
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onChiudi();
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
-  }, [onChiudi]);
+  }, [onChiudi, presente]);
   useEffect(() => {
     const prima = document.activeElement as HTMLElement | null;
     riquadro.current?.focus();
@@ -236,8 +240,14 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
   const carcerati = prigione ? partita.giocatori.filter((g) => prigione.giocatori.includes(g.id)) : [];
 
   return (
-    <div className="statistiche" role="presentation" onClick={onChiudi}>
-      <div
+    <motion.div
+      className="statistiche"
+      role="presentation"
+      onClick={onChiudi}
+      style={presente ? undefined : { pointerEvents: 'none' }}
+      {...VELO}
+    >
+      <motion.div
         ref={riquadro}
         tabIndex={-1}
         className="statistiche__griglia"
@@ -245,6 +255,7 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
         aria-modal="true"
         aria-label="Statistiche della partita"
         onClick={(e) => e.stopPropagation()}
+        {...COMPARSA}
       >
         <button type="button" className="pulsante pulsante--primario statistiche__chiudi" onClick={onChiudi}>
           <Icona nome="chiudi" />
@@ -338,7 +349,7 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
             )}
           </div>
         </section>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

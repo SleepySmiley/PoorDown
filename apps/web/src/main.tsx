@@ -1,3 +1,5 @@
+// I token del sistema grafico vanno prima di tutti gli altri stili.
+import './stili/token.css';
 import '@fontsource/barlow-condensed/500.css';
 import '@fontsource/barlow-condensed/600.css';
 import '@fontsource/barlow-condensed/700.css';

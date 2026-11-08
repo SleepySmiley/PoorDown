@@ -209,7 +209,7 @@ function ElencoStanze({ onIndietro }: { onIndietro: () => void }): ReactNode {
         </button>
         <button
           type="button"
-          className="pulsante pulsante--piccolo pulsante--ambra"
+          className="pulsante pulsante--piccolo pulsante--primario"
           disabled={occupato !== null}
           onClick={() => void esegui('nuova', () => collegamento.comando('crea_stanza', { privata: false }))}
         >

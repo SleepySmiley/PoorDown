@@ -4,6 +4,7 @@
  */
 
 import { useState, type ReactNode } from 'react';
+import { AnimatePresence } from 'motion/react';
 import {
   verifica,
   votiNecessari,
@@ -56,7 +57,7 @@ export function PulsanteVoto({
     <span className="con-suggerimento con-suggerimento--righe" data-testo={blocco ? `${spiegazione}\n${blocco}` : spiegazione}>
       <button
         type="button"
-        className={votato ? 'pulsante pulsante--piccolo pulsante--secondario' : 'pulsante pulsante--piccolo pulsante--ambra'}
+        className={votato ? 'pulsante pulsante--piccolo pulsante--fantasma' : 'pulsante pulsante--piccolo pulsante--secondario'}
         disabled={blocco !== null}
         onClick={() => onMossa(mossa)}
       >
@@ -132,12 +133,14 @@ export function FuoriDallaPartita({
   const { registro } = useCollegamento(collegamento);
   const me = partita.giocatori.find((g) => g.id === io);
   const testi = me?.eliminato ? USCITA[me.eliminato.motivo] : undefined;
-  if (!io || !me || !testi || chiusa) return null;
+  let gia = false;
   try {
-    if (sessionStorage.getItem(chiave(codice, io))) return null;
+    gia = io !== null && sessionStorage.getItem(chiave(codice, io)) !== null;
   } catch {
     // niente: la si mostra
   }
+  // Dentro AnimatePresence: quando si chiude, la finestra esce animata.
+  if (!io || !me || !testi || (gia && !chiusa)) return <AnimatePresence />;
   const guarda = () => {
     try {
       sessionStorage.setItem(chiave(codice, io), '1');
@@ -147,27 +150,31 @@ export function FuoriDallaPartita({
     setChiusa(true);
   };
   return (
-    <Finestra titolo={testi.titolo} onChiudi={guarda}>
-      <div className="finestra__corpo">
-        <p>
-          {testi.testo} {destinoDeiMieiBeni(partita, me, registro)}
-        </p>
-        <p>
-          {partita.fase === 'finita'
-            ? 'Intanto la partita è finita.'
-            : 'Puoi restare a guardare come finisce o tornare alla home.'}
-        </p>
-      </div>
-      <div className="finestra__azioni">
-        <button type="button" className="pulsante pulsante--fantasma" onClick={onEsci}>
-          <Icona nome="partenza" />
-          Torna alla home
-        </button>
-        <button type="button" className="pulsante pulsante--primario" onClick={guarda}>
-          <Icona nome="occhio" />
-          Continua a guardare
-        </button>
-      </div>
-    </Finestra>
+    <AnimatePresence>
+      {!chiusa && (
+        <Finestra key="fuori" titolo={testi.titolo} onChiudi={guarda}>
+          <div className="finestra__corpo">
+            <p>
+              {testi.testo} {destinoDeiMieiBeni(partita, me, registro)}
+            </p>
+            <p>
+              {partita.fase === 'finita'
+                ? 'Intanto la partita è finita.'
+                : 'Puoi restare a guardare come finisce o tornare alla home.'}
+            </p>
+          </div>
+          <div className="finestra__azioni">
+            <button type="button" className="pulsante pulsante--fantasma" onClick={onEsci}>
+              <Icona nome="partenza" />
+              Torna alla home
+            </button>
+            <button type="button" className="pulsante pulsante--primario" onClick={guarda}>
+              <Icona nome="occhio" />
+              Continua a guardare
+            </button>
+          </div>
+        </Finestra>
+      )}
+    </AnimatePresence>
   );
 }

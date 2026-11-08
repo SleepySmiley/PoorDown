@@ -1,5 +1,6 @@
 import '../stili/tabellone.css';
 import type { CSSProperties, ReactNode } from 'react';
+import { motion } from 'motion/react';
 import {
   affitto,
   alleati,
@@ -18,6 +19,7 @@ import { caselleVista, type CasellaVista } from '../ui/caselle';
 import { Pedina, Stemma } from '../ui/comuni';
 import { ANGOLO, geometria, righeAffitto, type Geometria } from '../ui/geometria';
 import { Icona, IconaCasella } from '../ui/icone';
+import { COMPARSA } from '../ui/movimento';
 import { variabili } from '../ui/utili';
 
 /** Chi possiede la casella, con edifici e ipoteca. */
@@ -84,6 +86,7 @@ export function SchedaProprieta({
   onChiudi,
   className,
   style,
+  animata,
 }: {
   mappa: IdMappa;
   partita: Stato | null;
@@ -95,6 +98,8 @@ export function SchedaProprieta({
   onChiudi?: () => void;
   className?: string;
   style?: CSSProperties;
+  /** Popover che si apre e si chiude con Motion (mettila dentro un AnimatePresence). */
+  animata?: boolean;
 }): ReactNode {
   const tab = tabellone(mappa);
   const c = caselleVista(mappa)[n];
@@ -112,11 +117,18 @@ export function SchedaProprieta({
   // Con «Niente affitto dalla prigione» il proprietario in prigione non incassa: nessuna riga evidenziata.
   const inPrigione = partita !== null && p !== undefined && partita.impostazioni.nienteAffittoInPrigione && p.proprietario.prigione !== null;
   const livello = partita && !inPrigione ? rigaAttuale(partita, n) : -1;
+  // La testata ha il colore della regione, con il testo scuro sulle regioni chiare.
+  const stile = {
+    ...style,
+    ...(c.tinta ? variabili({ '--gruppo': `var(--g${c.tinta})`, '--su-gruppo': `var(--su-g${c.tinta}, #fff)` }) : {}),
+  };
+  const Contenitore = animata ? motion.article : 'article';
   return (
-    <article
+    <Contenitore
       className={className ? `scheda ${className}` : 'scheda'}
-      style={{ ...style, ...(c.tinta ? variabili({ '--gruppo': `var(--g${c.tinta})` }) : {}) }}
+      style={stile}
       aria-label={`Scheda di ${c.nome}`}
+      {...(animata ? COMPARSA : {})}
     >
       <header className={regione ? 'scheda__testa' : 'scheda__testa scheda__testa--senza-regione'}>
         {regione ? (
@@ -184,7 +196,7 @@ export function SchedaProprieta({
           </>
         )}
       </dl>
-    </article>
+    </Contenitore>
   );
 }
 

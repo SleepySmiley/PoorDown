@@ -1,5 +1,6 @@
 import '../stili/gioco.css';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   ASSENZA_MS,
   costoProssimoEdificio,
@@ -34,6 +35,9 @@ import { iniziale } from '../ui/utili';
 import { stilePopover } from '../ui/geometria';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { Coriandoli } from '../ui/Coriandoli';
+import { SCORRE } from '../ui/movimento';
+import { Pannello } from '../ui/Pannello';
+import { Pulsante } from '../ui/Pulsante';
 import { Asta } from './Asta';
 import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
 import { FuoriDallaPartita, NotaVoto, PulsanteVoto } from './Moderazione';
@@ -47,43 +51,6 @@ import { TimerTurno } from './Timer';
 /** `null` se la mossa si può fare adesso, altrimenti il motivo (per il suggerimento del pulsante). */
 function motivo(partita: Stato, io: IdGiocatore, mossa: Mossa): string | null {
   return verifica(partita, { ...mossa, giocatore: io } as Azione)?.messaggio ?? null;
-}
-
-function Pulsante({
-  testo,
-  icona,
-  stile = 'primario',
-  grande,
-  blocco,
-  onClick,
-}: {
-  testo: string;
-  icona: Parameters<typeof Icona>[0]['nome'];
-  stile?: 'primario' | 'secondario';
-  grande?: boolean;
-  /** Perché non si può premere, `null` se si può. */
-  blocco: string | null;
-  onClick: () => void;
-}): ReactNode {
-  const pulsante = (
-    <button
-      type="button"
-      className={`pulsante pulsante--${stile}${grande ? ' pulsante--grande' : ''}`}
-      disabled={blocco !== null}
-      onClick={onClick}
-    >
-      <Icona nome={icona} />
-      {testo}
-    </button>
-  );
-  // Un pulsante disattivato non riceve il passaggio del mouse: il suggerimento sta sul contenitore.
-  return blocco ? (
-    <span className="con-suggerimento" data-testo={blocco}>
-      {pulsante}
-    </span>
-  ) : (
-    pulsante
-  );
 }
 
 /** Pulsante a icona sulla scheda della proprietà: il suggerimento dice cosa fa e, se è spento, perché. */
@@ -164,27 +131,22 @@ function AzioniTurno({
   const t = partita.turno;
   const blocco = (m: Mossa) => (inviando ? 'Un attimo…' : motivo(partita, io, m));
 
+  // Un solo pulsante ambra alla volta: è l'azione del turno che si aspetta adesso. Le alternative sono secondarie.
   if (t.fase === 'prigione') {
     const tentativo = Math.min((me.prigione ?? 0) + 1, TENTATIVI_PRIGIONE);
     return (
       <>
         <div className="centro-gioco__azioni">
-          <Pulsante testo="Tira i dadi" icona="dado" blocco={blocco({ tipo: 'lancia' })} onClick={() => onMossa({ tipo: 'lancia' })} />
-          <Pulsante
-            testo={`Paga ${euro(tab.cauzione)}`}
-            icona="euro"
-            stile="secondario"
-            blocco={blocco({ tipo: 'paga_cauzione' })}
-            onClick={() => onMossa({ tipo: 'paga_cauzione' })}
-          />
+          <Pulsante variante="ambra" icona="dado" blocco={blocco({ tipo: 'lancia' })} onClick={() => onMossa({ tipo: 'lancia' })}>
+            Tira i dadi
+          </Pulsante>
+          <Pulsante icona="euro" blocco={blocco({ tipo: 'paga_cauzione' })} onClick={() => onMossa({ tipo: 'paga_cauzione' })}>
+            Paga {euro(tab.cauzione)}
+          </Pulsante>
           {me.carteGrazia.length > 0 && (
-            <Pulsante
-              testo="Usa la Carta Grazia"
-              icona="grazia"
-              stile="secondario"
-              blocco={blocco({ tipo: 'usa_grazia' })}
-              onClick={() => onMossa({ tipo: 'usa_grazia' })}
-            />
+            <Pulsante icona="grazia" blocco={blocco({ tipo: 'usa_grazia' })} onClick={() => onMossa({ tipo: 'usa_grazia' })}>
+              Usa la Carta Grazia
+            </Pulsante>
           )}
         </div>
         <p className="centro-gioco__nota">
@@ -198,7 +160,15 @@ function AzioniTurno({
   if (t.fase === 'lancio') {
     return (
       <div className="centro-gioco__azioni">
-        <Pulsante testo="Tira i dadi" icona="dado" grande blocco={blocco({ tipo: 'lancia' })} onClick={() => onMossa({ tipo: 'lancia' })} />
+        <Pulsante
+          variante="ambra"
+          misura="grande"
+          icona="dado"
+          blocco={blocco({ tipo: 'lancia' })}
+          onClick={() => onMossa({ tipo: 'lancia' })}
+        >
+          Tira i dadi
+        </Pulsante>
       </div>
     );
   }
@@ -210,32 +180,33 @@ function AzioniTurno({
   return (
     <div className="centro-gioco__azioni">
       {daDecidere && (
-        <Pulsante
-          testo="Asta"
-          icona="martelletto"
-          stile="secondario"
-          blocco={blocco({ tipo: 'asta' })}
-          onClick={() => onMossa({ tipo: 'asta' })}
-        />
+        <Pulsante icona="martelletto" blocco={blocco({ tipo: 'asta' })} onClick={() => onMossa({ tipo: 'asta' })}>
+          Asta
+        </Pulsante>
       )}
       {libera && (
-        <Pulsante
-          testo={`Compra per ${euro(acquisto.prezzo)}`}
-          icona="piu"
-          blocco={blocco({ tipo: 'compra' })}
-          onClick={() => onMossa({ tipo: 'compra' })}
-        />
+        <Pulsante variante="ambra" icona="piu" blocco={blocco({ tipo: 'compra' })} onClick={() => onMossa({ tipo: 'compra' })}>
+          Compra per {euro(acquisto.prezzo)}
+        </Pulsante>
       )}
       {daDecidere ? null : t.rilancio ? (
-        <Pulsante testo="Tira ancora" icona="dado" blocco={blocco({ tipo: 'lancia' })} onClick={() => onMossa({ tipo: 'lancia' })} />
+        <Pulsante
+          variante={libera ? 'secondario' : 'ambra'}
+          icona="dado"
+          blocco={blocco({ tipo: 'lancia' })}
+          onClick={() => onMossa({ tipo: 'lancia' })}
+        >
+          Tira ancora
+        </Pulsante>
       ) : (
         <Pulsante
-          testo="Termina il turno"
+          variante={libera ? 'secondario' : 'ambra'}
           icona="spunta"
-          stile={libera ? 'secondario' : 'primario'}
           blocco={blocco({ tipo: 'fine_turno' })}
           onClick={() => onMossa({ tipo: 'fine_turno' })}
-        />
+        >
+          Termina il turno
+        </Pulsante>
       )}
     </div>
   );
@@ -513,7 +484,7 @@ export function Gioco({
       <span className="con-suggerimento con-suggerimento--righe" data-testo={blocco ? `${spiegazione}\n${blocco}` : spiegazione}>
         <button
           type="button"
-          className={`pulsante pulsante--piccolo ${p.ipotecata ? 'pulsante--secondario' : 'pulsante--ambra'}`}
+          className="pulsante pulsante--piccolo pulsante--secondario"
           disabled={blocco !== null}
           onClick={() => mossa(m)}
         >
@@ -528,11 +499,13 @@ export function Gioco({
 
   let finestraSopra: ReactNode = null;
   if (vivo.asta && inCorso) {
-    finestraSopra = <Asta partita={vivo} io={giocoIo} inviando={inviando} onOffri={(importo) => mossa({ tipo: 'offri', importo })} />;
+    finestraSopra = (
+      <Asta key="asta" partita={vivo} io={giocoIo} inviando={inviando} onOffri={(importo) => mossa({ tipo: 'offri', importo })} />
+    );
   } else if (finestraScambio?.tipo === 'vedi' && scambioVisto) {
     finestraSopra = (
       <VediScambio
-        key={scambioVisto.id}
+        key={`vedi-${scambioVisto.id}`}
         partita={vivo}
         io={giocoIo}
         scambio={scambioVisto}
@@ -548,7 +521,7 @@ export function Gioco({
     const chiave = chiaveBozza(finestraScambio.base);
     finestraSopra = (
       <EditorScambio
-        key={chiave}
+        key={`crea-${chiave}`}
         partita={vivo}
         io={giocoIo}
         base={baseTrattativa}
@@ -601,18 +574,22 @@ export function Gioco({
             }}
             sopra={
               <>
-                {popoverBordo !== null && inCorso && (
-                  <SchedaProprieta
-                    key={popoverBordo}
-                    mappa={partita.mappa}
-                    partita={partita}
-                    n={popoverBordo}
-                    onChiudi={() => setScheda(null)}
-                    className={stilePopover(popoverBordo, tab.caselle.length).classe}
-                    style={stilePopover(popoverBordo, tab.caselle.length).stile}
-                  />
-                )}
-                {finestraSopra}
+                <AnimatePresence>
+                  {popoverBordo !== null && inCorso && (
+                    <SchedaProprieta
+                      key={popoverBordo}
+                      animata
+                      mappa={partita.mappa}
+                      partita={partita}
+                      n={popoverBordo}
+                      onChiudi={() => setScheda(null)}
+                      className={stilePopover(popoverBordo, tab.caselle.length).classe}
+                      style={stilePopover(popoverBordo, tab.caselle.length).stile}
+                    />
+                  )}
+                </AnimatePresence>
+                {/* Un riquadro alla volta: il vecchio si chiude, poi si apre il nuovo. */}
+                <AnimatePresence mode="wait">{finestraSopra}</AnimatePresence>
                 {!inCorso && <FinePartita partita={partita} stanza={stanza} io={io} onEsci={onEsci} />}
               </>
             }
@@ -661,7 +638,7 @@ export function Gioco({
                 {giocoIo && <PulsanteVoto partita={vivo} io={giocoIo} inviando={inviando} onMossa={mossa} />}
                 <button
                   type="button"
-                  className="pulsante pulsante--piccolo pulsante--rosso"
+                  className="pulsante pulsante--piccolo pulsante--pericolo-tenue"
                   onClick={() => setBancarotta(true)}
                 >
                   <Icona nome="bandiera" />
@@ -683,12 +660,7 @@ export function Gioco({
             {!inCorso ? (
               <PannelloStatistiche partita={partita} onApri={() => setStatistiche(true)} />
             ) : me ? (
-              <section className="pannello mie" aria-labelledby="titolo-mie">
-                <header className="pannello__testa pannello__testa--centrata">
-                  <h2 id="titolo-mie" className="pannello__titolo">
-                    Le mie proprietà <span className="pannello__conta">({mie.length})</span>
-                  </h2>
-                </header>
+              <Pannello titolo="Le mie proprietà" conta={mie.length} className="mie">
                 <div className="pannello__scorri">
                   {consiglio && (
                     <div className="consiglio">
@@ -711,7 +683,7 @@ export function Gioco({
                       const p = partita.proprieta[n];
                       const livello = p?.livello ?? 0;
                       return (
-                        <li key={n}>
+                        <motion.li key={n} layout="position" transition={SCORRE}>
                           <button
                             type="button"
                             className={mia?.n === n ? 'mie__voce mie__voce--aperta' : 'mie__voce'}
@@ -735,20 +707,20 @@ export function Gioco({
                               </span>
                             )}
                           </button>
-                        </li>
+                        </motion.li>
                       );
                     })}
                     {me.carteGrazia.map((mazzo, i) => (
-                      <li key={`${mazzo}-${i}`}>
+                      <motion.li key={`${mazzo}-${i}`} layout="position" transition={SCORRE}>
                         <span className="mie__voce mie__voce--grazia" title="Ti fa uscire gratis di prigione">
                           <Icona nome="grazia" className="mie__icona" />
                           <span className="mie__nome">Carta Grazia</span>
                         </span>
-                      </li>
+                      </motion.li>
                     ))}
                   </ul>
                 </div>
-              </section>
+              </Pannello>
             ) : (
               <p className="spettatore">
                 <Icona nome="occhio" />
@@ -761,117 +733,130 @@ export function Gioco({
         }
       />
 
-      {mia && casellaMia && inCorso && (
-        <SchedaProprieta
-          key={`mia-${mia.n}`}
-          mappa={partita.mappa}
-          partita={partita}
-          n={mia.n}
-          onChiudi={() => setMia(null)}
-          className="scheda--mia"
-          style={{ top: Math.max(16, Math.min(mia.top - 120, window.innerHeight - 520)), right: mia.right }}
-          azioni={azioniMia}
-          ipoteca={ipotecaMia}
-        />
-      )}
+      <AnimatePresence>
+        {mia && casellaMia && inCorso && (
+          <SchedaProprieta
+            key={`mia-${mia.n}`}
+            animata
+            mappa={partita.mappa}
+            partita={partita}
+            n={mia.n}
+            onChiudi={() => setMia(null)}
+            className="scheda--mia"
+            style={{ top: Math.max(16, Math.min(mia.top - 120, window.innerHeight - 520)), right: mia.right }}
+            azioni={azioniMia}
+            ipoteca={ipotecaMia}
+          />
+        )}
+      </AnimatePresence>
 
-      {impostazioni && (
-        <Finestra titolo="Impostazioni della stanza" onChiudi={() => setImpostazioni(false)} larga>
-          <div className="finestra__scorri">
-            <p className="impostazioni__nota">Durante la partita le impostazioni non si possono cambiare.</p>
-            <ListaImpostazioni imp={partita.impostazioni} modificabile={false} />
-          </div>
-        </Finestra>
-      )}
+      <AnimatePresence>
+        {impostazioni && (
+          <Finestra key="impostazioni" titolo="Impostazioni della stanza" onChiudi={() => setImpostazioni(false)} larga>
+            <div className="finestra__scorri">
+              <p className="impostazioni__nota">Durante la partita le impostazioni non si possono cambiare.</p>
+              <ListaImpostazioni imp={partita.impostazioni} modificabile={false} />
+            </div>
+          </Finestra>
+        )}
+      </AnimatePresence>
 
-      {uscita && giocoIo && (
-        <Finestra titolo="Torna alla home" onChiudi={() => setUscita(false)}>
-          <div className="finestra__corpo">
-            <p>
-              Sei ancora in gioco: mentre sei via i tuoi turni passano da soli e, se non rientri entro due minuti, perdi il
-              posto nella partita.
-            </p>
-          </div>
-          <div className="finestra__azioni">
-            <button type="button" className="pulsante pulsante--fantasma" onClick={() => setUscita(false)}>
-              Resta
-            </button>
-            <button
-              type="button"
-              className="pulsante pulsante--rosso"
-              onClick={() => {
-                setUscita(false);
-                onEsci();
-              }}
-            >
-              <Icona nome="esci" />
-              Torna alla home
-            </button>
-          </div>
-        </Finestra>
-      )}
+      <AnimatePresence>
+        {uscita && giocoIo && (
+          <Finestra key="uscita" titolo="Torna alla home" tono="pericolo" icona="esci" onChiudi={() => setUscita(false)}>
+            <div className="finestra__corpo">
+              <p>
+                Sei ancora in gioco: mentre sei via i tuoi turni passano da soli e, se non rientri entro due minuti, perdi il
+                posto nella partita.
+              </p>
+            </div>
+            <div className="finestra__azioni">
+              <button type="button" className="pulsante pulsante--fantasma" onClick={() => setUscita(false)}>
+                Resta
+              </button>
+              <button
+                type="button"
+                className="pulsante pulsante--rosso"
+                onClick={() => {
+                  setUscita(false);
+                  onEsci();
+                }}
+              >
+                <Icona nome="esci" />
+                Torna alla home
+              </button>
+            </div>
+          </Finestra>
+        )}
+      </AnimatePresence>
 
-      {daTogliere && inCorso && (
-        <Finestra titolo="Togli dalla partita" onChiudi={() => setDaTogliere(null)}>
-          <div className="finestra__corpo">
-            <p>
-              Vuoi togliere <b>{daTogliere.nome}</b> dalla partita? {destinoDeiBeni(partita, daTogliere, false)} Non potrà più
-              giocare né scrivere in chat. Non si può annullare.
-            </p>
-          </div>
-          <div className="finestra__azioni">
-            <button type="button" className="pulsante pulsante--fantasma" onClick={() => setDaTogliere(null)}>
-              Annulla
-            </button>
-            <button
-              type="button"
-              className="pulsante pulsante--rosso"
-              onClick={() => {
-                const id = daTogliere.id;
-                setDaTogliere(null);
-                void collegamento.comando('espelli', { giocatore: id }).then((r) => {
-                  if (!r.ok) avvisa(r.messaggio, 'errore');
-                });
-              }}
-            >
-              <Icona nome="chiudi" />
-              Togli dalla partita
-            </button>
-          </div>
-        </Finestra>
-      )}
+      <AnimatePresence>
+        {daTogliere && inCorso && (
+          <Finestra key="togli" titolo="Togli dalla partita" tono="pericolo" onChiudi={() => setDaTogliere(null)}>
+            <div className="finestra__corpo">
+              <p>
+                Vuoi togliere <b>{daTogliere.nome}</b> dalla partita? {destinoDeiBeni(partita, daTogliere, false)} Non potrà più
+                giocare né scrivere in chat. Non si può annullare.
+              </p>
+            </div>
+            <div className="finestra__azioni">
+              <button type="button" className="pulsante pulsante--fantasma" onClick={() => setDaTogliere(null)}>
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="pulsante pulsante--rosso"
+                onClick={() => {
+                  const id = daTogliere.id;
+                  setDaTogliere(null);
+                  void collegamento.comando('espelli', { giocatore: id }).then((r) => {
+                    if (!r.ok) avvisa(r.messaggio, 'errore');
+                  });
+                }}
+              >
+                <Icona nome="chiudi" />
+                Togli dalla partita
+              </button>
+            </div>
+          </Finestra>
+        )}
+      </AnimatePresence>
 
       <FuoriDallaPartita codice={stanza.codice} partita={partita} io={io} onEsci={onEsci} />
 
-      {statistiche && !inCorso && <StatisticheComplete partita={partita} onChiudi={() => setStatistiche(false)} />}
+      <AnimatePresence>
+        {statistiche && !inCorso && <StatisticheComplete key="statistiche" partita={partita} onChiudi={() => setStatistiche(false)} />}
+      </AnimatePresence>
 
       {vistaInCorso && !inCorso && festa && io !== null && haVinto(partita, io) && (
         <Coriandoli onFine={() => setFesta(false)} />
       )}
 
-      {bancarotta && inCorso && (
-        <Finestra titolo="Dichiara bancarotta" onChiudi={() => setBancarotta(false)}>
-          <div className="finestra__corpo">
-            <p>Esci dalla partita. {me ? destinoDeiBeni(partita, me, true) : ''} Non si può annullare.</p>
-          </div>
-          <div className="finestra__azioni">
-            <button type="button" className="pulsante pulsante--fantasma" onClick={() => setBancarotta(false)}>
-              Annulla
-            </button>
-            <button
-              type="button"
-              className="pulsante pulsante--rosso"
-              onClick={() => {
-                setBancarotta(false);
-                mossa({ tipo: 'bancarotta' });
-              }}
-            >
-              <Icona nome="bandiera" />
-              Dichiara bancarotta
-            </button>
-          </div>
-        </Finestra>
-      )}
+      <AnimatePresence>
+        {bancarotta && inCorso && (
+          <Finestra key="bancarotta" titolo="Dichiara bancarotta" tono="pericolo" icona="bandiera" onChiudi={() => setBancarotta(false)}>
+            <div className="finestra__corpo">
+              <p>Esci dalla partita. {me ? destinoDeiBeni(partita, me, true) : ''} Non si può annullare.</p>
+            </div>
+            <div className="finestra__azioni">
+              <button type="button" className="pulsante pulsante--fantasma" onClick={() => setBancarotta(false)}>
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="pulsante pulsante--rosso"
+                onClick={() => {
+                  setBancarotta(false);
+                  mossa({ tipo: 'bancarotta' });
+                }}
+              >
+                <Icona nome="bandiera" />
+                Dichiara bancarotta
+              </button>
+            </div>
+          </Finestra>
+        )}
+      </AnimatePresence>
     </>
   );
 }

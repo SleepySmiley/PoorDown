@@ -9,7 +9,7 @@
   --k: calc(var(--lato) * 0.00122 * var(--scala, 1));
 
   /* Colori del tabellone scuro */
-  --tab-fondo: var(--cemento);
+  --tab-fondo: var(--sfondo);
   --tab-casella: #2a2e37;
   --tab-casella-hover: #343945;
   --tab-testo: #f4f1e8;
@@ -359,7 +359,7 @@ button.casella:hover {
   height: calc(var(--k) * 38);
   padding: calc(var(--k) * 7.5);
   border-radius: calc(var(--k) * 6);
-  background: var(--segnale);
+  background: var(--cartello);
   color: #fff;
   stroke-width: 2.2;
 }
@@ -396,7 +396,7 @@ button.casella:hover {
       rgb(255 255 255 / 0.3) 0 calc(var(--k) * 2.5),
       transparent calc(var(--k) * 2.5) calc(var(--k) * 9)
     ),
-    var(--cemento-scuro);
+    var(--linea-forte);
 }
 
 /* La scritta sta in fondo alla cella, sotto le pedine dei prigionieri. */
@@ -440,7 +440,7 @@ button.casella:hover {
   z-index: 5;
   display: grid;
   place-items: center;
-  color: var(--testo);
+  color: var(--testo-1);
 }
 
 /* ---------- Pedine sul tabellone: lo stesso disco con l'iniziale della lista ---------- */
@@ -513,28 +513,27 @@ button.casella:hover {
    Scheda della proprietà
    ===================================================================== */
 
+/* La scheda è un popover: superficie sollevata. La testata ha il colore della regione (le altre caselle sono neutre). */
 .scheda {
   width: 250px;
   overflow: hidden;
-  border-radius: 6px;
-  background: var(--smalto);
-  color: var(--testo);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+  color: var(--testo-1);
   font-size: 0.9375rem;
-  box-shadow:
-    inset 0 0 0 1px var(--bordo),
-    0 16px 40px rgb(0 0 0 / 0.6);
+  box-shadow: var(--e2);
 }
 
 .scheda__testa {
   position: relative;
-  padding: 0.625rem 1rem 0.75rem;
-  border-top: 9px solid var(--gruppo);
-  background: var(--segnale);
-  color: #fff;
+  padding: 0.75rem 1rem;
+  background: var(--gruppo, var(--sup-3));
+  color: var(--su-gruppo, #fff);
 }
 
 .scheda__testa--senza-regione {
-  border-top: 0;
+  background: var(--sup-3);
+  color: var(--testo-1);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -551,8 +550,8 @@ button.casella:hover {
   width: 30px;
   height: 30px;
   padding: 4px;
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 2px #fff;
+  border-radius: var(--r-1);
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 
 .scheda__nome {
@@ -569,14 +568,17 @@ button.casella:hover {
   height: 30px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--r-1);
   background: transparent;
-  color: #fff;
+  color: inherit;
   opacity: 0.8;
+  transition:
+    background-color var(--d-rapida),
+    opacity var(--d-rapida);
 }
 
 .scheda__chiudi:hover {
-  background: rgb(255 255 255 / 0.15);
+  background: color-mix(in srgb, currentColor 16%, transparent);
   opacity: 1;
 }
 
@@ -587,9 +589,10 @@ button.casella:hover {
 
 .scheda__ipoteca {
   padding: 0.375rem 1rem;
-  background: #2b2412;
-  color: #ffd47a;
-  font-size: 0.8125rem;
+  background: var(--sup-3);
+  color: var(--testo-1);
+  box-shadow: inset 3px 0 0 var(--linea-forte);
+  font: var(--t-piccolo);
   font-weight: 600;
 }
 
@@ -600,8 +603,8 @@ button.casella:hover {
 
 .scheda__affitti thead th {
   padding: 0.5rem 1rem 0.25rem;
-  color: var(--testo-tenue);
-  font: 600 0.6875rem/1 var(--normale);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   text-align: left;
@@ -627,12 +630,13 @@ button.casella:hover {
 }
 
 .scheda__affitti tbody tr:nth-child(odd) {
-  background: var(--riga);
+  background: var(--sup-1);
 }
 
+/* La riga dell'affitto di adesso: ambra. */
 .scheda__affitti tbody tr.scheda__attuale {
-  background: var(--segnale-chiaro);
-  box-shadow: inset 4px 0 0 var(--segnale);
+  background: var(--ambra-velo);
+  box-shadow: inset 3px 0 0 var(--ambra);
   font-weight: 600;
 }
 
@@ -648,8 +652,8 @@ button.casella:hover {
   justify-content: space-between;
   margin: 0.625rem 1rem 0;
   padding-top: 0.625rem;
-  border-top: 1px solid var(--riga);
-  color: var(--testo-tenue);
+  border-top: 1px solid var(--linea-forte);
+  color: var(--testo-2);
   font-size: 0.875rem;
 }
 
@@ -657,7 +661,7 @@ button.casella:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  color: var(--testo);
+  color: var(--testo-1);
   font: 600 1.0625rem/1 var(--stretto);
 }
 
@@ -679,8 +683,8 @@ button.casella:hover {
   display: grid;
   place-items: center;
   height: 18px;
-  color: var(--testo-tenue);
-  font-size: 0.75rem;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
 }
 
 .scheda__piede dt .icona {
@@ -692,51 +696,39 @@ button.casella:hover {
   font: 600 1.0625rem/1 var(--stretto);
 }
 
-/* Aperta accanto alla casella, verso il centro. */
+/* Aperta accanto alla casella, verso il centro. Si apre e si chiude con Motion (SchedaProprieta).
+   --margine (da geometria.ts) è lo spessore delle caselle lungo il bordo. */
 .scheda--popover {
   position: absolute;
   z-index: 6;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .scheda--popover {
-    animation: scheda-apre 0.18s cubic-bezier(0.2, 0.8, 0.3, 1.1);
-  }
-}
-
-@keyframes scheda-apre {
-  from {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
-
 .scheda--da-alto,
 .scheda--da-basso {
-  left: clamp(calc(var(--bordo) + 8px), calc(var(--x) - 125px), calc(100% - var(--bordo) - 258px));
+  left: clamp(calc(var(--margine) + 8px), calc(var(--x) - 125px), calc(100% - var(--margine) - 258px));
 }
 
 .scheda--da-alto {
-  top: calc(var(--bordo) + 8px);
+  top: calc(var(--margine) + 8px);
   transform-origin: top center;
 }
 
 .scheda--da-basso {
-  bottom: calc(var(--bordo) + 8px);
+  bottom: calc(var(--margine) + 8px);
   transform-origin: bottom center;
 }
 
 .scheda--da-destra,
 .scheda--da-sinistra {
-  top: clamp(calc(var(--bordo) + 8px), calc(var(--y) - 170px), calc(100% - var(--bordo) - 350px));
+  top: clamp(calc(var(--margine) + 8px), calc(var(--y) - 170px), calc(100% - var(--margine) - 350px));
 }
 
 .scheda--da-destra {
-  right: calc(var(--bordo) + 8px);
+  right: calc(var(--margine) + 8px);
   transform-origin: right center;
 }
 
 .scheda--da-sinistra {
-  left: calc(var(--bordo) + 8px);
+  left: calc(var(--margine) + 8px);
   transform-origin: left center;
 }

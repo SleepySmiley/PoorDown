@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { MotionConfig } from 'motion/react';
 import { usePagina } from './navigazione';
 import { collegamento, ingressi, postoTenuto } from './rete/sessione';
 import { Home } from './schermate/Home';
@@ -22,10 +23,11 @@ export function App(): ReactNode {
     void collegamento.esci();
   }, [pagina.tipo]);
 
+  // Motion rispetta la preferenza di sistema «meno movimento», come le animazioni CSS.
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       {pagina.tipo === 'home' ? <Home /> : <Stanza key={pagina.codice} codice={pagina.codice} />}
       <Notifiche />
-    </>
+    </MotionConfig>
   );
 }

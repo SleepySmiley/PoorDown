@@ -100,6 +100,6 @@ export function stilePopover(n: number, caselle: number): { classe: string; stil
   const bordo = `${ANGOLO * geo.unita}%`;
   return {
     classe: `scheda--popover scheda--da-${lato === 'angolo' ? 'alto' : lato}`,
-    stile: variabili({ '--x': `${x}%`, '--y': `${y}%`, '--bordo': bordo }),
+    stile: variabili({ '--x': `${x}%`, '--y': `${y}%`, '--margine': bordo }),
   };
 }

@@ -7,6 +7,7 @@
 
 import '../stili/economia.css';
 import { useState, type ReactNode } from 'react';
+import { motion } from 'motion/react';
 import {
   euro,
   NOTA_MAX,
@@ -31,6 +32,7 @@ import {
 import { caselleVista } from '../ui/caselle';
 import { Pedina, Soldi, Stemma } from '../ui/comuni';
 import { Icona } from '../ui/icone';
+import { SCORRE } from '../ui/movimento';
 import { iniziale } from '../ui/utili';
 import { RiquadroTabellone } from './Colonne';
 
@@ -123,7 +125,7 @@ export function PannelloScambi({
             else if (sc.a === io) stato = 'Per te';
             else if (sc.da === io) stato = 'In attesa';
             return (
-              <li key={sc.id}>
+              <motion.li key={sc.id} layout="position" transition={SCORRE}>
                 <button
                   type="button"
                   className={sc.a === io ? 'scambio scambio--per-me' : 'scambio'}
@@ -143,7 +145,7 @@ export function PannelloScambi({
                   )}
                   {stato && <span className="scambio__stato">{stato}</span>}
                 </button>
-              </li>
+              </motion.li>
             );
           })}
         </ul>
@@ -565,7 +567,7 @@ export function VediScambio({
           </span>
           <button
             type="button"
-            className="pulsante pulsante--rosso"
+            className="pulsante pulsante--pericolo-tenue"
             disabled={inviando}
             onClick={() => onMossa({ tipo: 'rifiuta', scambio: scambio.id })}
           >
@@ -583,7 +585,7 @@ export function VediScambio({
           <p className="scambio-finestra__attesa">Aspetti la risposta di {a.nome}.</p>
           <button
             type="button"
-            className="pulsante pulsante--pericolo"
+            className="pulsante pulsante--pericolo-tenue"
             disabled={inviando}
             onClick={() => onMossa({ tipo: 'annulla', scambio: scambio.id })}
           >

@@ -1,75 +1,5 @@
-/* Economia della partita: finestre sopra il tabellone (asta, scambi), pannello degli scambi,
-   pulsanti di costruzione e ipoteca sulla scheda. Stile Partenze: smalto scuro, blu segnaletica,
-   ambra per ciò che chiede attenzione, cifre a palette per i soldi. */
-
-/* ---------- Finestra sopra il tabellone ---------- */
-
-.sul-tabellone {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  padding: 12px;
-  border-radius: calc(var(--k) * 10);
-  background: rgb(10 12 16 / 0.74);
-}
-
-.sul-tabellone__riquadro {
-  display: flex;
-  flex-direction: column;
-  width: min(640px, 100%);
-  max-height: 100%;
-  overflow: auto;
-  border-radius: 8px;
-  background: var(--smalto);
-  box-shadow:
-    inset 0 0 0 1px var(--bordo),
-    0 24px 60px rgb(0 0 0 / 0.55);
-  outline: none;
-  container-type: inline-size;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .sul-tabellone {
-    animation: velo 0.2s ease-out;
-  }
-
-  .sul-tabellone__riquadro {
-    animation: finestra-apre 0.25s cubic-bezier(0.2, 0.8, 0.3, 1.1);
-  }
-}
-
-.sul-tabellone__testa {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 52px;
-  padding: 6px 10px 6px 20px;
-  border-top: 6px solid var(--segnale);
-  border-bottom: 1px solid var(--riga);
-  background: var(--smalto);
-}
-
-.sul-tabellone__testa h2 {
-  flex: 1;
-  color: var(--accento);
-  font: 700 1.5rem/1.1 var(--stretto);
-}
-
-/* ---------- Pulsanti in più ---------- */
-
-.pulsante--verde {
-  background: var(--verde);
-  color: var(--palette);
-}
-
-.pulsante--verde:hover:not(:disabled) {
-  background: #45cf84;
-}
+/* Economia della partita: asta, finestra dello scambio, pannello degli scambi, ipoteca sulla scheda.
+   Le basi (riquadro sopra il tabellone, pulsanti, suggerimenti) sono in partenze.css. */
 
 /* Suggerimento su più righe: nome del pulsante, poi il motivo per cui è spento. */
 .con-suggerimento.con-suggerimento--righe[data-testo]::after {
@@ -86,8 +16,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 16px 20px 2px;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5) 2px;
   font: 700 2.25rem/1.1 var(--stretto);
   text-align: center;
 }
@@ -101,20 +31,20 @@
 .asta__icona {
   width: 30px;
   height: 30px;
-  color: var(--accento);
+  color: var(--testo-1);
 }
 
 .asta__corpo {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 250px;
-  gap: 24px;
+  gap: var(--s-5);
   align-items: start;
-  padding: 14px 20px 20px;
+  padding: 14px var(--s-5) var(--s-5);
 }
 
 .asta__etichetta {
-  color: var(--testo-tenue);
-  font: 600 0.75rem/1 var(--normale);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -124,23 +54,23 @@
   align-items: center;
   gap: 14px;
   min-height: 64px;
-  margin-top: 8px;
+  margin-top: var(--s-2);
 }
 
 .asta__nessuno {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 2px var(--cemento-scuro);
+  box-shadow: inset 0 0 0 2px var(--linea-forte);
 }
 
 .asta__cifra {
   position: relative;
-  font-size: 2.25rem;
+  font-size: var(--palette-l);
 }
 
 .asta__vuota {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font: 600 1.25rem/1 var(--stretto);
 }
 
@@ -156,7 +86,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .asta__bolla {
-    animation: bolla-sale 1.4s ease-out;
+    animation: bolla-sale 1.4s var(--c-arrivo);
   }
 }
 
@@ -177,7 +107,7 @@
 }
 
 .asta__tempo {
-  margin: 16px 0 18px;
+  margin: var(--s-4) 0 18px;
 }
 
 .asta__scadenza {
@@ -192,7 +122,7 @@
 .asta__scadenza .icona {
   width: 18px;
   height: 18px;
-  color: var(--accento);
+  color: var(--testo-2);
 }
 
 .asta__scadenza--poco,
@@ -203,8 +133,8 @@
 .asta__barra {
   height: 8px;
   overflow: hidden;
-  border-radius: 999px;
-  background: var(--riga);
+  border-radius: var(--r-tondo);
+  background: var(--sup-3);
 }
 
 .asta__barra span {
@@ -220,7 +150,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 8px;
+  margin-top: var(--s-2);
 }
 
 .asta__rilanci > .con-suggerimento {
@@ -231,7 +161,7 @@
   flex-direction: column;
   gap: 0;
   width: 100%;
-  padding: 8px 10px;
+  padding: var(--s-2) 10px;
 }
 
 .asta__rilancio strong {
@@ -240,15 +170,16 @@
 }
 
 .asta__rilancio small {
-  font: 500 0.8125rem/1.2 var(--normale);
+  font: var(--t-piccolo);
+  font-weight: 500;
   opacity: 0.85;
 }
 
 .asta__guardi {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--testo-tenue);
+  gap: var(--s-2);
+  color: var(--testo-2);
 }
 
 .asta__guardi .icona {
@@ -258,9 +189,9 @@
 
 .asta__elenco {
   display: grid;
-  gap: 4px;
+  gap: var(--s-1);
   max-height: 150px;
-  margin-top: 16px;
+  margin-top: var(--s-4);
   overflow-y: auto;
 }
 
@@ -268,22 +199,22 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font-size: 0.9375rem;
 }
 
 .asta__offerta:first-child {
-  color: var(--testo);
+  color: var(--testo-1);
   font-size: 1.0625rem;
 }
 
 .asta__offerta b {
-  color: var(--testo);
+  color: var(--testo-1);
   font-weight: 600;
 }
 
-.scheda--asta {
-  box-shadow: inset 0 0 0 1px var(--bordo);
+.scheda.scheda--asta {
+  box-shadow: var(--e1);
 }
 
 /* Tabellone piccolo: la scheda va sotto. */
@@ -300,8 +231,7 @@
 /* ---------- Pannello degli scambi ---------- */
 
 .scambi__crea {
-  grid-column: 3;
-  justify-self: end;
+  margin-left: auto;
 }
 
 .scambi__creano {
@@ -309,15 +239,15 @@
   align-items: center;
   gap: 6px;
   margin: 10px 14px 0;
-  color: var(--testo-tenue);
-  font-size: 0.8125rem;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
 }
 
 .scambi__creano .icona {
   flex: none;
   width: 15px;
   height: 15px;
-  color: var(--accento);
+  color: var(--testo-2);
 }
 
 .scambi__lista {
@@ -332,6 +262,7 @@
   white-space: nowrap;
 }
 
+/* Proposta per me: adesso tocca a me rispondere, quindi ambra. */
 .scambio--per-me {
   box-shadow: inset 0 0 0 2px var(--ambra);
 }
@@ -347,7 +278,7 @@
   align-items: center;
   gap: 2px;
   margin-left: auto;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font: 500 0.8125rem/1 var(--normale);
 }
 
@@ -371,12 +302,12 @@
 }
 
 .scambio-finestra__scegli {
-  padding: 16px 20px 20px;
+  padding: var(--s-4) var(--s-5) var(--s-5);
 }
 
 .scambio-finestra__scegli > p {
   margin-bottom: 10px;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
 }
 
 .scambio-finestra__scegli ul {
@@ -391,16 +322,16 @@
   width: 100%;
   padding: 10px 14px;
   border: 0;
-  border-radius: 6px;
-  background: var(--riga);
-  color: var(--testo);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+  color: var(--testo-1);
   font: 600 1.25rem/1.1 var(--stretto);
   text-align: left;
-  transition: background-color 0.12s;
+  transition: background-color var(--d-rapida);
 }
 
 .scambio-finestra__giocatore:hover {
-  background: var(--segnale-chiaro);
+  background: var(--sup-3);
 }
 
 .scambio-finestra__giocatore .palette {
@@ -411,21 +342,21 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
   gap: 10px;
-  padding: 16px 16px 4px;
+  padding: var(--s-4) var(--s-4) var(--s-1);
 }
 
 .scambio-finestra__freccia {
   display: grid;
   place-items: start center;
   padding-top: 10px;
-  border-radius: 6px;
-  background: var(--segnale-chiaro);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
 }
 
 .scambio-finestra__freccia .icona {
   width: 22px;
   height: 22px;
-  color: var(--accento);
+  color: var(--testo-2);
 }
 
 .parte {
@@ -455,13 +386,13 @@
 }
 
 .parte__tu {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
   font-weight: 500;
 }
 
 .parte__nome small {
-  color: var(--testo-tenue);
-  font: 600 0.6875rem/1.2 var(--normale);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -472,14 +403,14 @@
   padding: 2px 4px;
   border: 0;
   background: transparent;
-  color: var(--accento);
+  color: var(--link);
   font: 500 0.8125rem/1.2 var(--normale);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .parte__cambia:hover {
-  color: var(--testo);
+  color: var(--testo-1);
 }
 
 .parte__soldi input[type='range'] {
@@ -492,34 +423,38 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  color: var(--testo-tenue);
-  font-size: 0.75rem;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
 }
 
 .parte__importo {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: var(--testo);
+  gap: var(--s-1);
+  color: var(--testo-1);
   font: 600 1rem/1 var(--stretto);
 }
 
+/* Il campo dell'importo è una cifra del quadro nero. */
 .parte__importo input {
   width: 84px;
-  padding: 4px 6px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--palette);
-  color: var(--carta-palette);
+  padding: 3px 5px;
+  border: 1px solid var(--quadro-linea);
+  border-radius: var(--r-1);
+  background: var(--quadro);
+  color: var(--quadro-testo);
   font: 600 1.125rem/1.1 var(--stretto);
   font-variant-numeric: tabular-nums;
   text-align: right;
-  box-shadow: inset 0 0 0 1px var(--palette-bordo);
+  transition:
+    border-color var(--d-rapida),
+    box-shadow var(--d-rapida);
 }
 
 .parte__importo input:focus {
-  outline: 2px solid var(--segnale);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--segnale);
+  box-shadow: 0 0 0 3px var(--segnale-velo);
 }
 
 .parte__contanti {
@@ -528,7 +463,7 @@
 
 .parte__lista {
   display: grid;
-  gap: 4px;
+  gap: var(--s-1);
   max-height: 240px;
   overflow-y: auto;
 }
@@ -536,22 +471,23 @@
 .voce-scambio {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-2);
   width: 100%;
   padding: 7px 10px;
   border: 0;
-  border-radius: 4px;
-  background: var(--riga);
-  color: var(--testo);
+  border-radius: var(--r-1);
+  background: var(--sup-2);
+  color: var(--testo-1);
   font: 600 1.0625rem/1.1 var(--stretto);
   text-align: left;
-  transition: background-color 0.12s;
+  transition: background-color var(--d-rapida);
 }
 
 button.voce-scambio:hover:not(:disabled) {
-  background: var(--palette-chiara);
+  background: var(--sup-3);
 }
 
+/* Scelta in uno scambio: è un controllo acceso, quindi blu. */
 .voce-scambio[aria-pressed='true'],
 .voce-scambio--scelta,
 button.voce-scambio[aria-pressed='true']:hover {
@@ -584,37 +520,38 @@ button.voce-scambio[aria-pressed='true']:hover {
 }
 
 .parte__niente {
-  color: var(--testo-tenue);
+  color: var(--testo-2);
+  font: var(--t-piccolo);
   font-size: 0.875rem;
 }
 
 .scambio-finestra__nota-campo {
-  padding: 10px 16px 0;
+  padding: 10px var(--s-4) 0;
 }
 
 .scambio-finestra__nota-campo textarea {
   width: 100%;
   resize: vertical;
-  font: inherit;
 }
 
 .scambio-finestra__nota-piede {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
-  color: var(--testo-tenue);
-  font-size: 0.75rem;
+  margin-top: var(--s-1);
+  color: var(--testo-2);
+  font: var(--t-piccolo);
 }
 
+/* La nota di chi propone: un riquadro neutro con la barra a sinistra. */
 .scambio-finestra__nota {
   display: flex;
   gap: 10px;
-  margin: 12px 16px 0;
-  padding: 10px 12px;
-  border-left: 4px solid var(--ambra);
-  border-radius: 4px;
-  background: var(--riga);
+  margin: var(--s-3) var(--s-4) 0;
+  padding: 10px var(--s-3);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+  box-shadow: inset 3px 0 0 var(--linea-forte);
   overflow-wrap: anywhere;
 }
 
@@ -622,17 +559,18 @@ button.voce-scambio[aria-pressed='true']:hover {
   flex: none;
   width: 18px;
   height: 18px;
-  color: var(--ambra);
+  color: var(--testo-2);
 }
 
 .scambio-finestra__problemi {
   display: flex;
   gap: 10px;
-  margin: 12px 16px 0;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: rgb(239 75 63 / 0.12);
-  color: #ffb3ad;
+  margin: var(--s-3) var(--s-4) 0;
+  padding: 10px var(--s-3);
+  border-radius: var(--r-2);
+  background: var(--rosso-velo);
+  color: var(--rosso-testo);
+  box-shadow: inset 3px 0 0 var(--rosso);
   font-size: 0.875rem;
 }
 
@@ -651,9 +589,9 @@ button.voce-scambio[aria-pressed='true']:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 12px 16px 0;
-  color: var(--testo-tenue);
-  font-size: 0.8125rem;
+  margin: var(--s-3) var(--s-4) 0;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
 }
 
 .scambio-finestra__occhi .icona {
@@ -664,8 +602,8 @@ button.voce-scambio[aria-pressed='true']:hover {
 .scambio-finestra .finestra__azioni {
   flex-wrap: wrap;
   align-items: center;
-  margin-top: 16px;
-  padding: 0 16px 16px;
+  margin-top: var(--s-4);
+  padding: 0 var(--s-4) var(--s-4);
 }
 
 .scambio-finestra__risposta {
@@ -674,7 +612,7 @@ button.voce-scambio[aria-pressed='true']:hover {
 
 .scambio-finestra__attesa {
   margin-right: auto;
-  color: var(--testo-tenue);
+  color: var(--testo-2);
 }
 
 /* ---------- Scheda della proprietà: ipoteca e azioni ---------- */
@@ -686,11 +624,11 @@ button.voce-scambio[aria-pressed='true']:hover {
 }
 
 .scheda--mia .scheda__testa {
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--r-2) var(--r-2) 0 0;
 }
 
 .scheda__ipoteca-azione {
-  padding: 0.625rem 1rem 0.125rem;
+  padding: 10px var(--s-4) 2px;
 }
 
 .scheda__ipoteca-azione .con-suggerimento {
