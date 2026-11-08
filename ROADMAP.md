@@ -94,13 +94,14 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** i test simulano partite intere senza errori.
 
 ### Fase 3 — Server: stanze e tempo reale · M
-- [ ] Creazione stanza (codice di 5 caratteri), ingresso, scelta colore, lista giocatori, host e cambio host, kick
-- [ ] Impostazioni modificabili solo dall'host e solo in lobby, avvio con almeno 2 giocatori
-- [ ] Comandi con conferma, eventi, vista filtrata, versione dello stato e risincronizzazione
-- [ ] Token del giocatore e riconnessione allo stesso posto
-- [ ] Spettatori, chat, pulizia delle stanze inattive
+- [x] Creazione stanza (codice di 5 caratteri), ingresso, scelta colore, lista giocatori, host e cambio host, kick
+- [x] Impostazioni modificabili solo dall'host e solo in lobby, avvio con almeno 2 giocatori
+- [x] Comandi con conferma, eventi, vista filtrata, versione dello stato e risincronizzazione
+- [x] Token del giocatore e riconnessione allo stesso posto
+- [x] Spettatori, chat, pulizia delle stanze inattive
+- [x] In più: salvataggio delle stanze su file (la partita riprende dopo un riavvio), "Gioca" ed elenco delle stanze pubbliche, collegamento lato browser con risincronizzazione, banco di prova provvisorio su `/prova`
 
-**Fatto quando:** due browser giocano una partita completa tramite script di test.
+**Fatto quando:** due browser giocano una partita completa tramite script di test. ✔ Fatto: test di rete con due client fino alla fine della partita, più prova con tre browser Edge (partita completa, ricarica a metà partita, spettatrice, riavvio del server).
 
 ### Fase 4 — Prima partita giocabile · L ⭐
 - [ ] Home, pagina di ingresso alla stanza, lobby completa con le 12 impostazioni
@@ -152,6 +153,8 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Proprietà di chi fa bancarotta | Tornano alla banca libere, senza asta automatica |
 | Impostazioni dopo "Un'altra partita" | Restano quelle della partita precedente |
 | Cronologia della chat per chi entra dopo | Mostrati gli ultimi 50 messaggi |
+| Chi chiude la pagina in lobby | Tiene il posto per 2 minuti, poi lo perde (e il ruolo di host passa al successivo) |
+| Codice della stanza | 5 caratteri senza 0/o e 1/l/i, per poterlo dettare a voce |
 | Carte "Ogni giocatore ti dà" e "Paga a ogni giocatore" senza contante | Il debito si aggancia come per l'affitto (richup non lo aggancia) |
 | Tirare i dadi con il saldo negativo | Non si può, né prima né dopo il lancio: prima si vende o si dichiara bancarotta |
 

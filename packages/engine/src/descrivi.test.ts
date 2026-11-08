@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { descrivi, euro } from './descrivi';
+import { descrivi, descriviVoce, euro } from './descrivi';
 import { dadi, esegui, partitaDiProva, primaCarta } from './prove';
 
 describe('descrivi', () => {
@@ -33,5 +33,15 @@ describe('descrivi', () => {
     const s = primaCarta(partitaDiProva(), 'cartolina', 13);
     const { stato, eventi } = esegui(s, { tipo: 'lancia', giocatore: 'a' }, dadi([3, 5]));
     expect(eventi.map((e) => descrivi(e, stato))).toContain('Anna pesca una Cartolina: «Aiuti un parente. Paga 50 €.»');
+  });
+
+  it('scrive anche i fatti della lobby', () => {
+    expect(descriviVoce({ tipo: 'ingresso', giocatore: 'x', nome: 'Sara', colore: 5 }, null)).toBe('Sara entra nella partita.');
+    expect(descriviVoce({ tipo: 'uscita', giocatore: 'x', nome: 'Sara', motivo: 'volontaria' }, null)).toBe('Sara lascia la stanza.');
+    expect(descriviVoce({ tipo: 'uscita', giocatore: 'x', nome: 'Sara', motivo: 'espulsione' }, null)).toBe(
+      'Espulsione: Sara lascia la stanza.',
+    );
+    expect(descriviVoce({ tipo: 'nuovo_host', giocatore: 'y', nome: 'Luca' }, null)).toBe('Luca ora è l’host della stanza.');
+    expect(descriviVoce({ tipo: 'inizio', ordineCasuale: false }, partitaDiProva())).toBe('La partita comincia.');
   });
 });

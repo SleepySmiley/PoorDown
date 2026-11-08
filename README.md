@@ -33,6 +33,14 @@ Se la 3000 è occupata, scegline un'altra con la variabile `PORT`:
 $env:PORT=3001; npm start
 ```
 
+### Provare le stanze (provvisorio)
+
+Finché non arrivano le schermate vere (Fase 4), all'indirizzo `/prova` c'è un banco di prova senza grafica: si crea una stanza, gli amici entrano con il link, si siedono al tavolo e giocano. Per giocare da due schede dello stesso browser aggiungi `?profilo=due` all'indirizzo della seconda: è un giocatore diverso.
+
+### Partite salvate
+
+Le stanze vengono salvate su file mentre si gioca, così una partita riprende anche se il server si spegne. Il file sta in `%LOCALAPPDATA%\PoorDown\stanze.json` su Windows (`~/.poordown/stanze.json` altrove); per cambiarlo imposta la variabile `POORDOWN_DATI` con un'altra cartella. Le stanze in cui non entra nessuno per 30 minuti vengono chiuse.
+
 ## Comandi
 
 | Comando | Cosa fa |
@@ -49,7 +57,7 @@ $env:PORT=3001; npm start
 
 ```
 packages/engine   regole del gioco, condivise tra server e browser
-apps/server       server Node: serve il sito e gestisce le partite (Express + Socket.IO)
+apps/server       server Node: serve il sito e gestisce stanze e partite (Express + Socket.IO)
 apps/web          interfaccia (React + Vite)
 docs/analisi      analisi di riferimento usata come specifica
 ```

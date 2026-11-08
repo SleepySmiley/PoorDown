@@ -1,0 +1,200 @@
+/* Banco di prova della Fase 3: essenziale, si appoggia ai colori di stile.css. */
+
+.prova {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.prova h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.prova h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.prova__testa {
+  margin-bottom: 1rem;
+}
+
+.prova__nota {
+  margin: 0.25rem 0;
+  color: var(--testo-tenue);
+  font-size: 0.9rem;
+}
+
+.prova__rete {
+  font-weight: 600;
+}
+
+.prova__rete--attivo {
+  color: var(--ok);
+}
+
+.prova__rete--perso {
+  color: var(--errore);
+}
+
+.prova__rete--in_corso {
+  color: var(--attesa);
+}
+
+.prova__errore {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--errore);
+  border-radius: 6px;
+  color: var(--errore);
+}
+
+.prova__griglia {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+
+.prova__riquadro {
+  padding: 1rem;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--superficie);
+}
+
+.prova__riquadro--largo {
+  grid-column: 1 / -1;
+}
+
+.prova__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.prova__fila--spazio {
+  justify-content: space-between;
+  margin: 0;
+}
+
+.prova__colonna {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.prova button,
+.prova input,
+.prova select {
+  font: inherit;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--bordo);
+  border-radius: 6px;
+  background: var(--sfondo);
+  color: var(--testo);
+}
+
+.prova input[type='checkbox'] {
+  padding: 0;
+}
+
+.prova button {
+  cursor: pointer;
+}
+
+.prova button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.prova .prova__principale {
+  border-color: #14427f;
+  background: #14427f;
+  color: #fff;
+  font-weight: 600;
+}
+
+.prova .prova__pericolo {
+  border-color: var(--errore);
+  color: var(--errore);
+}
+
+.prova__elenco,
+.prova__chat,
+.prova__registro {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prova__elenco li,
+.prova__chat li {
+  padding: 0.2rem 0;
+}
+
+.prova__registro {
+  max-height: 18rem;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+.prova__registro li {
+  padding: 0.15rem 0;
+  border-bottom: 1px solid var(--bordo);
+}
+
+.prova__chat {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.prova__pallino {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  vertical-align: -0.05rem;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+}
+
+.prova__tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.prova__tabella th,
+.prova__tabella td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--bordo);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prova__tabella td:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.prova__di-turno {
+  background: color-mix(in srgb, #ffb81c 18%, transparent);
+}
+
+.prova__rosso {
+  color: var(--errore);
+  font-weight: 600;
+}
+
+.prova__mosse {
+  margin-top: 1rem;
+}
+
+.prova__esito {
+  font-size: 1.15rem;
+  font-weight: 700;
+}

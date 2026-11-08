@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { NOME_GIOCO, VERSIONE, type EventiClient, type EventiServer, type InfoServer } from '@poordown/engine';
 import { CodiceQr } from './CodiceQr';
+import { tokenDelBrowser } from './rete/token';
 
 type Collegamento = 'in-corso' | 'attivo' | 'perso';
 
@@ -14,11 +15,10 @@ const TESTO_COLLEGAMENTO: Record<Collegamento, string> = {
 /** Pagina provvisoria della Fase 0: controlla che server e rete locale funzionino. */
 export function App() {
   const [collegamento, setCollegamento] = useState<Collegamento>('in-corso');
-  const [browser, setBrowser] = useState<number | null>(null);
   const [info, setInfo] = useState<InfoServer | null>(null);
 
   useEffect(() => {
-    const socket: Socket<EventiServer, EventiClient> = io();
+    const socket: Socket<EventiServer, EventiClient> = io({ auth: { token: tokenDelBrowser() } });
     socket.on('connect', () => {
       setCollegamento('attivo');
       fetch('/api/info')
@@ -28,7 +28,6 @@ export function App() {
     });
     socket.on('disconnect', () => setCollegamento('perso'));
     socket.on('connect_error', () => setCollegamento('perso'));
-    socket.on('presenze', setBrowser);
     return () => {
       socket.disconnect();
     };
@@ -53,9 +52,9 @@ export function App() {
           <span className="pallino" aria-hidden="true" />
           {TESTO_COLLEGAMENTO[collegamento]}
         </p>
-        {collegamento === 'attivo' && browser !== null && (
+        {collegamento === 'attivo' && (
           <p className="nota">
-            {browser === 1 ? 'C’è 1 browser collegato: questo.' : `Ci sono ${browser} browser collegati.`}
+            Le stanze funzionano già: provale nel <a href="/prova">banco di prova</a>, anche da più browser insieme.
           </p>
         )}
         {collegamento === 'perso' && (
@@ -88,7 +87,7 @@ export function App() {
         )}
       </section>
 
-      <footer className="nota piede">Fase 0 · Fondamenta</footer>
+      <footer className="nota piede">Fase 3 · Server e stanze</footer>
     </main>
   );
 }

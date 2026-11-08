@@ -1,0 +1,322 @@
+/*
+ * Prove di rete: un server Socket.IO vero su una porta locale e più client, come tanti browser.
+ * Il caso è ripetibile (seme fisso) e l'orologio si sposta a mano.
+ */
+
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { Server } from 'socket.io';
+import { io as apriPresa, type Socket } from 'socket.io-client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  mossePossibili,
+  type Aggiornamento,
+  type Comandi,
+  type EventiClient,
+  type EventiServer,
+  type IdGiocatore,
+  type Istantanea,
+  type MessaggioChat,
+  type Mossa,
+  type NomeComando,
+  type Risposta,
+  type Stato,
+  type VistaStanza,
+} from '@poordown/engine';
+import { GestoreStanze } from './gestore';
+import { ambienteDiProva, TOKEN } from './prove';
+import { ATTESA_LOBBY_MS } from './stanza';
+import { collegaTempoReale, type DatiSocket } from './tempo-reale';
+
+type Presa = Socket<EventiServer, EventiClient>;
+
+/** Un browser finto: registra tutto quello che riceve. */
+class Browser {
+  readonly aggiornamenti: Aggiornamento[] = [];
+  readonly messaggi: MessaggioChat[] = [];
+  readonly scrive: IdGiocatore[] = [];
+  /** Tutto il testo ricevuto dal server, per controllare che non contenga segreti. */
+  ricevuto = '';
+  stanza: VistaStanza | null = null;
+  io: IdGiocatore | null = null;
+
+  constructor(readonly presa: Presa) {
+    presa.onAny((_evento, ...args: unknown[]) => {
+      this.ricevuto += JSON.stringify(args);
+    });
+    presa.on('aggiornamento', (a) => {
+      this.aggiornamenti.push(a);
+      this.stanza = a.stanza;
+      this.io = a.io;
+    });
+    presa.on('messaggio', (m) => this.messaggi.push(m));
+    presa.on('scrive', (id) => this.scrive.push(id));
+  }
+
+  async comando<K extends NomeComando>(nome: K, dati: Comandi[K]['dati']): Promise<Risposta<Comandi[K]['risposta']>> {
+    const presa = this.presa.timeout(2_000) as unknown as {
+      emitWithAck(nome: string, dati: unknown): Promise<Risposta<Comandi[K]['risposta']>>;
+    };
+    const risposta = await presa.emitWithAck(nome, dati);
+    this.ricevuto += JSON.stringify(risposta);
+    return risposta;
+  }
+
+  /** Esegue il comando e fallisce il test se il server lo rifiuta. */
+  async ok<K extends NomeComando>(nome: K, dati: Comandi[K]['dati']): Promise<Comandi[K]['risposta']> {
+    const risposta = await this.comando(nome, dati);
+    if (!risposta.ok) throw new Error(`${nome} rifiutato: ${risposta.codice} – ${risposta.messaggio}`);
+    return risposta.dati;
+  }
+
+  async entra(codice: string): Promise<Istantanea> {
+    const istantanea = await this.ok('entra', { codice });
+    this.stanza = istantanea.stanza;
+    this.io = istantanea.io;
+    return istantanea;
+  }
+
+  get partita(): Stato {
+    if (!this.stanza?.partita) throw new Error('Nessuna partita in corso.');
+    return this.stanza.partita;
+  }
+}
+
+let chiudi: (() => Promise<void>) | null = null;
+const prese: Presa[] = [];
+
+afterEach(async () => {
+  for (const presa of prese.splice(0)) presa.disconnect();
+  await chiudi?.();
+  chiudi = null;
+});
+
+async function avviaServer() {
+  const http = createServer();
+  const io = new Server<EventiClient, EventiServer, Record<string, never>, DatiSocket>(http, { serveClient: false });
+  const amb = ambienteDiProva(42);
+  const gestore = new GestoreStanze(amb);
+  const tempoReale = collegaTempoReale(io, gestore);
+  await new Promise<void>((pronto) => http.listen(0, '127.0.0.1', pronto));
+  const url = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
+  chiudi = () => new Promise<void>((fatto) => void io.close(() => fatto()));
+
+  async function browser(token: string): Promise<Browser> {
+    const presa: Presa = apriPresa(url, { auth: { token }, transports: ['websocket'], forceNew: true, reconnection: false });
+    prese.push(presa);
+    await new Promise<void>((pronto, errore) => {
+      presa.once('connect', pronto);
+      presa.once('connect_error', errore);
+    });
+    return new Browser(presa);
+  }
+
+  return { amb, gestore, tempoReale, browser, url };
+}
+
+/** Lobby con Anna (host) e Bruno seduti; ordine dei turni fisso. */
+async function lobbyADue() {
+  const server = await avviaServer();
+  const anna = await server.browser(TOKEN.anna);
+  const bruno = await server.browser(TOKEN.bruno);
+  const { codice } = await anna.ok('crea_stanza', { privata: true });
+  await anna.entra(codice);
+  await bruno.entra(codice.toUpperCase());
+  await anna.ok('siediti', { nome: 'Anna', colore: 1 });
+  await bruno.ok('siediti', { nome: 'Bruno', colore: 2 });
+  await anna.ok('impostazioni', { ordineCasuale: false });
+  return { ...server, anna, bruno, codice };
+}
+
+/** Un giocatore semplice: vende se è in rosso, compra sempre, tira, chiude il turno. */
+function scegliMossa(s: Stato, id: IdGiocatore): Mossa {
+  const possibili = mossePossibili(s, id);
+  const prima = (tipo: Mossa['tipo']) => possibili.find((m) => m.tipo === tipo);
+  const io = s.giocatori.find((g) => g.id === id)!;
+  const mossa = io.saldo < 0 ? prima('vendi') ?? prima('bancarotta') : prima('compra') ?? prima('lancia') ?? prima('fine_turno');
+  if (!mossa) throw new Error(`Nessuna mossa possibile per ${io.nome}.`);
+  return mossa;
+}
+
+describe('partita completa a due', () => {
+  it('Anna e Bruno giocano fino alla fine: stessi aggiornamenti, versioni senza buchi, niente segreti', async () => {
+    const { anna, bruno, codice } = await lobbyADue();
+    await anna.ok('avvia', {});
+    expect(anna.stanza!.fase).toBe('partita');
+    const versioneIniziale = anna.stanza!.versione;
+
+    const perId = new Map([
+      [anna.io!, anna],
+      [bruno.io!, bruno],
+    ]);
+    let mosse = 0;
+    for (; mosse < 3_000 && anna.stanza!.fase === 'partita'; mosse++) {
+      // Dopo 40 turni chi aspetta si arrende: senza case (Fase 5) la partita non finirebbe mai.
+      const s = anna.partita;
+      if (s.turno.numero > 40) {
+        const altro = s.giocatori.find((g) => g.id !== s.turno.giocatore)!;
+        await perId.get(altro.id)!.ok('mossa', { tipo: 'bancarotta' });
+        continue;
+      }
+      const chi = perId.get(s.turno.giocatore)!;
+      await chi.ok('mossa', scegliMossa(chi.partita, chi.io!));
+      // L'aggiornamento arriva prima della risposta: chi ha mosso è già allineato, l'altro lo aspetta.
+      await vi.waitFor(() => {
+        expect(anna.stanza!.versione).toBe(chi.stanza!.versione);
+        expect(bruno.stanza!.versione).toBe(chi.stanza!.versione);
+      });
+    }
+
+    expect(anna.stanza!.fase).toBe('finita');
+    await vi.waitFor(() => expect(bruno.stanza!.versione).toBe(anna.stanza!.versione));
+    expect(bruno.stanza).toEqual(anna.stanza);
+    expect(anna.partita.vincitore).not.toBeNull();
+    expect(mosse).toBeGreaterThan(40);
+
+    for (const b of [anna, bruno]) {
+      const versioni = b.aggiornamenti.map((a) => a.stanza.versione).filter((v) => v > versioneIniziale);
+      expect(versioni).toEqual(versioni.map((_, i) => versioneIniziale + 1 + i));
+      expect(b.ricevuto).not.toContain(TOKEN.anna);
+      expect(b.ricevuto).not.toContain(TOKEN.bruno);
+      expect(b.aggiornamenti.every((a) => a.stanza.partita === null || a.stanza.partita.mazzi.busta.ordine.length === 0)).toBe(true);
+    }
+
+    // Il registro di chi entra dopo coincide con gli ultimi eventi ricevuti dal vivo.
+    const sincronizzata = await anna.ok('sincronizza', {});
+    const dalVivo = anna.aggiornamenti.flatMap((a) => a.voci);
+    expect(sincronizzata.registro).toEqual(dalVivo.slice(-sincronizzata.registro.length));
+    expect(sincronizzata.stanza.codice).toBe(codice);
+  });
+});
+
+describe('ingresso e identità', () => {
+  it('senza token il server rifiuta la connessione', async () => {
+    const { url } = await avviaServer();
+    const presa: Presa = apriPresa(url, { transports: ['websocket'], forceNew: true, reconnection: false });
+    prese.push(presa);
+    const errore = await new Promise<Error>((fatto) => presa.once('connect_error', fatto));
+    expect(errore.message).toBe('token_non_valido');
+  });
+
+  it('stanza inesistente: errore con il codice in maiuscolo', async () => {
+    const { browser } = await avviaServer();
+    const anna = await browser(TOKEN.anna);
+    expect(await anna.comando('entra', { codice: 'zzzzz' })).toEqual({
+      ok: false,
+      codice: 'stanza_inesistente',
+      messaggio: 'Non trovo la stanza ZZZZZ: è scaduta o è stata chiusa.',
+    });
+  });
+
+  it('chi ricarica la pagina ritrova il suo posto, in lobby e in partita', async () => {
+    const { anna, bruno, codice, browser } = await lobbyADue();
+    const idBruno = bruno.io;
+    bruno.presa.disconnect();
+    await vi.waitFor(() => expect(anna.stanza!.partecipanti[1]!.connesso).toBe(false));
+
+    const brunoDiNuovo = await browser(TOKEN.bruno);
+    const istantanea = await brunoDiNuovo.entra(codice);
+    expect(istantanea.io).toBe(idBruno);
+    await vi.waitFor(() => expect(anna.stanza!.partecipanti[1]!.connesso).toBe(true));
+
+    await anna.ok('avvia', {});
+    brunoDiNuovo.presa.disconnect();
+    const ancoraBruno = await browser(TOKEN.bruno);
+    expect((await ancoraBruno.entra(codice)).io).toBe(idBruno);
+    expect(ancoraBruno.stanza!.partita!.giocatori.map((g) => g.id)).toContain(idBruno);
+  });
+
+  it('a partita iniziata chi arriva guarda soltanto', async () => {
+    const { anna, codice, browser } = await lobbyADue();
+    await anna.ok('avvia', {});
+    const carla = await browser(TOKEN.carla);
+    const istantanea = await carla.entra(codice);
+    expect(istantanea.io).toBeNull();
+    expect(istantanea.stanza.spettatori).toBe(1);
+    await vi.waitFor(() => expect(anna.stanza!.spettatori).toBe(1));
+    expect(await carla.comando('siediti', { nome: 'Carla', colore: 3 })).toMatchObject({ codice: 'partita_iniziata' });
+    expect(await carla.comando('mossa', { tipo: 'lancia' })).toMatchObject({ codice: 'non_seduto' });
+    expect(await carla.comando('scrivi', { testo: 'ciao' })).toMatchObject({ codice: 'non_seduto' });
+  });
+
+  it('cambiare stanza libera il posto nella precedente', async () => {
+    const { anna, bruno } = await lobbyADue();
+    const { codice: altra } = await bruno.ok('crea_stanza', { privata: true });
+    await bruno.entra(altra);
+    await vi.waitFor(() => expect(anna.stanza!.partecipanti.map((p) => p.nome)).toEqual(['Anna']));
+  });
+});
+
+describe('lobby in tempo reale', () => {
+  it('l’espulso riceve l’aggiornamento senza posto e resta a guardare', async () => {
+    const { anna, bruno } = await lobbyADue();
+    await anna.ok('espelli', { giocatore: bruno.io! });
+    await vi.waitFor(() => expect(bruno.io).toBeNull());
+    expect(bruno.aggiornamenti.at(-1)!.voci.map((v) => v.evento)).toContainEqual(
+      expect.objectContaining({ tipo: 'uscita', nome: 'Bruno', motivo: 'espulsione' }),
+    );
+    expect(bruno.stanza!.spettatori).toBe(1);
+  });
+
+  it('chi sparisce dalla lobby per 2 minuti perde il posto e l’host passa al successivo', async () => {
+    const { anna, bruno, amb, tempoReale } = await lobbyADue();
+    anna.presa.disconnect();
+    await vi.waitFor(() => expect(bruno.stanza!.partecipanti[0]!.connesso).toBe(false));
+    amb.avanza(ATTESA_LOBBY_MS);
+    tempoReale.manutenzione();
+    await vi.waitFor(() => expect(bruno.stanza!.host).toBe(bruno.io));
+    expect(bruno.stanza!.partecipanti.map((p) => p.nome)).toEqual(['Bruno']);
+  });
+
+  it('chat e "sta scrivendo" arrivano agli altri', async () => {
+    const { anna, bruno } = await lobbyADue();
+    anna.presa.emit('sta_scrivendo');
+    await vi.waitFor(() => expect(bruno.scrive).toEqual([anna.io]));
+    await anna.ok('scrivi', { testo: 'Ciao Bruno' });
+    await vi.waitFor(() => expect(bruno.messaggi.map((m) => m.testo)).toEqual(['Ciao Bruno']));
+    expect(anna.scrive).toEqual([]);
+    expect(anna.messaggi).toHaveLength(1);
+    expect((await bruno.ok('sincronizza', {})).chat.map((m) => m.testo)).toEqual(['Ciao Bruno']);
+  });
+
+  it('le stanze pubbliche compaiono nell’elenco; "Gioca" porta nella prima con un posto', async () => {
+    const { browser } = await avviaServer();
+    const anna = await browser(TOKEN.anna);
+    expect(await anna.ok('elenco_stanze', {})).toEqual([]);
+    const { codice } = await anna.ok('gioca', {});
+    await anna.entra(codice);
+    await anna.ok('siediti', { nome: 'Anna', colore: 1 });
+    const bruno = await browser(TOKEN.bruno);
+    expect((await bruno.ok('gioca', {})).codice).toBe(codice);
+    expect(await bruno.ok('elenco_stanze', {})).toMatchObject([{ codice, giocatori: [{ nome: 'Anna', colore: 1 }] }]);
+  });
+});
+
+describe('robustezza', () => {
+  it('dati sbagliati: risposta di errore, il server resta in piedi', async () => {
+    const { anna } = await lobbyADue();
+    const grezzo = anna.presa as unknown as { emitWithAck(...args: unknown[]): Promise<unknown> };
+    expect(await anna.comando('mossa', { tipo: 'teletrasporto' } as unknown as Mossa)).toMatchObject({
+      codice: 'richiesta_non_valida',
+    });
+    expect(await anna.comando('impostazioni', { giocatoriMax: 99 })).toMatchObject({ codice: 'richiesta_non_valida' });
+    expect(await anna.comando('siediti', { nome: 42, colore: 'rosso' } as unknown as { nome: string; colore: number })).toMatchObject({
+      codice: 'richiesta_non_valida',
+    });
+    // Comando senza dati, solo con la risposta.
+    expect(await grezzo.emitWithAck('avvia')).toMatchObject({ ok: true });
+    // Comandi senza risposta: ignorati.
+    const senzaTipi = anna.presa as unknown as { emit(...args: unknown[]): void };
+    senzaTipi.emit('elenco_stanze', {});
+    senzaTipi.emit('comando_inventato', {});
+    expect(await anna.ok('sincronizza', {})).toMatchObject({ stanza: { fase: 'partita' } });
+  });
+
+  it('fuori da una stanza i comandi di stanza rispondono "fuori_stanza"', async () => {
+    const { browser } = await avviaServer();
+    const anna = await browser(TOKEN.anna);
+    expect(await anna.comando('avvia', {})).toMatchObject({ codice: 'fuori_stanza' });
+    expect(await anna.comando('sincronizza', {})).toMatchObject({ codice: 'fuori_stanza' });
+    expect(await anna.comando('esci', {})).toEqual({ ok: true, dati: null });
+  });
+});

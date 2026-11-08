@@ -1,6 +1,7 @@
 /* Testi del registro di partita, in italiano e con tono sobrio. */
 
 import { giocatore } from './conti';
+import type { EventoStanza } from './protocollo';
 import { tabellone } from './tabelloni';
 import type { Casella, Evento, IdGiocatore, NomeMazzo, Stato } from './tipi';
 
@@ -85,6 +86,31 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
     }
     case 'fine':
       return evento.vincitore ? `Partita finita. Vince ${nome(evento.vincitore)}.` : 'Partita finita.';
+  }
+}
+
+/**
+ * Riga del registro della stanza: i fatti della lobby (ingressi, uscite, cambio di host) e quelli della partita.
+ * `partita` è `null` in lobby.
+ */
+export function descriviVoce(evento: EventoStanza, partita: Stato | null): string | null {
+  switch (evento.tipo) {
+    case 'ingresso':
+      return `${evento.nome} entra nella partita.`;
+    case 'uscita':
+      switch (evento.motivo) {
+        case 'volontaria':
+          return `${evento.nome} lascia la stanza.`;
+        case 'espulsione':
+          return `Espulsione: ${evento.nome} lascia la stanza.`;
+        case 'assenza':
+          return `Assenza prolungata: ${evento.nome} lascia la stanza.`;
+      }
+      return null;
+    case 'nuovo_host':
+      return `${evento.nome} ora è l’host della stanza.`;
+    default:
+      return partita ? descrivi(evento, partita) : null;
   }
 }
 
