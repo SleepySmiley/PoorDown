@@ -59,6 +59,15 @@ export {
   SCAMBI_APERTI_MAX,
   type BozzaScambio,
 } from './scambi';
+export {
+  classifica,
+  contaMessaggio,
+  durata,
+  piuVolteInPrigione,
+  proprietaPiuVisitata,
+  statisticheIniziali,
+  type Piazzamento,
+} from './statistiche';
 export { tabellone, TABELLONI } from './tabelloni';
 export {
   ASSENZA_MS,

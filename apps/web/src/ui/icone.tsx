@@ -192,6 +192,16 @@ const TRACCIATI = {
   scollegato: <path d="M2.5 8.5a14 14 0 0 1 5.2-3.2M12 4.5a14 14 0 0 1 9.5 4M5.8 12.2a9 9 0 0 1 4.4-2.3M15.8 10.6a9 9 0 0 1 2.4 1.6M9.2 15.8a4.5 4.5 0 0 1 5.6 0M12 19.5h0M3.5 3.5l17 17" />,
   matita: <path d="M4 20h4.5L19.5 9 15 4.5 4 15.5zM12.5 7l4.5 4.5" />,
   nota: <path d="M5 4h14v16H5zM8.5 9h7M8.5 12.5h7M8.5 16h4" />,
+  coppa: (
+    <path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4.5v1a3.5 3.5 0 0 0 3 3.4M17 6h2.5v1a3.5 3.5 0 0 1-3 3.4M12 14v4M8 20.5h8M9.5 18h5" />
+  ),
+  segnaposto: (
+    <>
+      <path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.8" r="2.4" />
+    </>
+  ),
+  grafico: <path d="M4 4v16h16M7.5 15.5l3.5-4.5 3 2.5 5-6.5" />,
 } as const;
 
 export type NomeIcona = keyof typeof TRACCIATI;

@@ -20,6 +20,25 @@ export const ESITO_USCITA: Record<MotivoUscita, string> = {
   espulsione: 'Espulsione',
 };
 
+/** 2_896_000 → "48 minuti e 16 secondi"; 3_725_000 → "1 ora, 2 minuti e 5 secondi". */
+export function durataInParole(ms: number): string {
+  const totale = Math.round(ms / 1000);
+  const ore = Math.floor(totale / 3600);
+  const minuti = Math.floor((totale % 3600) / 60);
+  const secondi = totale % 60;
+  const parti = [
+    ore > 0 ? `${ore} ${ore === 1 ? 'ora' : 'ore'}` : '',
+    minuti > 0 ? `${minuti} ${minuti === 1 ? 'minuto' : 'minuti'}` : '',
+    secondi > 0 || totale === 0 ? `${secondi} ${secondi === 1 ? 'secondo' : 'secondi'}` : '',
+  ].filter(Boolean);
+  return parti.length === 1 ? parti[0]! : `${parti.slice(0, -1).join(', ')} e ${parti.at(-1)!}`;
+}
+
+/** 1 → "una volta", 3 → "3 volte". */
+export function volte(n: number): string {
+  return n === 1 ? 'una volta' : `${n} volte`;
+}
+
 function protagonista(e: EventoStanza): IdGiocatore | null {
   // Lo scambio lo accetta o lo rifiuta chi l'ha ricevuto.
   if (e.tipo === 'scambio_accettato' || e.tipo === 'scambio_rifiutato') return e.a;

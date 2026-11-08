@@ -129,9 +129,12 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** una partita va avanti da sola se qualcuno chiude il browser o si allontana. ✔ Fatto: test del motore per ogni regola del tempo e del voto, simulazione di 80 partite con assenze, pause, tempi scaduti, voti ed espulsioni. Verificato con due browser Edge e un terzo giocatore da script: tempo chiesto e regalato, turno giocato in automatico, giocatrice scollegata tolta dopo 2 minuti, browser chiuso a metà turno fino alla fine della partita, voto senza timer, espulsione dell'host, chat silenziata.
 
 ### Fase 7 — Fine partita e statistiche · S
-- [ ] Schermata finale, coriandoli, classifica per turni sopravvissuti
-- [ ] Statistiche: grafico del patrimonio nel tempo, durata, turni, doppi, scambi, messaggi, casella più visitata, più volte in prigione
-- [ ] "Un'altra partita" nella stessa stanza, "Torna alla home"
+- [x] Schermata finale, coriandoli, classifica per turni sopravvissuti
+- [x] Statistiche: grafico del patrimonio nel tempo, durata, turni, doppi, scambi, messaggi, casella più visitata, più volte in prigione
+- [x] "Un'altra partita" nella stessa stanza, "Torna alla home"
+- [x] In più: il grafico risponde al passaggio del mouse con i valori di tutti e ogni linea finisce con la pedina del giocatore (i colori delle pedine possono somigliarsi); se l'host non è collegato, "Un'altra partita" la può avviare un altro giocatore; le partite salvate prima della Fase 7 riprendono
+
+**Fatto quando:** a fine partita tutti vedono vincitore, classifica e statistiche, e possono giocarne un'altra nella stessa stanza. ✔ Fatto: test del motore per ogni statistica e per la classifica, controlli di coerenza nella simulazione di 80 partite, test della stanza per "Un'altra partita". Verificato con due browser Edge e un terzo giocatore da script: coriandoli solo per chi vince, "In attesa dell'host…" per gli altri, ritorno in lobby con gli stessi posti e una nuova partita avviata.
 
 ### Fase 8 — Bot, squadre, altri tabelloni · L
 - [ ] Bot che riempiono i posti liberi: comprano, costruiscono, offrono alle aste, rispondono agli scambi
@@ -173,6 +176,13 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Voto senza timer di turno | Si può votare sempre contro chi gioca; il primo voto fa partire 5 minuti, scaduti i quali esce comunque se non ha finito il turno |
 | Kick dell'host in partita | Solo nelle stanze private e non durante il turno del giocatore; chi è espulso perde anche il posto (non scrive più in chat) e torna alla home |
 | Muto della chat | Per singolo giocatore, salvato in questo browser: i suoi messaggi spariscono e si riattivano dal riquadro della chat |
+| Posti dopo "Un'altra partita" | Restano seduti tutti i giocatori della stanza con lo stesso colore (su richup devono rientrare tutti); chi non è collegato ha 2 minuti per tornare, come in lobby. Chi preme "Torna alla home" a partita finita lascia il posto |
+| Chi avvia "Un'altra partita" | L'host; gli altri vedono "In attesa dell'host…". Se l'host non è collegato può farlo qualunque giocatore seduto, che diventa host |
+| Coriandoli | Solo per chi vince, e solo se vede la fine dal vivo (non ricaricando la pagina dopo) |
+| Durata della partita | Non conta il tempo in cui la partita è rimasta ferma perché nessun giocatore era collegato |
+| Grafico del patrimonio | Un punto alla fine di ogni turno; la linea di chi esce si ferma all'ultimo turno in cui era in gioco |
+| Classifica a pari turno | Chi esce più tardi, nello stesso turno, sta davanti |
+| Proprietà più visitata | Conta le soste (non i passaggi); a pari soste vince la prima del tabellone. In prigione, a pari merito, si mostrano tutti |
 
 ---
 

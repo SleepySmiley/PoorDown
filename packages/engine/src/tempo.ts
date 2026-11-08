@@ -134,6 +134,8 @@ export function sposta(stato: Stato, ms: number): Stato {
   if (t.fermoDa !== null) t.fermoDa += ms;
   if (s.turno.votazione.scadenza !== null) s.turno.votazione.scadenza += ms;
   if (s.asta) s.asta.scadenza += ms;
+  // Il tempo in pausa non conta nella durata della partita.
+  if (s.statistiche.fine === null) s.statistiche.inizio += ms;
   return s;
 }
 

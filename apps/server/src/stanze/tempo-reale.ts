@@ -205,6 +205,8 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
 
     comandoInStanza('avvia', (stanza) => stanza.avvia(token));
 
+    comandoInStanza('nuova_partita', (stanza) => stanza.nuovaPartita(token));
+
     comandoInStanza('mossa', (stanza, dati) => {
       const mossa = leggiMossa(dati);
       return mossa ? stanza.mossa(token, mossa) : NON_VALIDA;

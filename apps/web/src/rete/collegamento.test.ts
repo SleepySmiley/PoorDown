@@ -108,6 +108,19 @@ describe('Collegamento', () => {
     expect(presa.comandi()).toEqual(['entra']);
   });
 
+  it('con «Un’altra partita» la stanza torna in lobby e il registro riparte da capo', async () => {
+    const presa = new PresaFinta();
+    const finita = { ...vista(5), fase: 'finita' as const };
+    presa.server.entra = () => ({ ok: true, dati: istantanea(5, { stanza: finita, registro: [voce(1), voce(2)] }) });
+    const collegamento = new Collegamento(presa as unknown as PresaGioco);
+    await collegamento.entra('abcde');
+    expect(collegamento.leggi().registro).toHaveLength(2);
+    presa.arriva('aggiornamento', aggiornamento(6, voce(3)));
+    expect(collegamento.leggi().registro.map((v) => v.n)).toEqual([3]);
+    presa.arriva('aggiornamento', aggiornamento(7, voce(4)));
+    expect(collegamento.leggi().registro.map((v) => v.n)).toEqual([3, 4]);
+  });
+
   it('se manca una versione chiede l’istantanea completa', async () => {
     const { presa, collegamento } = prepara();
     await collegamento.entra('abcde');

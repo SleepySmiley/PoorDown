@@ -290,6 +290,36 @@ export interface Scambio {
   ipotecate: number[];
 }
 
+/** Un punto del grafico del patrimonio. */
+export interface PuntoPatrimonio {
+  /** 0 all'inizio della partita, poi il numero del turno appena finito (o di quello in cui la partita è finita). */
+  turno: number;
+  /** Il patrimonio di ogni giocatore, nell'ordine di `Stato.giocatori`; `null` per chi è già fuori. */
+  valori: (number | null)[];
+}
+
+/** Numeri raccolti durante la partita, per la classifica e le statistiche finali. */
+export interface Statistiche {
+  /** Quando è cominciata (ms del server). Le pause la spostano avanti, come gli altri orologi: non contano nella durata. */
+  inizio: number;
+  /** Quando è finita; `null` finché è in corso. */
+  fine: number | null;
+  /** Tiri con i due dadi uguali, di tutti i giocatori. */
+  doppi: number;
+  /** Scambi accettati. */
+  scambi: number;
+  /** Messaggi scritti in chat durante la partita: li conta la stanza. */
+  messaggi: number;
+  /** Quante volte una pedina si è fermata su ogni casella. */
+  visite: number[];
+  /** Quante volte ogni giocatore è finito in prigione. */
+  prigione: Record<IdGiocatore, number>;
+  /** Chi è uscito dalla partita, nell'ordine in cui è uscito: decide la classifica tra chi esce nello stesso turno. */
+  uscite: IdGiocatore[];
+  /** Il patrimonio di tutti alla fine di ogni turno. Nella vista dei browser resta vuoto finché la partita è in corso. */
+  patrimonio: PuntoPatrimonio[];
+}
+
 export interface Stato {
   mappa: IdMappa;
   impostazioni: Impostazioni;
@@ -308,6 +338,7 @@ export interface Stato {
   prossimoScambio: number;
   fase: 'in_corso' | 'finita';
   vincitore: IdGiocatore | null;
+  statistiche: Statistiche;
 }
 
 /* ------------------------------------------------------------------ */

@@ -52,7 +52,9 @@ export type EventoStanza =
   | Evento
   | { tipo: 'ingresso'; giocatore: IdGiocatore; nome: string; colore: number }
   | { tipo: 'uscita'; giocatore: IdGiocatore; nome: string; motivo: 'volontaria' | 'espulsione' | 'assenza' }
-  | { tipo: 'nuovo_host'; giocatore: IdGiocatore; nome: string };
+  | { tipo: 'nuovo_host'; giocatore: IdGiocatore; nome: string }
+  /** A partita finita, `giocatore` ha riportato la stanza in lobby per giocare ancora. */
+  | { tipo: 'nuova_partita'; giocatore: IdGiocatore; nome: string };
 
 export interface VoceRegistro {
   /** Numero progressivo nella stanza. */
@@ -135,6 +137,7 @@ export type CodiceErroreServer =
   | 'giocatore_assente'
   | 'partita_iniziata'
   | 'partita_non_in_corso'
+  | 'partita_non_finita'
   | 'pochi_giocatori'
   | 'troppi_giocatori'
   | 'errore_interno'
@@ -166,6 +169,11 @@ export interface Comandi {
   espelli: { dati: { giocatore: IdGiocatore }; risposta: null };
   /** Solo l'host: servono almeno 2 giocatori e non più del massimo scelto. */
   avvia: { dati: Vuoto; risposta: null };
+  /**
+   * A partita finita, riporta la stanza in lobby con le stesse impostazioni e gli stessi posti.
+   * Solo l'host, oppure qualunque giocatore seduto se l'host non è collegato.
+   */
+  nuova_partita: { dati: Vuoto; risposta: null };
   mossa: { dati: Mossa; risposta: null };
   /** Solo chi è seduto al tavolo. */
   scrivi: { dati: { testo: string }; risposta: null };

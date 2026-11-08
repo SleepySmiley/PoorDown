@@ -380,30 +380,6 @@
   color: #ff8f85;
 }
 
-.fine-partita {
-  display: grid;
-  justify-items: center;
-  gap: calc(var(--k) * 18);
-  padding-top: calc(var(--k) * 40);
-  text-align: center;
-}
-
-.fine-partita__titolo {
-  color: var(--ambra);
-  font: 700 calc(var(--k) * 54) / 1 var(--stretto);
-}
-
-.fine-partita__vincitore {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 1.25rem;
-}
-
-.fine-partita__vincitore b {
-  font: 700 1.625rem/1 var(--stretto);
-}
-
 .mie__vuoto {
   padding: 12px 16px;
   color: var(--testo-tenue);

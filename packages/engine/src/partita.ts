@@ -1,6 +1,7 @@
 import { mescola } from './caso';
 import { proprietabile } from './conti';
 import { GIOCATORI_MAX, GIOCATORI_MIN } from './impostazioni';
+import { segnaPatrimonio, statisticheIniziali } from './statistiche';
 import { tabellone } from './tabelloni';
 import { BANCA_INIZIALE_MS } from './tempo';
 import { iniziaTurno } from './turni';
@@ -77,7 +78,9 @@ export function creaPartita(
     prossimoScambio: 1,
     fase: 'in_corso',
     vincitore: null,
+    statistiche: statisticheIniziali(impostazioni.mappa, adesso),
   };
+  segnaPatrimonio(stato);
 
   const eventi: Evento[] = [{ tipo: 'inizio', ordineCasuale: impostazioni.ordineCasuale }];
   iniziaTurno(stato, eventi, stato.giocatori[0]!, adesso);

@@ -1,7 +1,7 @@
 import { isValidElement, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { IMPOSTAZIONI_PREDEFINITE, type VistaStanza, type VoceRegistro } from '@poordown/engine';
-import { righeRegistro } from './testi';
+import { durataInParole, righeRegistro, volte } from './testi';
 
 /** Il testo di una riga e i pezzi in grassetto. */
 function leggi(nodo: ReactNode): { testo: string; grassetto: string[] } {
@@ -54,5 +54,20 @@ describe('righeRegistro', () => {
 
   it('mostra solo le voci già accadute sullo schermo', () => {
     expect(righeRegistro(REGISTRO, STANZA, 2)).toHaveLength(2);
+  });
+});
+
+describe('durata e volte', () => {
+  it('scrive la durata in parole', () => {
+    expect(durataInParole(2_896_000)).toBe('48 minuti e 16 secondi');
+    expect(durataInParole(3_725_000)).toBe('1 ora, 2 minuti e 5 secondi');
+    expect(durataInParole(7_200_000)).toBe('2 ore');
+    expect(durataInParole(61_000)).toBe('1 minuto e 1 secondo');
+    expect(durataInParole(400)).toBe('0 secondi');
+  });
+
+  it('una volta, più volte', () => {
+    expect(volte(1)).toBe('una volta');
+    expect(volte(4)).toBe('4 volte');
   });
 });

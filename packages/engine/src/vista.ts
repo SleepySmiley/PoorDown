@@ -5,13 +5,16 @@ import { azioniPossibili } from './regole';
 import type { Azione, IdGiocatore, Stato } from './tipi';
 
 /**
- * Lo stato come lo ricevono i browser: senza l'ordine dei mazzi, così nessuno può prevedere la prossima carta.
+ * Lo stato come lo ricevono i browser: senza l'ordine dei mazzi, così nessuno può prevedere la prossima carta,
+ * e senza il grafico del patrimonio finché la partita è in corso.
  * Resta un `Stato`, quindi l'interfaccia può usare `verifica`, `azioniPossibili`, `affitto` e gli altri calcoli;
  * solo `applica` non va usato sulla vista, perché senza mazzi non saprebbe pescare.
  */
 export function vistaPartita(stato: Stato): Stato {
   const copia = JSON.parse(JSON.stringify(stato)) as Stato;
   copia.mazzi = { busta: { ordine: [], prossima: 0 }, cartolina: { ordine: [], prossima: 0 } };
+  // Il grafico del patrimonio serve solo a fine partita: intanto gli aggiornamenti restano leggeri.
+  if (copia.fase === 'in_corso') copia.statistiche.patrimonio = [];
   return copia;
 }
 

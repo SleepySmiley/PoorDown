@@ -451,3 +451,83 @@ describe('tempo, assenze e moderazione', () => {
     expect(stanza.mossa(TOKEN.bruno, { tipo: 'vota', favorevole: true })).toMatchObject({ ok: false, codice: 'voto_non_disponibile' });
   });
 });
+
+describe('fine partita', () => {
+  /** Anna, Bruno e Carla giocano con 3000 euro; Bruno e Carla fanno bancarotta e vince Anna. */
+  function finita(amb = ambienteDiProva()) {
+    const { stanza } = stanzaDiProva({ ordineCasuale: false, soldiIniziali: 3000 }, amb);
+    const ids = siedi(stanza, 'anna', 'bruno', 'carla');
+    stanza.avvia(TOKEN.anna);
+    expect(stanza.nuovaPartita(TOKEN.anna)).toMatchObject({ ok: false, codice: 'partita_non_finita' });
+    stanza.mossa(TOKEN.carla, { tipo: 'bancarotta' });
+    stanza.mossa(TOKEN.bruno, { tipo: 'bancarotta' });
+    expect(stanza.fase).toBe('finita');
+    stanza.raccogli();
+    return { stanza, amb, ids };
+  }
+
+  it('«Un’altra partita» riporta la stanza in lobby con le stesse impostazioni e gli stessi posti', () => {
+    const { stanza, ids } = finita();
+    const prima = stanza.vista().partecipanti;
+    expect(stanza.nuovaPartita(TOKEN.bruno)).toMatchObject({ ok: false, codice: 'solo_host' });
+    expect(stanza.nuovaPartita(TOKEN.dario)).toMatchObject({ ok: false, codice: 'non_seduto' });
+    expect(stanza.nuovaPartita(TOKEN.anna).ok).toBe(true);
+    const vista = stanza.vista();
+    expect(vista).toMatchObject({ fase: 'lobby', partita: null, host: ids[0], impostazioni: { soldiIniziali: 3000 } });
+    expect(vista.partecipanti).toEqual(prima);
+    // Il registro riparte da capo.
+    expect(stanza.raccogli()!.map((v) => v.evento)).toEqual([{ tipo: 'nuova_partita', giocatore: ids[0], nome: 'Anna' }]);
+    expect(stanza.registro.map((v) => v.evento.tipo)).toEqual(['nuova_partita']);
+    expect(stanza.avvia(TOKEN.anna).ok).toBe(true);
+    expect(stanza.partita!.giocatori.map((g) => g.id)).toEqual(ids);
+  });
+
+  it('se l’host non è collegato ci pensa un altro giocatore, che diventa host; chi manca ha due minuti per tornare', () => {
+    const { stanza, amb, ids } = finita();
+    stanza.scollega('conn-anna');
+    amb.avanza(10 * 60_000);
+    expect(stanza.nuovaPartita(TOKEN.carla).ok).toBe(true);
+    expect(stanza.vista().host).toBe(ids[2]);
+    expect(stanza.raccogli()!.map((v) => v.evento.tipo)).toEqual(['nuova_partita', 'nuovo_host']);
+    amb.avanza(ATTESA_LOBBY_MS - 1);
+    stanza.manutenzione();
+    expect(stanza.posti.map((p) => p.id)).toEqual(ids);
+    amb.avanza(1);
+    stanza.manutenzione();
+    expect(stanza.posti.map((p) => p.id)).toEqual(ids.slice(1));
+  });
+
+  it('chi torna alla home a partita finita libera il posto, e l’host passa al successivo', () => {
+    const { stanza, ids } = finita();
+    stanza.esci('conn-anna');
+    expect(stanza.posti.map((p) => p.id)).toEqual(ids.slice(1));
+    expect(stanza.vista()).toMatchObject({ fase: 'finita', host: ids[1] });
+    expect(stanza.raccogli()!.map((v) => v.evento.tipo)).toEqual(['uscita', 'nuovo_host']);
+    expect(stanza.nuovaPartita(TOKEN.bruno).ok).toBe(true);
+    expect(stanza.vista().partecipanti.map((p) => p.id)).toEqual(ids.slice(1));
+  });
+
+  it('i messaggi scritti durante la partita entrano nelle statistiche', () => {
+    const { stanza } = stanzaDiProva({ ordineCasuale: false });
+    siedi(stanza, 'anna', 'bruno');
+    stanza.scrivi(TOKEN.anna, 'in lobby non conta');
+    stanza.avvia(TOKEN.anna);
+    stanza.scrivi(TOKEN.anna, 'ciao');
+    stanza.scrivi(TOKEN.bruno, 'ciao a te');
+    stanza.mossa(TOKEN.bruno, { tipo: 'bancarotta' });
+    stanza.scrivi(TOKEN.anna, 'a partita finita non conta');
+    expect(stanza.vista().partita!.statistiche).toMatchObject({ messaggi: 2, uscite: [stanza.posti[1]!.id] });
+    // A partita finita i browser ricevono anche il grafico del patrimonio.
+    expect(stanza.vista().partita!.statistiche.patrimonio.length).toBeGreaterThan(0);
+  });
+
+  it('le partite salvate prima delle statistiche riprendono, anche quelle già finite', () => {
+    const { stanza, amb } = finita();
+    const dati = JSON.parse(JSON.stringify(stanza.esporta())) as ReturnType<Stanza['esporta']>;
+    delete (dati.partita as unknown as Record<string, unknown>).statistiche;
+    const copia = Stanza.importa(dati, amb);
+    expect(copia.partita!.statistiche).toMatchObject({ fine: amb.adesso(), patrimonio: [], messaggi: 0 });
+    expect(copia.partita!.statistiche.uscite).toHaveLength(2);
+    expect(copia.partita!.statistiche.visite).toHaveLength(40);
+  });
+});

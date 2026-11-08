@@ -164,5 +164,17 @@ export function problemi(s: Stato): string[] {
 
   if (s.cassaVacanza < 0) out.push('Cassa della Vacanza negativa.');
   if (!s.impostazioni.cassaVacanza && s.cassaVacanza !== 0) out.push('Cassa della Vacanza piena con la regola spenta.');
+
+  const st = s.statistiche;
+  const fuori = s.giocatori.filter((x) => x.eliminato).map((x) => x.id);
+  if ([...st.uscite].sort().join() !== fuori.sort().join()) out.push('Statistiche: le uscite non tornano con gli eliminati.');
+  if ((st.fine !== null) !== (s.fase === 'finita')) out.push('Statistiche: ora della fine sbagliata.');
+  if (st.visite.length !== n || st.visite.some((v) => v < 0)) out.push('Statistiche: visite alle caselle sbagliate.');
+  st.patrimonio.forEach((p, i) => {
+    if (p.valori.length !== s.giocatori.length) out.push(`Statistiche: punto ${i} del patrimonio senza tutti i giocatori.`);
+    if (i > 0 && p.turno <= st.patrimonio[i - 1]!.turno) out.push(`Statistiche: punto ${i} del patrimonio fuori ordine.`);
+    if (p.turno > t.numero) out.push(`Statistiche: punto ${i} del patrimonio nel futuro.`);
+  });
+  if (s.fase === 'finita' && st.patrimonio.at(-1)?.turno !== t.numero) out.push('Statistiche: manca l’ultimo punto del patrimonio.');
   return out;
 }

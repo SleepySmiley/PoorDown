@@ -254,6 +254,7 @@ export function rispondi(ctx: Contesto, azione: Extract<Azione, { tipo: 'accetta
   switch (azione.tipo) {
     case 'accetta':
       ctx.eventi.push({ tipo: 'scambio_accettato', ...chi, dare: sc.dare, avere: sc.avere });
+      s.statistiche.scambi++;
       trasferisci(ctx, sc);
       return;
     case 'rifiuta':

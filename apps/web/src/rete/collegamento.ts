@@ -220,7 +220,10 @@ export class Collegamento {
       return;
     }
     this.scarto = a.adesso - Date.now();
-    this.cambia({ stanza: a.stanza, io: a.io, registro: [...this.stato.registro, ...a.voci].slice(-REGISTRO_MAX) });
+    // Con «Un'altra partita» la stanza torna in lobby e il registro riparte da capo, come sul server.
+    const daCapo = a.stanza.fase === 'lobby' && attuale.fase !== 'lobby';
+    const registro = daCapo ? a.voci : [...this.stato.registro, ...a.voci].slice(-REGISTRO_MAX);
+    this.cambia({ stanza: a.stanza, io: a.io, registro, attivita: daCapo ? {} : this.stato.attivita });
     if (a.voci.length > 0) for (const fn of this.ascoltatoriVoci) fn(a.voci);
   }
 

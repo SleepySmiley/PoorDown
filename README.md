@@ -44,6 +44,8 @@ $env:PORT=3001; npm start
 
 Le regole facoltative (aste, ipoteche, costruzione uniforme e le altre) si scelgono nelle impostazioni della stanza prima di iniziare. Gli scambi si propongono dal pannello **Scambi**, anche fuori dal proprio turno.
 
+A fine partita la colonna destra mostra la classifica e **Vedi tutte le statistiche** apre durata, turni, scambi e il grafico del patrimonio. **Un'altra partita** (la avvia l'host) riporta tutti in lobby nella stessa stanza, con gli stessi colori e le stesse impostazioni.
+
 Per provare una partita da solo con due schede dello stesso browser, aggiungi `?profilo=due` all'indirizzo della seconda: è un giocatore diverso.
 
 ### Partite salvate

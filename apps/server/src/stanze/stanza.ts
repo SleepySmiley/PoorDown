@@ -12,6 +12,7 @@ import {
   CHAT_MAX,
   COLORI,
   connessione,
+  contaMessaggio,
   creaPartita,
   espelli as espelliDallaPartita,
   GIOCATORI_MIN,
@@ -21,6 +22,7 @@ import {
   pulisciNome,
   REGISTRO_MAX,
   sposta,
+  statisticheIniziali,
   vistaPartita,
   type Attivita,
   type Azione,
@@ -147,12 +149,15 @@ export class Stanza {
     this.segna();
   }
 
-  /** Chi esce dalla stanza in lobby libera il posto. In partita il posto resta: si può tornare. */
+  /**
+   * Chi esce dalla stanza in lobby, o a partita finita, libera il posto (e non torna con «Un'altra partita»).
+   * In partita il posto resta: si può tornare.
+   */
   esci(connessione: string): void {
     const token = this.connessioni.get(connessione);
     this.scollega(connessione);
     const posto = token === undefined ? undefined : this.postoDi(token);
-    if (posto && this.fase === 'lobby') this.rimuovi(posto, 'volontaria');
+    if (posto && this.fase !== 'partita') this.rimuovi(posto, 'volontaria');
   }
 
   nessunoCollegato(): boolean {
@@ -258,6 +263,35 @@ export class Stanza {
     return si(null);
   }
 
+  /**
+   * A partita finita riporta la stanza in lobby per giocarne un'altra: stesse impostazioni, stessi posti e colori.
+   * Lo fa l'host; se l'host non è collegato, qualunque giocatore seduto, che diventa host.
+   * Chi non è collegato ha di nuovo due minuti per tornare, come in ogni lobby. Il registro riparte da capo.
+   */
+  nuovaPartita(token: Token): Risposta<null> {
+    const posto = this.postoDi(token);
+    if (!posto) return no('non_seduto', 'Solo chi era al tavolo può preparare un’altra partita.');
+    if (this.fase !== 'finita') return no('partita_non_finita', 'La partita non è ancora finita.');
+    const host = this.posti.find((p) => p.id === this.host);
+    if (posto !== host && host && this.collegato(host.token)) {
+      return no('solo_host', 'Solo l’host può preparare un’altra partita.');
+    }
+    const adesso = this.amb.adesso();
+    this.fase = 'lobby';
+    this.partita = null;
+    this.pausaDa = null;
+    this.registro = [];
+    this.togliAttivita(() => true);
+    for (const p of this.posti) if (p.offlineDa !== null) p.offlineDa = adesso;
+    const voci: EventoStanza[] = [{ tipo: 'nuova_partita', giocatore: posto.id, nome: posto.nome }];
+    if (posto !== host) {
+      this.host = posto.id;
+      voci.push({ tipo: 'nuovo_host', giocatore: posto.id, nome: posto.nome });
+    }
+    this.segna(...voci);
+    return si(null);
+  }
+
   /* ------------------------------------------------------------------ */
   /* Partita e chat                                                      */
   /* ------------------------------------------------------------------ */
@@ -306,6 +340,8 @@ export class Stanza {
     };
     this.chat.push(messaggio);
     if (this.chat.length > CHAT_CRONOLOGIA) this.chat.splice(0, this.chat.length - CHAT_CRONOLOGIA);
+    // Per le statistiche di fine partita. Non cambia la versione: i browser lo vedono con il prossimo aggiornamento.
+    if (this.fase === 'partita' && this.partita) this.partita = contaMessaggio(this.partita);
     return si(messaggio);
   }
 
@@ -566,12 +602,13 @@ export class Stanza {
  * Porta una partita salvata dalle versioni precedenti alla forma attuale.
  * - Prima della Fase 5 mancavano asta e scambi.
  * - Prima della Fase 6 mancavano gli orologi: la banca di tempo riparte da capo, il turno da `adesso`.
+ * - Prima della Fase 7 mancavano le statistiche: si contano da `adesso`.
  */
 function aggiornaSalvata(salvata: Stato, adesso: number): Stato {
   type G = Stato['giocatori'][number];
   type T = Stato['turno'];
-  const v = salvata as Omit<Stato, 'asta' | 'scambi' | 'prossimoScambio' | 'giocatori' | 'turno'> &
-    Partial<Pick<Stato, 'asta' | 'scambi' | 'prossimoScambio'>> & {
+  const v = salvata as Omit<Stato, 'asta' | 'scambi' | 'prossimoScambio' | 'giocatori' | 'turno' | 'statistiche'> &
+    Partial<Pick<Stato, 'asta' | 'scambi' | 'prossimoScambio' | 'statistiche'>> & {
       giocatori: (Omit<G, 'banca' | 'automatici' | 'offlineDa'> & Partial<Pick<G, 'banca' | 'automatici' | 'offlineDa'>>)[];
       turno: Omit<T, 'tempo' | 'votazione'> & Partial<Pick<T, 'tempo' | 'votazione'>>;
     };
@@ -581,6 +618,11 @@ function aggiornaSalvata(salvata: Stato, adesso: number): Stato {
     asta,
     scambi: v.scambi ?? [],
     prossimoScambio: v.prossimoScambio ?? 1,
+    statistiche: v.statistiche ?? {
+      ...statisticheIniziali(v.mappa, adesso),
+      fine: v.fase === 'finita' ? adesso : null,
+      uscite: v.giocatori.filter((g) => g.eliminato).map((g) => g.id),
+    },
     giocatori: v.giocatori.map((g) => ({
       ...g,
       banca: g.banca ?? BANCA_INIZIALE_MS,

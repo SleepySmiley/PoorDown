@@ -31,10 +31,12 @@ import { Dado, Pedina, Registro, Stemma } from '../ui/comuni';
 import { iniziale } from '../ui/utili';
 import { stilePopover } from '../ui/geometria';
 import { Icona, type NomeIcona } from '../ui/icone';
+import { Coriandoli } from '../ui/Coriandoli';
 import { Asta } from './Asta';
 import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
 import { FuoriDallaPartita, NotaVoto, PulsanteVoto } from './Moderazione';
 import { useScena } from './regia';
+import { FinePartita, PannelloStatistiche, StatisticheComplete } from './FinePartita';
 import { EditorScambio, PannelloScambi, VediScambio } from './Scambi';
 import { SchedaProprieta, Tabellone } from './Tabellone';
 import { ESITO_USCITA, righeRegistro } from './testi';
@@ -230,27 +232,6 @@ function AzioniTurno({
   );
 }
 
-function FinePartita({ partita, onEsci }: { partita: Stato; onEsci: () => void }): ReactNode {
-  const vincitore = partita.giocatori.find((g) => g.id === partita.vincitore);
-  return (
-    <div className="fine-partita">
-      <p className="fine-partita__titolo">Partita finita!</p>
-      {vincitore && (
-        <p className="fine-partita__vincitore">
-          <Pedina colore={vincitore.colore} iniziale={iniziale(vincitore.nome)} className="pedina--grande" />
-          <span>
-            Vince <b>{vincitore.nome}</b>
-          </span>
-        </p>
-      )}
-      <button type="button" className="pulsante pulsante--primario" onClick={onEsci}>
-        <Icona nome="partenza" />
-        Torna alla home
-      </button>
-    </div>
-  );
-}
-
 export function Gioco({
   stanza,
   io,
@@ -286,6 +267,10 @@ export function Gioco({
   const [daTogliere, setDaTogliere] = useState<Giocatore | null>(null);
   const [consiglio, setConsiglio] = useState(true);
   const [finestraChiesta, setFinestraScambio] = useState<FinestraScambio | null>(null);
+  const [statistiche, setStatistiche] = useState(false);
+  // I coriandoli partono solo se la fine arriva mentre si guarda, non a chi ricarica la pagina dopo.
+  const [vistaInCorso] = useState(inCorso);
+  const [festa, setFesta] = useState(true);
 
   // Asta e scambi seguono la partita aggiornata, senza aspettare le animazioni: lì conta ogni secondo.
   const vivo = stanza.partita ?? partita;
@@ -414,7 +399,10 @@ export function Gioco({
           <NotaVoto partita={vivo} io={giocoIo} />
         </>
       ) : (
-        <FinePartita partita={partita} onEsci={onEsci} />
+        <div className="centro-gioco__dadi">
+          <Dado valore={scena.dadi[0]} />
+          <Dado valore={scena.dadi[1]} />
+        </div>
       )}
       <Registro righe={righe} />
     </div>
@@ -578,7 +566,7 @@ export function Gioco({
             }}
             sopra={
               <>
-                {popoverBordo !== null && (
+                {popoverBordo !== null && inCorso && (
                   <SchedaProprieta
                     key={popoverBordo}
                     mappa={partita.mappa}
@@ -590,6 +578,7 @@ export function Gioco({
                   />
                 )}
                 {finestraSopra}
+                {!inCorso && <FinePartita partita={partita} stanza={stanza} io={io} onEsci={onEsci} />}
               </>
             }
           />
@@ -654,7 +643,9 @@ export function Gioco({
               />
             )}
 
-            {me ? (
+            {!inCorso ? (
+              <PannelloStatistiche partita={partita} onApri={() => setStatistiche(true)} />
+            ) : me ? (
               <section className="pannello mie" aria-labelledby="titolo-mie">
                 <header className="pannello__testa pannello__testa--centrata">
                   <h2 id="titolo-mie" className="pannello__titolo">
@@ -733,7 +724,7 @@ export function Gioco({
         }
       />
 
-      {mia && casellaMia && (
+      {mia && casellaMia && inCorso && (
         <SchedaProprieta
           key={`mia-${mia.n}`}
           mappa={partita.mappa}
@@ -756,7 +747,7 @@ export function Gioco({
         </Finestra>
       )}
 
-      {daTogliere && (
+      {daTogliere && inCorso && (
         <Finestra titolo="Togli dalla partita" onChiudi={() => setDaTogliere(null)}>
           <div className="finestra__corpo">
             <p>
@@ -788,7 +779,13 @@ export function Gioco({
 
       <FuoriDallaPartita codice={stanza.codice} partita={partita} io={io} onEsci={onEsci} />
 
-      {bancarotta && (
+      {statistiche && !inCorso && <StatisticheComplete partita={partita} onChiudi={() => setStatistiche(false)} />}
+
+      {vistaInCorso && !inCorso && festa && io !== null && io === partita.vincitore && (
+        <Coriandoli onFine={() => setFesta(false)} />
+      )}
+
+      {bancarotta && inCorso && (
         <Finestra titolo="Dichiara bancarotta" onChiudi={() => setBancarotta(false)}>
           <div className="finestra__corpo">
             <p>Esci dalla partita e le tue proprietà tornano alla banca. Non si può annullare.</p>

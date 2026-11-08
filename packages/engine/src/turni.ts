@@ -5,6 +5,7 @@
 
 import { accredita, type Contesto } from './contesto';
 import { attivi, giocatore, possedute, valoreLiquidazione } from './conti';
+import { segnaPatrimonio } from './statistiche';
 import { chiudiOrologio, tempoIniziale } from './tempo';
 import type { Debito, Evento, Giocatore, MotivoUscita, Stato } from './tipi';
 
@@ -39,6 +40,7 @@ export function passaTurno(ctx: Contesto): void {
   const { s } = ctx;
   const uscente = giocatore(s, s.turno.giocatore);
   if (uscente && !uscente.eliminato) chiudiOrologio(s, uscente, s.turno, ctx.adesso);
+  segnaPatrimonio(s);
   const n = s.giocatori.length;
   let i = s.giocatori.findIndex((g) => g.id === s.turno.giocatore);
   // Ogni salto spegne una vacanza, quindi entro due giri qualcuno gioca.
@@ -93,6 +95,7 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
   g.vacanza = false;
   g.offlineDa = null;
   g.eliminato = { turno: s.turno.numero, motivo };
+  s.statistiche.uscite.push(g.id);
   for (const altro of s.giocatori) altro.debiti = altro.debiti.filter((d) => d.creditore !== g.id);
   s.scambi = s.scambi.filter((x) => x.da !== g.id && x.a !== g.id);
   if (s.asta) {
@@ -115,6 +118,8 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
     s.vincitore = rimasti[0]?.id ?? null;
     s.asta = null;
     s.scambi = [];
+    s.statistiche.fine = ctx.adesso;
+    segnaPatrimonio(s);
     ctx.eventi.push({ tipo: 'fine', vincitore: s.vincitore });
     return;
   }

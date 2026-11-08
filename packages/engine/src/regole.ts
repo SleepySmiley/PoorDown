@@ -390,6 +390,7 @@ function lancia(ctx: Contesto, g: Giocatore): void {
   t.acquisto = null;
   t.rilancio = false;
   t.fase = 'dopo_lancio';
+  if (doppio) ctx.s.statistiche.doppi++;
   ctx.eventi.push({ tipo: 'dadi', giocatore: g.id, dadi });
 
   if (inPrigione) {
@@ -435,6 +436,7 @@ function arriva(ctx: Contesto, g: Giocatore): void {
   const { s, tab } = ctx;
   const casella = g.posizione;
   const c = tab.caselle[casella]!;
+  s.statistiche.visite[casella] = (s.statistiche.visite[casella] ?? 0) + 1;
   switch (c.tipo) {
     case 'citta':
     case 'stazione':
@@ -484,6 +486,7 @@ function arriva(ctx: Contesto, g: Giocatore): void {
 function mandaInPrigione(ctx: Contesto, g: Giocatore, motivo: 'casella' | 'carta' | 'tre_doppi'): void {
   g.posizione = ctx.tab.prigione;
   g.prigione = 0;
+  ctx.s.statistiche.prigione[g.id] = (ctx.s.statistiche.prigione[g.id] ?? 0) + 1;
   ctx.eventi.push({ tipo: 'prigione', giocatore: g.id, motivo });
   ctx.turnoFinito = true;
 }

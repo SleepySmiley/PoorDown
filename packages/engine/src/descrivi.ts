@@ -170,6 +170,8 @@ export function descriviVoce(evento: EventoStanza, partita: Stato | null): strin
       return null;
     case 'nuovo_host':
       return `${evento.nome} ora è l’host della stanza.`;
+    case 'nuova_partita':
+      return `${evento.nome} prepara un’altra partita.`;
     default:
       return partita ? descrivi(evento, partita) : null;
   }
