@@ -19,7 +19,7 @@ class CollegamentoFinto {
   private readonly ascoltatori = new Set<() => void>();
 
   constructor(stanza: VistaStanza, registro: VoceRegistro[]) {
-    this.stato = { rete: 'attivo', stanza, io: 'a', registro, chat: [], scrivono: [], avviso: null };
+    this.stato = { rete: 'attivo', stanza, io: 'a', registro, chat: [], scrivono: [], attivita: {}, avviso: null };
   }
 
   leggi = () => this.stato;

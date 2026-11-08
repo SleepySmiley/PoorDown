@@ -16,7 +16,7 @@ import {
   type Risposta,
 } from '@poordown/engine';
 import type { GestoreStanze } from './gestore';
-import { booleano, intero, leggiImpostazioni, leggiMossa, leggiToken, testo } from './lettura';
+import { booleano, intero, leggiAttivita, leggiImpostazioni, leggiMossa, leggiToken, testo } from './lettura';
 import { no, si, type Stanza, type Token } from './stanza';
 
 export interface DatiSocket {
@@ -34,8 +34,10 @@ const FUORI_STANZA = no('fuori_stanza', 'Non sei in nessuna stanza.');
 const canale = (codice: string) => `stanza:${codice}`;
 
 export interface TempoReale {
-  /** Da chiamare ogni pochi secondi: assenze in lobby e stanze abbandonate. */
+  /** Da chiamare ogni pochi secondi: assenze in lobby, scadenze rimaste indietro e stanze abbandonate. */
   manutenzione(): void;
+  /** Spegne le sveglie delle scadenze (per chiudere il server). */
+  ferma(): void;
 }
 
 /**
@@ -53,17 +55,42 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
     next();
   });
 
-  /** Manda a ogni scheda della stanza il nuovo stato, se è cambiato. */
+  /** Una sveglia per stanza, alla prossima scadenza della partita (la fine dell'asta). */
+  const sveglie = new Map<string, ReturnType<typeof setTimeout>>();
+
+  function programmaSveglia(stanza: Stanza): void {
+    clearTimeout(sveglie.get(stanza.codice));
+    sveglie.delete(stanza.codice);
+    const attesa = stanza.attesa();
+    if (attesa === null) return;
+    const sveglia = setTimeout(() => {
+      sveglie.delete(stanza.codice);
+      if (gestore.trova(stanza.codice) !== stanza) return;
+      stanza.scadenze();
+      diffondi(stanza);
+    }, attesa);
+    sveglia.unref();
+    sveglie.set(stanza.codice, sveglia);
+  }
+
+  /** Manda a ogni scheda della stanza il nuovo stato, se è cambiato, e le attività sugli scambi. */
   function diffondi(stanza: Stanza): void {
     const voci = stanza.raccogli();
-    if (!voci) return;
-    const vista = stanza.vista();
-    for (const id of io.sockets.adapter.rooms.get(canale(stanza.codice)) ?? []) {
-      const socket = io.sockets.sockets.get(id);
-      if (socket) socket.emit('aggiornamento', { stanza: vista, io: stanza.io(socket.data.token), voci });
+    if (voci) {
+      const vista = stanza.vista();
+      const adesso = stanza.orologio();
+      for (const id of io.sockets.adapter.rooms.get(canale(stanza.codice)) ?? []) {
+        const socket = io.sockets.sockets.get(id);
+        if (socket) socket.emit('aggiornamento', { stanza: vista, io: stanza.io(socket.data.token), voci, adesso });
+      }
+      programmaSveglia(stanza);
+      dopoModifica();
     }
-    dopoModifica();
+    const attivita = stanza.raccogliAttivita();
+    if (attivita) io.to(canale(stanza.codice)).emit('attivita', attivita);
   }
+
+  for (const stanza of gestore.tutte()) programmaSveglia(stanza);
 
   function lascia(socket: SocketGioco, esplicito: boolean): void {
     const stanza = socket.data.stanza === null ? undefined : gestore.trova(socket.data.stanza);
@@ -201,6 +228,14 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
       if (stanza && id) socket.to(canale(stanza.codice)).emit('scrive', id);
     });
 
+    socket.on('attivita', (dati: unknown) => {
+      const stanza = corrente();
+      const attivita = leggiAttivita(dati);
+      if (!stanza || attivita === undefined) return;
+      stanza.cambiaAttivita(token, attivita);
+      diffondi(stanza);
+    });
+
     socket.on('disconnect', () => lascia(socket, false));
   });
 
@@ -218,6 +253,10 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
         }
       }
       if (chiuse.length > 0) dopoModifica();
+    },
+    ferma() {
+      for (const sveglia of sveglie.values()) clearTimeout(sveglia);
+      sveglie.clear();
     },
   };
 }

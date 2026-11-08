@@ -390,7 +390,7 @@ describe('debito', () => {
   /** 'a' ha 30 € e finisce su Sassari di 'b' con 3 case (affitto 220). */
   function inDebito(): Stato {
     const s = assegna(partitaDiProva(), 'b', 6, 7, 9);
-    s.proprieta[7]!.livello = 3;
+    for (const n of [6, 7, 9]) s.proprieta[n]!.livello = 3;
     g(s, 'a').saldo = 30;
     return esegui(s, lancia(), dadi([3, 4])).stato;
   }

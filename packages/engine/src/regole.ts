@@ -5,6 +5,7 @@
  */
 
 import { tiraDadi } from './caso';
+import { accredita, errore, paga, pagaBanca, type Contesto } from './contesto';
 import {
   affitto,
   attivi,
@@ -16,32 +17,32 @@ import {
   valoreLiquidazione,
   valoreVendita,
 } from './conti';
+import {
+  acquistoInSospeso,
+  apriAsta,
+  chiudiAsta,
+  costruisci,
+  demolisci,
+  ipoteca,
+  offri,
+  RILANCI,
+  riscatta,
+  verificaApertura,
+  verificaCostruzione,
+  verificaDemolizione,
+  verificaIpoteca,
+  verificaOfferta,
+  verificaRiscatto,
+} from './economia';
+import { proponi, rispondi, verificaProposta, verificaRisposta } from './scambi';
 import { tabellone } from './tabelloni';
-import type {
-  Azione,
-  Caso,
-  CodiceErrore,
-  Debito,
-  Effetto,
-  Errore,
-  Esito,
-  Evento,
-  Giocatore,
-  IdGiocatore,
-  NomeMazzo,
-  Stato,
-  Tabellone,
-} from './tipi';
+import type { Azione, Caso, Debito, Effetto, Errore, Esito, Evento, Giocatore, IdGiocatore, NomeMazzo, Stato } from './tipi';
 
 /** Tiri falliti dopo i quali si esce di prigione gratis, al turno successivo. */
 export const TENTATIVI_PRIGIONE = 3;
 const DOPPI_PER_LA_PRIGIONE = 3;
 
 const SALDO_NEGATIVO = 'Hai il saldo negativo. Vendi qualcosa per tornare in positivo o dichiara bancarotta.';
-
-function errore(codice: CodiceErrore, messaggio: string): Errore {
-  return { codice, messaggio };
-}
 
 /* ------------------------------------------------------------------ */
 /* Controllo                                                           */
@@ -53,29 +54,55 @@ export function verifica(stato: Stato, azione: Azione): Errore | null {
   const g = giocatore(stato, azione.giocatore);
   if (!g) return errore('giocatore_sconosciuto', 'Non sei un giocatore di questa partita.');
   if (g.eliminato) return errore('eliminato', 'Sei fuori dalla partita.');
-  if (azione.tipo === 'bancarotta') return null;
-  if (stato.turno.giocatore !== g.id) return errore('non_tuo_turno', 'Non è il tuo turno.');
 
+  // Fuori turno: bancarotta, offerte all'asta e scambi.
+  switch (azione.tipo) {
+    case 'bancarotta':
+      return null;
+    case 'offri':
+      return verificaOfferta(stato, g, azione.importo);
+    case 'proponi':
+      return verificaProposta(stato, azione);
+    case 'accetta':
+    case 'rifiuta':
+    case 'annulla':
+      return verificaRisposta(stato, azione);
+    default:
+      if (stato.turno.giocatore !== g.id) return errore('non_tuo_turno', 'Non è il tuo turno.');
+      if (stato.asta) return errore('asta_in_corso', 'Aspetta la fine dell’asta.');
+      return verificaNelTurno(stato, g, azione);
+  }
+}
+
+/** Le azioni di chi è di turno, quando non c'è un'asta aperta. */
+function verificaNelTurno(stato: Stato, g: Giocatore, azione: Azione): Errore | null {
   const tab = tabellone(stato.mappa);
   const t = stato.turno;
+  // Con le aste attive la proprietà libera va comprata o messa all'asta prima di proseguire.
+  const daDecidere = stato.impostazioni.aste && acquistoInSospeso(stato) !== null;
+  const decidi = errore('decidi_acquisto', 'Prima compra la proprietà o mettila all’asta.');
   switch (azione.tipo) {
     case 'lancia':
       if (t.fase === 'dopo_lancio' && !t.rilancio) return errore('gia_lanciato', 'Hai già tirato i dadi.');
+      if (daDecidere) return decidi;
       if (g.saldo < 0) return errore('saldo_negativo', SALDO_NEGATIVO);
       return null;
 
     case 'compra': {
-      const c = t.acquisto === null ? null : proprietabile(tab, t.acquisto);
-      if (!c || stato.proprieta[t.acquisto!]?.proprietario !== null) {
-        return errore('niente_da_comprare', 'Non c’è niente da comprare.');
-      }
+      const n = acquistoInSospeso(stato);
+      const c = n === null ? null : proprietabile(tab, n);
+      if (!c) return errore('niente_da_comprare', 'Non c’è niente da comprare.');
       if (g.saldo < c.prezzo) return errore('soldi_insufficienti', 'Non hai abbastanza soldi.');
       return null;
     }
 
+    case 'asta':
+      return verificaApertura(stato);
+
     case 'fine_turno':
       if (t.fase !== 'dopo_lancio') return errore('non_ancora_lanciato', 'Prima devi tirare i dadi.');
       if (t.rilancio) return errore('devi_rilanciare', 'Hai fatto un doppio: tira ancora.');
+      if (daDecidere) return decidi;
       if (g.saldo < 0) return errore('saldo_negativo', SALDO_NEGATIVO);
       return null;
 
@@ -102,6 +129,24 @@ export function verifica(stato: Stato, azione: Azione): Errore | null {
       }
       return null;
     }
+
+    case 'costruisci':
+      return verificaCostruzione(stato, g, azione.casella);
+    case 'demolisci':
+      return verificaDemolizione(stato, g, azione.casella);
+    case 'ipoteca':
+      return verificaIpoteca(stato, g, azione.casella);
+    case 'riscatta':
+      return verificaRiscatto(stato, g, azione.casella);
+
+    // Controllate prima, in `verifica`.
+    case 'bancarotta':
+    case 'offri':
+    case 'proponi':
+    case 'accetta':
+    case 'rifiuta':
+    case 'annulla':
+      return null;
   }
 }
 
@@ -109,21 +154,15 @@ export function verifica(stato: Stato, azione: Azione): Errore | null {
 /* Esecuzione                                                          */
 /* ------------------------------------------------------------------ */
 
-interface Contesto {
-  s: Stato;
-  tab: Tabellone;
-  caso: Caso;
-  eventi: Evento[];
-  /** Una regola ha chiuso il turno (prigione, vacanza): niente rilancio. */
-  turnoFinito: boolean;
-}
-
-export function applica(stato: Stato, azione: Azione, caso: Caso): Esito {
+/**
+ * @param adesso orologio del server in millisecondi: serve solo alle aste (scadenza).
+ */
+export function applica(stato: Stato, azione: Azione, caso: Caso, adesso = 0): Esito {
   const problema = verifica(stato, azione);
   if (problema) return { ok: false, ...problema };
 
   const s = JSON.parse(JSON.stringify(stato)) as Stato;
-  const ctx: Contesto = { s, tab: tabellone(s.mappa), caso, eventi: [], turnoFinito: false };
+  const ctx: Contesto = { s, tab: tabellone(s.mappa), caso, adesso, eventi: [], turnoFinito: false };
   const g = giocatore(s, azione.giocatore)!;
 
   switch (azione.tipo) {
@@ -151,10 +190,51 @@ export function applica(stato: Stato, azione: Azione, caso: Caso): Esito {
     case 'vendi':
       vendi(ctx, g, azione.casella);
       break;
+    case 'costruisci':
+      costruisci(ctx, g, azione.casella);
+      break;
+    case 'demolisci':
+      demolisci(ctx, g, azione.casella);
+      break;
+    case 'ipoteca':
+      ipoteca(ctx, g, azione.casella);
+      break;
+    case 'riscatta':
+      riscatta(ctx, g, azione.casella);
+      break;
+    case 'asta':
+      apriAsta(ctx, g);
+      break;
+    case 'offri':
+      offri(ctx, g, azione.importo);
+      break;
+    case 'proponi':
+      proponi(ctx, azione);
+      break;
+    case 'accetta':
+    case 'rifiuta':
+    case 'annulla':
+      rispondi(ctx, azione);
+      break;
     case 'bancarotta':
       bancarotta(ctx, g);
       break;
   }
+  return { ok: true, stato: s, eventi: ctx.eventi };
+}
+
+/** Quando scade la prossima cosa a tempo (l'asta), in millisecondi dell'orologio del server; `null` se niente. */
+export function prossimaScadenza(stato: Stato): number | null {
+  return stato.fase === 'in_corso' ? (stato.asta?.scadenza ?? null) : null;
+}
+
+/** Applica quello che è scaduto (chiude l'asta). `null` se a quest'ora non scade niente. */
+export function applicaScadenze(stato: Stato, caso: Caso, adesso: number): Esito | null {
+  const scadenza = prossimaScadenza(stato);
+  if (scadenza === null || adesso < scadenza) return null;
+  const s = JSON.parse(JSON.stringify(stato)) as Stato;
+  const ctx: Contesto = { s, tab: tabellone(s.mappa), caso, adesso, eventi: [], turnoFinito: false };
+  chiudiAsta(ctx);
   return { ok: true, stato: s, eventi: ctx.eventi };
 }
 
@@ -386,59 +466,6 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
   }
 }
 
-/* ------------------------------ Soldi ------------------------------ */
-
-/**
- * Entrata di denaro. Se il giocatore ha debiti verso altri giocatori, l'entrata va prima a loro,
- * nell'ordine in cui i debiti sono nati. Il saldo aumenta comunque dell'intero importo,
- * perché il debito era già contato nel rosso.
- */
-function accredita(ctx: Contesto, g: Giocatore, importo: number): void {
-  if (importo <= 0) return;
-  g.saldo += importo;
-  let resto = importo;
-  while (resto > 0 && g.debiti.length > 0) {
-    const debito = g.debiti[0]!;
-    const creditore = giocatore(ctx.s, debito.creditore);
-    if (!creditore || creditore.eliminato) {
-      g.debiti.shift();
-      continue;
-    }
-    const quota = Math.min(resto, debito.importo);
-    debito.importo -= quota;
-    resto -= quota;
-    if (debito.importo === 0) g.debiti.shift();
-    ctx.eventi.push({ tipo: 'rimborso', da: g.id, a: creditore.id, importo: quota });
-    accredita(ctx, creditore, quota);
-  }
-}
-
-/**
- * Pagamento a un altro giocatore. Chi riceve incassa subito solo il contante disponibile; il resto
- * diventa un debito che si salda da solo con le entrate successive di chi paga.
- */
-function paga(ctx: Contesto, da: Giocatore, a: IdGiocatore, importo: number): void {
-  if (importo <= 0) return;
-  const creditore = giocatore(ctx.s, a)!;
-  const quota = Math.min(importo, Math.max(0, da.saldo));
-  da.saldo -= importo;
-  const resto = importo - quota;
-  if (resto > 0) {
-    const esistente = da.debiti.find((d) => d.creditore === a);
-    if (esistente) esistente.importo += resto;
-    else da.debiti.push({ creditore: a, importo: resto });
-    ctx.eventi.push({ tipo: 'debito', da: da.id, a, importo: resto });
-  }
-  accredita(ctx, creditore, quota);
-}
-
-/** Pagamento alla banca. Tasse, carte e riparazioni vanno nella cassa della Vacanza, se la regola è attiva. */
-function pagaBanca(ctx: Contesto, g: Giocatore, importo: number, inCassa: boolean): void {
-  if (importo <= 0) return;
-  g.saldo -= importo;
-  if (inCassa && ctx.s.impostazioni.cassaVacanza) ctx.s.cassaVacanza += importo;
-}
-
 /* ------------------------ Compravendite ---------------------------- */
 
 function compra(ctx: Contesto, g: Giocatore): void {
@@ -462,6 +489,7 @@ function vendi(ctx: Contesto, g: Giocatore, casella: number): void {
 /**
  * La banca liquida i beni del fallito e paga i suoi creditori fino al debito.
  * Le proprietà tornano libere, senza edifici né ipoteca; le Carte Grazia tornano nei mazzi.
+ * I suoi scambi aperti spariscono e, se all'asta era il migliore offerente, torna buona l'offerta precedente.
  */
 function bancarotta(ctx: Contesto, g: Giocatore): void {
   const { s } = ctx;
@@ -484,6 +512,11 @@ function bancarotta(ctx: Contesto, g: Giocatore): void {
   g.vacanza = false;
   g.eliminato = { turno: s.turno.numero, motivo: 'bancarotta' };
   for (const altro of s.giocatori) altro.debiti = altro.debiti.filter((d) => d.creditore !== g.id);
+  s.scambi = s.scambi.filter((x) => x.da !== g.id && x.a !== g.id);
+  if (s.asta) {
+    s.asta.offerte = s.asta.offerte.filter((o) => o.giocatore !== g.id);
+    s.asta.migliore = s.asta.offerte[0] ?? null;
+  }
 
   ctx.eventi.push({ tipo: 'bancarotta', giocatore: g.id, recuperi });
   for (const r of recuperi) accredita(ctx, giocatore(s, r.creditore)!, r.importo);
@@ -492,6 +525,8 @@ function bancarotta(ctx: Contesto, g: Giocatore): void {
   if (rimasti.length <= 1) {
     s.fase = 'finita';
     s.vincitore = rimasti[0]?.id ?? null;
+    s.asta = null;
+    s.scambi = [];
     ctx.eventi.push({ tipo: 'fine', vincitore: s.vincitore });
     return;
   }
@@ -500,15 +535,23 @@ function bancarotta(ctx: Contesto, g: Giocatore): void {
 
 /* ---------------------------- Aiuti -------------------------------- */
 
-/** Le azioni che il giocatore può fare adesso. */
+/**
+ * Le azioni che il giocatore può fare adesso. Per l'asta propone i rilanci dei pulsanti;
+ * gli scambi non ci sono, perché il loro contenuto lo sceglie il giocatore.
+ */
 export function azioniPossibili(stato: Stato, id: IdGiocatore): Azione[] {
+  const offerta = stato.asta?.migliore?.importo ?? 0;
   const candidate: Azione[] = [
     { tipo: 'lancia', giocatore: id },
     { tipo: 'compra', giocatore: id },
+    { tipo: 'asta', giocatore: id },
     { tipo: 'fine_turno', giocatore: id },
     { tipo: 'paga_cauzione', giocatore: id },
     { tipo: 'usa_grazia', giocatore: id },
-    ...possedute(stato, id).map((casella): Azione => ({ tipo: 'vendi', giocatore: id, casella })),
+    ...RILANCI.map((r): Azione => ({ tipo: 'offri', giocatore: id, importo: offerta + r })),
+    ...possedute(stato, id).flatMap((casella): Azione[] =>
+      (['costruisci', 'demolisci', 'ipoteca', 'riscatta', 'vendi'] as const).map((tipo) => ({ tipo, giocatore: id, casella })),
+    ),
     { tipo: 'bancarotta', giocatore: id },
   ];
   return candidate.filter((a) => verifica(stato, a) === null);

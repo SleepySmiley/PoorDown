@@ -35,6 +35,45 @@ describe('descrivi', () => {
     expect(eventi.map((e) => descrivi(e, stato))).toContain('Anna pesca una Cartolina: «Aiuti un parente. Paga 50 €.»');
   });
 
+  it('scrive case, ipoteche, aste e scambi', () => {
+    const s = partitaDiProva();
+    const testo = (e: Parameters<typeof descrivi>[0]) => descrivi(e, s);
+    expect(testo({ tipo: 'costruzione', giocatore: 'a', casella: 3, livello: 1, costo: 50 })).toBe(
+      'Anna costruisce una casa ad Aosta per 50 €.',
+    );
+    expect(testo({ tipo: 'costruzione', giocatore: 'a', casella: 11, livello: 5, costo: 100 })).toBe(
+      'Anna costruisce un albergo a Siena per 100 €.',
+    );
+    expect(testo({ tipo: 'demolizione', giocatore: 'a', casella: 11, livello: 4, importo: 50 })).toBe(
+      'Anna vende alla banca l’albergo di Siena per 50 €.',
+    );
+    expect(testo({ tipo: 'ipoteca', giocatore: 'a', casella: 11, importo: 70 })).toBe('Anna ipoteca Siena e riceve 70 €.');
+    expect(testo({ tipo: 'riscatto', giocatore: 'a', casella: 11, importo: 77 })).toBe('Anna toglie l’ipoteca da Siena per 77 €.');
+    expect(testo({ tipo: 'asta', giocatore: 'a', casella: 11 })).toBe('Anna mette all’asta Siena.');
+    expect(testo({ tipo: 'asta_vinta', giocatore: 'b', casella: 11, importo: 1200 })).toBe(
+      'Bruno vince l’asta e compra Siena per 1.200 €.',
+    );
+    expect(testo({ tipo: 'asta_deserta', casella: 11, offerente: null })).toBe('Nessuna offerta: Siena resta alla banca.');
+    expect(testo({ tipo: 'scambio_proposto', scambio: 1, da: 'a', a: 'b', trattativa: 0 })).toBe(
+      'Anna propone uno scambio a Bruno.',
+    );
+    expect(testo({ tipo: 'scambio_proposto', scambio: 2, da: 'b', a: 'a', trattativa: 1 })).toBe(
+      'Bruno fa una controproposta ad Anna.',
+    );
+    expect(
+      testo({
+        tipo: 'scambio_accettato',
+        scambio: 2,
+        da: 'a',
+        a: 'b',
+        dare: { soldi: 100, caselle: [11, 13], grazie: ['busta'] },
+        avere: { soldi: 0, caselle: [], grazie: [] },
+      }),
+    ).toBe('Bruno accetta lo scambio proposto da Anna. Anna dà Siena, Pisa, la Carta Grazia e 100 €; Bruno non dà niente.');
+    expect(testo({ tipo: 'scambio_rifiutato', scambio: 1, da: 'a', a: 'b' })).toBe('Bruno rifiuta lo scambio proposto da Anna.');
+    expect(testo({ tipo: 'scambio_annullato', scambio: 1, da: 'a', a: 'b' })).toBe('Anna ritira lo scambio proposto a Bruno.');
+  });
+
   it('scrive anche i fatti della lobby', () => {
     expect(descriviVoce({ tipo: 'ingresso', giocatore: 'x', nome: 'Sara', colore: 5 }, null)).toBe('Sara entra nella partita.');
     expect(descriviVoce({ tipo: 'uscita', giocatore: 'x', nome: 'Sara', motivo: 'volontaria' }, null)).toBe('Sara lascia la stanza.');

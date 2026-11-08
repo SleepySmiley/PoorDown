@@ -1,7 +1,7 @@
 /* Aiuti per i test del motore. Non fanno parte del gioco. */
 
 import { casoDaSeme } from './caso';
-import { caselleDellaRegione, giocatore, possiedeRegione, proprietabile } from './conti';
+import { caselleDellaRegione, giocatore, possiedeRegione, proprietabile, regioneIpotecata } from './conti';
 import { IMPOSTAZIONI_PREDEFINITE } from './impostazioni';
 import { creaPartita } from './partita';
 import { applica } from './regole';
@@ -36,9 +36,9 @@ export function dadi(...tiri: [number, number][]): Caso {
   };
 }
 
-/** Esegue l'azione e fallisce se il motore la rifiuta. */
-export function esegui(stato: Stato, azione: Azione, caso: Caso = dadi()): { stato: Stato; eventi: Evento[] } {
-  const esito = applica(stato, azione, caso);
+/** Esegue l'azione e fallisce se il motore la rifiuta. `adesso` serve alle aste. */
+export function esegui(stato: Stato, azione: Azione, caso: Caso = dadi(), adesso = 0): { stato: Stato; eventi: Evento[] } {
+  const esito = applica(stato, azione, caso, adesso);
   if (!esito.ok) throw new Error(`Azione ${azione.tipo} rifiutata: ${esito.messaggio}`);
   return esito;
 }
@@ -122,21 +122,31 @@ export function problemi(s: Stato): string[] {
     if (detentori > 1) out.push(`Mazzo ${nome}: Carta Grazia in più mani.`);
   }
 
+  tab.regioni.forEach((_, r) => {
+    const livelli = caselleDellaRegione(tab, r).map((i) => s.proprieta[i]!.livello);
+    if (s.impostazioni.costruzioneUniforme && Math.max(...livelli) - Math.min(...livelli) > 1) {
+      out.push(`Regione ${r}: costruzione non uniforme (${livelli.join(', ')}).`);
+    }
+    if (regioneIpotecata(s, r) && livelli.some((l) => l > 0)) out.push(`Regione ${r}: edifici con una città ipotecata.`);
+  });
+
+  const attivo = (id: string) => giocatore(s, id)?.eliminato === null;
+  if (s.asta) {
+    const p = s.proprieta[s.asta.casella];
+    if (!p || p.proprietario !== null) out.push('Asta su una casella non libera.');
+    if (JSON.stringify(s.asta.migliore) !== JSON.stringify(s.asta.offerte[0] ?? null)) {
+      out.push('Asta: la migliore offerta non è l’ultima.');
+    }
+    if (s.asta.offerte.some((o) => !attivo(o.giocatore))) out.push('Asta: offerta di chi non è in gioco.');
+  }
+  for (const sc of s.scambi) {
+    if (!attivo(sc.da) || !attivo(sc.a) || sc.da === sc.a) out.push(`Scambio ${sc.id}: parti non valide.`);
+    if (sc.id >= s.prossimoScambio) out.push(`Scambio ${sc.id}: numero non ancora assegnato.`);
+  }
+  if (new Set(s.scambi.map((x) => x.id)).size !== s.scambi.length) out.push('Scambi con lo stesso numero.');
+  if (s.fase === 'finita' && (s.asta || s.scambi.length)) out.push('Partita finita con un’asta o scambi aperti.');
+
   if (s.cassaVacanza < 0) out.push('Cassa della Vacanza negativa.');
   if (!s.impostazioni.cassaVacanza && s.cassaVacanza !== 0) out.push('Cassa della Vacanza piena con la regola spenta.');
   return out;
-}
-
-/** Costruisce un livello su tutte le città di una regione posseduta per intero (simula la Fase 5). */
-export function costruisciSuRegione(s: Stato, regione: number): boolean {
-  const tab = tabellone(s.mappa);
-  const caselle = caselleDellaRegione(tab, regione);
-  const owner = s.proprieta[caselle[0]!]!.proprietario;
-  if (!owner || !possiedeRegione(s, owner, regione)) return false;
-  const costo = tab.regioni[regione]!.costoCasa * caselle.length;
-  const chi = g(s, owner);
-  if (chi.saldo < costo || caselle.some((i) => s.proprieta[i]!.livello >= 5)) return false;
-  chi.saldo -= costo;
-  for (const i of caselle) s.proprieta[i]!.livello++;
-  return true;
 }

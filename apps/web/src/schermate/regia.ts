@@ -200,6 +200,8 @@ export class Regia {
         await this.attendi(600);
         return;
       case 'acquisto':
+      case 'asta_vinta':
+      case 'costruzione':
       case 'affitto':
       case 'tassa':
       case 'partenza':

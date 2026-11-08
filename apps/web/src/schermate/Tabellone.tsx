@@ -38,6 +38,7 @@ export function SchedaProprieta({
   partita,
   n,
   azioni,
+  ipoteca,
   onChiudi,
   className,
   style,
@@ -45,7 +46,10 @@ export function SchedaProprieta({
   mappa: IdMappa;
   partita: Stato | null;
   n: number;
+  /** Pulsanti sotto la tabella degli affitti (costruisci, vendi). */
   azioni?: ReactNode;
+  /** Pulsante dell'ipoteca, in alto sotto il nome. */
+  ipoteca?: ReactNode;
   onChiudi?: () => void;
   className?: string;
   style?: CSSProperties;
@@ -79,6 +83,7 @@ export function SchedaProprieta({
         )}
       </header>
       {p?.ipotecata && <p className="scheda__ipoteca">Ipotecata: non riscuote affitti</p>}
+      {ipoteca && <div className="scheda__ipoteca-azione">{ipoteca}</div>}
       <table className="scheda__affitti">
         <thead>
           <tr>

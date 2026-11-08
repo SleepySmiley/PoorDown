@@ -52,6 +52,9 @@ export function creaPartita(giocatori: readonly NuovoGiocatore[], impostazioni: 
     mazzi: { busta: nuovoMazzo(tab.mazzi.busta.length), cartolina: nuovoMazzo(tab.mazzi.cartolina.length) },
     cassaVacanza: 0,
     turno: { giocatore: '', numero: 0, fase: 'lancio', dadi: null, doppi: 0, rilancio: false, acquisto: null },
+    asta: null,
+    scambi: [],
+    prossimoScambio: 1,
     fase: 'in_corso',
     vincitore: null,
   };

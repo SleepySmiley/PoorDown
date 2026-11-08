@@ -6,17 +6,21 @@
 
 import {
   applica,
+  applicaScadenze,
   CHAT_CRONOLOGIA,
   CHAT_MAX,
   COLORI,
   creaPartita,
   GIOCATORI_MIN,
   nomeCasuale,
+  prossimaScadenza,
   pulisciNome,
   REGISTRO_MAX,
   vistaPartita,
+  type Attivita,
   type Azione,
   type CodiceErroreServer,
+  type Esito,
   type EventoStanza,
   type FaseStanza,
   type IdGiocatore,
@@ -88,6 +92,9 @@ export class Stanza {
   private readonly connessioni = new Map<string, Token>();
   private nuove: VoceRegistro[] = [];
   private modificata = false;
+  /** Chi sta creando, guardando o trattando uno scambio. Non si salva e non cambia la versione. */
+  private attivita = new Map<IdGiocatore, Attivita>();
+  private attivitaCambiata = false;
 
   constructor(
     readonly codice: string,
@@ -116,7 +123,10 @@ export class Stanza {
     this.connessioni.delete(connessione);
     this.ultimaPresenza = this.amb.adesso();
     const posto = this.postoDi(token);
-    if (posto && !this.collegato(token)) posto.offlineDa = this.amb.adesso();
+    if (posto && !this.collegato(token)) {
+      posto.offlineDa = this.amb.adesso();
+      this.togliAttivita((id) => id === posto.id);
+    }
     this.segna();
   }
 
@@ -215,12 +225,27 @@ export class Stanza {
     const posto = this.postoDi(token);
     if (!posto) return no('non_seduto', 'Stai solo guardando: non puoi giocare.');
     if (this.fase !== 'partita' || !this.partita) return no('partita_non_in_corso', 'La partita non è in corso.');
-    const esito = applica(this.partita, { ...mossa, giocatore: posto.id } as Azione, this.amb.caso);
+    const esito = applica(this.partita, { ...mossa, giocatore: posto.id } as Azione, this.amb.caso, this.amb.adesso());
     if (!esito.ok) return no(esito.codice, esito.messaggio);
-    this.partita = esito.stato;
-    if (esito.stato.fase === 'finita') this.fase = 'finita';
-    this.segna(...esito.eventi);
+    this.registra(esito);
     return si(null);
+  }
+
+  /** Cosa sta facendo il giocatore con gli scambi. Gli spettatori non contano. */
+  cambiaAttivita(token: Token, attivita: Attivita | null): void {
+    const posto = this.postoDi(token);
+    if (!posto || this.fase !== 'partita') return;
+    if (JSON.stringify(this.attivita.get(posto.id) ?? null) === JSON.stringify(attivita)) return;
+    if (attivita) this.attivita.set(posto.id, attivita);
+    else this.attivita.delete(posto.id);
+    this.attivitaCambiata = true;
+  }
+
+  /** Le attività da mandare a tutti, se sono cambiate dall'ultima volta; altrimenti `null`. */
+  raccogliAttivita(): Record<IdGiocatore, Attivita> | null {
+    if (!this.attivitaCambiata) return null;
+    this.attivitaCambiata = false;
+    return this.mappaAttivita();
   }
 
   /** La chat non cambia la versione: il messaggio va mandato a parte. */
@@ -247,13 +272,35 @@ export class Stanza {
   /* Tempo                                                               */
   /* ------------------------------------------------------------------ */
 
-  /** Toglie dalla lobby chi è sparito da troppo tempo. */
+  /** Toglie dalla lobby chi è sparito da troppo tempo; in partita applica le scadenze rimaste indietro. */
   manutenzione(): void {
+    if (this.fase === 'partita') {
+      this.scadenze();
+      return;
+    }
     if (this.fase !== 'lobby') return;
     const adesso = this.amb.adesso();
     for (const posto of [...this.posti]) {
       if (posto.offlineDa !== null && adesso - posto.offlineDa >= ATTESA_LOBBY_MS) this.rimuovi(posto, 'assenza');
     }
+  }
+
+  /** Applica quello che è scaduto nella partita (la fine dell'asta). */
+  scadenze(): void {
+    if (this.fase !== 'partita' || !this.partita) return;
+    const esito = applicaScadenze(this.partita, this.amb.caso, this.amb.adesso());
+    if (esito?.ok) this.registra(esito);
+  }
+
+  /** Millisecondi alla prossima scadenza della partita, `null` se non ce ne sono. */
+  attesa(): number | null {
+    const scadenza = this.fase === 'partita' && this.partita ? prossimaScadenza(this.partita) : null;
+    return scadenza === null ? null : Math.max(0, scadenza - this.amb.adesso());
+  }
+
+  /** L'orologio del server, che i browser usano per i conti alla rovescia. */
+  orologio(): number {
+    return this.amb.adesso();
   }
 
   /* ------------------------------------------------------------------ */
@@ -282,7 +329,14 @@ export class Stanza {
   }
 
   istantanea(token: Token): Istantanea {
-    return { stanza: this.vista(), io: this.io(token), registro: [...this.registro], chat: [...this.chat] };
+    return {
+      stanza: this.vista(),
+      io: this.io(token),
+      registro: [...this.registro],
+      chat: [...this.chat],
+      attivita: this.mappaAttivita(),
+      adesso: this.amb.adesso(),
+    };
   }
 
   /**
@@ -326,7 +380,14 @@ export class Stanza {
     stanza.versione = dati.versione;
     stanza.host = dati.host;
     stanza.posti = dati.posti.map((p) => ({ ...p, offlineDa: adesso }));
-    stanza.partita = dati.partita;
+    // Le partite salvate prima della Fase 5 non hanno asta e scambi.
+    const salvata = dati.partita as (Stato & Partial<Pick<Stato, 'asta' | 'scambi' | 'prossimoScambio'>>) | null;
+    stanza.partita = salvata && {
+      ...salvata,
+      asta: salvata.asta ?? null,
+      scambi: salvata.scambi ?? [],
+      prossimoScambio: salvata.prossimoScambio ?? 1,
+    };
     stanza.registro = dati.registro;
     stanza.chat = dati.chat;
     stanza.prossimaVoce = dati.prossimaVoce;
@@ -380,6 +441,27 @@ export class Stanza {
       if (erede) voci.push({ tipo: 'nuovo_host', giocatore: erede.id, nome: erede.nome });
     }
     this.segna(...voci);
+  }
+
+  /** Accoglie il nuovo stato della partita e toglie le attività sugli scambi che non ci sono più. */
+  private registra(esito: Extract<Esito, { ok: true }>): void {
+    this.partita = esito.stato;
+    if (esito.stato.fase === 'finita') this.fase = 'finita';
+    const aperti = new Set(esito.stato.scambi.map((x) => x.id));
+    this.togliAttivita((_, a) => this.fase !== 'partita' || (a.tipo !== 'crea' && !aperti.has(a.scambio)));
+    this.segna(...esito.eventi);
+  }
+
+  private mappaAttivita(): Record<IdGiocatore, Attivita> {
+    return Object.fromEntries(this.attivita);
+  }
+
+  private togliAttivita(via: (id: IdGiocatore, a: Attivita) => boolean): void {
+    for (const [id, a] of this.attivita) {
+      if (!via(id, a)) continue;
+      this.attivita.delete(id);
+      this.attivitaCambiata = true;
+    }
   }
 
   /** Registra una modifica (con eventuali voci del registro) da mandare al prossimo `raccogli()`. */

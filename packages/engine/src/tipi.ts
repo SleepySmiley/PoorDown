@@ -199,6 +199,51 @@ export interface Turno {
   acquisto: number | null;
 }
 
+export interface Offerta {
+  giocatore: IdGiocatore;
+  importo: number;
+}
+
+/** Asta su una proprietà che il giocatore di turno non ha comprato. */
+export interface Asta {
+  casella: number;
+  /** Chi l'ha aperta: il giocatore di turno in quel momento. */
+  giocatore: IdGiocatore;
+  /** Offerta più alta, `null` finché nessuno offre. */
+  migliore: Offerta | null;
+  /** Ultime offerte, dalla più recente. */
+  offerte: Offerta[];
+  /** Quando finisce, in millisecondi dell'orologio del server. Ogni offerta la sposta più avanti. */
+  scadenza: number;
+}
+
+/** Cosa mette sul tavolo una delle due parti di uno scambio. */
+export interface Pacchetto {
+  soldi: number;
+  /** Caselle delle proprietà, in ordine di tabellone. */
+  caselle: number[];
+  /** Carte Grazia, indicate dal mazzo da cui vengono. */
+  grazie: NomeMazzo[];
+}
+
+export interface Scambio {
+  id: number;
+  /** Chi propone. */
+  da: IdGiocatore;
+  /** A chi è proposto: solo lui può accettare o rifiutare. */
+  a: IdGiocatore;
+  /** Cosa dà chi propone. */
+  dare: Pacchetto;
+  /** Cosa chiede in cambio. */
+  avere: Pacchetto;
+  /** Nota facoltativa, al massimo 200 caratteri. */
+  nota: string;
+  /** 0 per la proposta originale, poi cresce a ogni controproposta. */
+  trattativa: number;
+  /** Le caselle dello scambio già ipotecate quando è stato proposto: un'ipoteca nuova lo rende non valido. */
+  ipotecate: number[];
+}
+
 export interface Stato {
   mappa: IdMappa;
   impostazioni: Impostazioni;
@@ -209,6 +254,12 @@ export interface Stato {
   mazzi: Record<NomeMazzo, Mazzo>;
   cassaVacanza: number;
   turno: Turno;
+  /** L'asta in corso, se c'è. */
+  asta: Asta | null;
+  /** Scambi proposti e non ancora chiusi. */
+  scambi: Scambio[];
+  /** Numero del prossimo scambio proposto. */
+  prossimoScambio: number;
   fase: 'in_corso' | 'finita';
   vincitore: IdGiocatore | null;
 }
@@ -225,6 +276,30 @@ export type Azione =
   | { tipo: 'paga_cauzione'; giocatore: IdGiocatore }
   | { tipo: 'usa_grazia'; giocatore: IdGiocatore; mazzo?: NomeMazzo }
   | { tipo: 'vendi'; giocatore: IdGiocatore; casella: number }
+  /** Una casa in più (o l'albergo, sopra quattro case). */
+  | { tipo: 'costruisci'; giocatore: IdGiocatore; casella: number }
+  /** Vende alla banca una casa (o l'albergo, che torna a quattro case) per metà del costo. */
+  | { tipo: 'demolisci'; giocatore: IdGiocatore; casella: number }
+  | { tipo: 'ipoteca'; giocatore: IdGiocatore; casella: number }
+  | { tipo: 'riscatta'; giocatore: IdGiocatore; casella: number }
+  /** Manda all'asta la proprietà libera su cui si è fermato, invece di comprarla. */
+  | { tipo: 'asta'; giocatore: IdGiocatore }
+  /** Offerta all'asta: `importo` è il totale offerto, non il rilancio. */
+  | { tipo: 'offri'; giocatore: IdGiocatore; importo: number }
+  /** Propone uno scambio a `a`. Con `sostituisce` è una controproposta che prende il posto di quello scambio. */
+  | {
+      tipo: 'proponi';
+      giocatore: IdGiocatore;
+      a: IdGiocatore;
+      dare: Pacchetto;
+      avere: Pacchetto;
+      nota: string;
+      sostituisce?: number;
+    }
+  | { tipo: 'accetta'; giocatore: IdGiocatore; scambio: number }
+  | { tipo: 'rifiuta'; giocatore: IdGiocatore; scambio: number }
+  /** Chi ha proposto lo scambio lo ritira. */
+  | { tipo: 'annulla'; giocatore: IdGiocatore; scambio: number }
   | { tipo: 'bancarotta'; giocatore: IdGiocatore };
 
 export type TipoAzione = Azione['tipo'];
@@ -246,6 +321,20 @@ export type Evento =
   | { tipo: 'uscita_prigione'; giocatore: IdGiocatore; modo: 'doppio' | 'cauzione' | 'grazia' | 'tentativi' }
   | { tipo: 'vacanza'; giocatore: IdGiocatore; incasso: number }
   | { tipo: 'vendita'; giocatore: IdGiocatore; casella: number; importo: number }
+  /** `livello`: quello raggiunto (5 = albergo). */
+  | { tipo: 'costruzione'; giocatore: IdGiocatore; casella: number; livello: number; costo: number }
+  /** `livello`: quello rimasto dopo la vendita dell'edificio. */
+  | { tipo: 'demolizione'; giocatore: IdGiocatore; casella: number; livello: number; importo: number }
+  | { tipo: 'ipoteca'; giocatore: IdGiocatore; casella: number; importo: number }
+  | { tipo: 'riscatto'; giocatore: IdGiocatore; casella: number; importo: number }
+  | { tipo: 'asta'; giocatore: IdGiocatore; casella: number }
+  | { tipo: 'asta_vinta'; giocatore: IdGiocatore; casella: number; importo: number }
+  /** Nessuno ha offerto, oppure chi ha vinto non ha più i soldi (`offerente`). La proprietà resta libera. */
+  | { tipo: 'asta_deserta'; casella: number; offerente: IdGiocatore | null }
+  | { tipo: 'scambio_proposto'; scambio: number; da: IdGiocatore; a: IdGiocatore; trattativa: number }
+  | { tipo: 'scambio_accettato'; scambio: number; da: IdGiocatore; a: IdGiocatore; dare: Pacchetto; avere: Pacchetto }
+  | { tipo: 'scambio_rifiutato'; scambio: number; da: IdGiocatore; a: IdGiocatore }
+  | { tipo: 'scambio_annullato'; scambio: number; da: IdGiocatore; a: IdGiocatore }
   /** Non aveva abbastanza contante: `importo` è la parte che resta da dare. */
   | { tipo: 'debito'; da: IdGiocatore; a: IdGiocatore; importo: number }
   /** Parte di un debito saldata in automatico con un'entrata. */
@@ -271,7 +360,26 @@ export type CodiceErrore =
   | 'niente_grazia'
   | 'non_tua'
   | 'edifici_nella_regione'
-  | 'giocatori_non_validi';
+  | 'giocatori_non_validi'
+  | 'decidi_acquisto'
+  | 'non_costruibile'
+  | 'regione_incompleta'
+  | 'regione_ipotecata'
+  | 'livello_massimo'
+  | 'livello_minimo'
+  | 'costruzione_uniforme'
+  | 'ipoteche_disattivate'
+  | 'gia_ipotecata'
+  | 'non_ipotecata'
+  | 'aste_disattivate'
+  | 'asta_in_corso'
+  | 'niente_asta'
+  | 'offerta_bassa'
+  | 'offerta_tua'
+  | 'scambio_inesistente'
+  | 'non_tuo_scambio'
+  | 'troppi_scambi'
+  | 'scambio_non_valido';
 
 export interface Errore {
   codice: CodiceErrore;

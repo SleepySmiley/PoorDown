@@ -13,6 +13,7 @@ import {
   CHAT_CRONOLOGIA,
   REGISTRO_MAX,
   type Aggiornamento,
+  type Attivita,
   type Comandi,
   type EventiClient,
   type EventiServer,
@@ -37,6 +38,8 @@ export interface StatoCollegamento {
   chat: MessaggioChat[];
   /** Chi sta scrivendo in chat adesso. */
   scrivono: IdGiocatore[];
+  /** Chi sta creando, guardando o trattando uno scambio. */
+  attivita: Record<IdGiocatore, Attivita>;
   /** Perché la stanza non è più seguita (chiusa, scaduta), da mostrare all'utente. */
   avviso: string | null;
 }
@@ -54,8 +57,8 @@ const SENZA_RETE = {
   messaggio: 'Non sei collegato al server.',
 } as const;
 
-function senzaStanza(): Pick<StatoCollegamento, 'stanza' | 'io' | 'registro' | 'chat' | 'scrivono'> {
-  return { stanza: null, io: null, registro: [], chat: [], scrivono: [] };
+function senzaStanza(): Pick<StatoCollegamento, 'stanza' | 'io' | 'registro' | 'chat' | 'scrivono' | 'attivita'> {
+  return { stanza: null, io: null, registro: [], chat: [], scrivono: [], attivita: {} };
 }
 
 export class Collegamento {
@@ -69,6 +72,10 @@ export class Collegamento {
   private messiDaParte: Aggiornamento[] = [];
   private readonly timerScrittura = new Map<IdGiocatore, ReturnType<typeof setTimeout>>();
   private ultimoSegnaleScrittura = 0;
+  /** Quanto l'orologio del server è avanti rispetto a quello di questo browser (ms). */
+  private scarto = 0;
+  /** L'ultima attività sugli scambi mandata al server. */
+  private miaAttivita: Attivita | null = null;
 
   constructor(private readonly presa: PresaGioco) {
     presa.on('connect', () => {
@@ -80,6 +87,9 @@ export class Collegamento {
     presa.on('aggiornamento', (a) => this.ricevi(a));
     presa.on('messaggio', (m) => this.riceviMessaggio(m));
     presa.on('scrive', (id) => this.segnaScrittura(id));
+    presa.on('attivita', (mappa) => {
+      if (this.stato.stanza) this.cambia({ attivita: mappa });
+    });
     presa.on('stanza_chiusa', (codice) => {
       if (codice === this.codice) this.dimentica('La stanza è stata chiusa.');
     });
@@ -89,6 +99,11 @@ export class Collegamento {
 
   leggi(): StatoCollegamento {
     return this.stato;
+  }
+
+  /** L'ora del server, in millisecondi: per i conti alla rovescia (l'asta) anche se gli orologi non coincidono. */
+  orologio(): number {
+    return Date.now() + this.scarto;
   }
 
   /** La stanza che si sta seguendo (anche mentre si aspetta di entrarci), `null` se nessuna. */
@@ -145,6 +160,13 @@ export class Collegamento {
     this.presa.emit('sta_scrivendo');
   }
 
+  /** Dice agli altri se si sta creando, guardando o trattando uno scambio. Manda solo i cambiamenti. */
+  segnalaAttivita(attivita: Attivita | null): void {
+    if (JSON.stringify(attivita) === JSON.stringify(this.miaAttivita)) return;
+    this.miaAttivita = attivita;
+    if (this.presa.connected) this.presa.emit('attivita', attivita);
+  }
+
   chiudi(): void {
     this.presa.disconnect();
   }
@@ -174,7 +196,11 @@ export class Collegamento {
       this.inCarica = false;
     }
     if (risposta.ok && risposta.dati.stanza.codice === this.codice) {
-      this.cambia({ ...risposta.dati, scrivono: [] });
+      const { adesso, ...dati } = risposta.dati;
+      this.scarto = adesso - Date.now();
+      this.cambia({ ...dati, scrivono: [] });
+      // Dopo una riconnessione il server non sa più cosa stavo facendo con gli scambi.
+      if (this.miaAttivita && this.presa.connected) this.presa.emit('attivita', this.miaAttivita);
     }
     const daRiprendere = this.messiDaParte.sort((a, b) => a.stanza.versione - b.stanza.versione);
     this.messiDaParte = [];
@@ -193,6 +219,7 @@ export class Collegamento {
       void this.sincronizza();
       return;
     }
+    this.scarto = a.adesso - Date.now();
     this.cambia({ stanza: a.stanza, io: a.io, registro: [...this.stato.registro, ...a.voci].slice(-REGISTRO_MAX) });
     if (a.voci.length > 0) for (const fn of this.ascoltatoriVoci) fn(a.voci);
   }

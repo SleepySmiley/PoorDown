@@ -112,12 +112,13 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** tu e i tuoi amici fate una partita vera in rete locale. **Primo traguardo da provare insieme.** Verificato con due e tre browser Edge: partita fino alla bancarotta, ricarica a metà partita, spettatore, espulsione, prigione, vendita.
 
 ### Fase 5 — Economia completa · L
-- [ ] Case e hotel con costruzione uniforme, vendita edifici, ipoteche e riscatto (la vendita delle proprietà c'è dalla Fase 2)
-- [ ] Aste: finestra condivisa, rilanci, conto alla rovescia
-- [ ] Scambi: crea, vedi, contro-proposta, annulla, osservatori, tutte le regole di validità e i limiti ([04 §4](docs/analisi/04-economia-fine-partita.md))
+- [x] Case e alberghi con costruzione uniforme, vendita degli edifici a metà prezzo, ipoteche e riscatto al 110% (la vendita delle proprietà c'è dalla Fase 2)
+- [x] Aste: finestra sopra il tabellone uguale per tutti, rilanci +2/+10/+100, conto alla rovescia di 10 s che riparte a ogni offerta, chiusura decisa dal server
+- [x] Scambi: crea, vedi, controproposta, rifiuta, ritira, osservatori (matita e occhio), tutte le regole di validità, le due regole di equità e i limiti 10/5 ([04 §4](docs/analisi/04-economia-fine-partita.md))
 - [x] Debito agganciato al creditore, regole "affitto x2", "niente affitto in prigione", "cassa vacanza" (fatto nella Fase 2)
+- [x] In più: il browser riceve l'ora del server, così il conto alla rovescia è giusto anche se gli orologi dei PC non coincidono; le partite salvate prima della Fase 5 riprendono; chi riceve una proposta la vede aprirsi da sola. In lobby restano con «Presto» solo bot e timer di turno
 
-**Fatto quando:** ogni impostazione di gioco cambia davvero la partita, con test per ciascuna.
+**Fatto quando:** ogni impostazione di gioco cambia davvero la partita, con test per ciascuna. ✔ Fatto: test per aste, ipoteche, costruzione uniforme e stanza privata (regola degli scambi sbilanciati), più la simulazione di 80 partite con tutte le regole accese a caso. Verificato con due browser Edge: case su una regione intera, ipoteca, due aste, scambio con nota e controproposta.
 
 ### Fase 6 — Tempo, assenze, moderazione · M
 - [ ] Timer di turno (grazia + banca + ricarica), "Chiedi tempo", "+1 min", gioco automatico, rimozione, bancarotta automatica in debito
@@ -159,6 +160,11 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Codice della stanza | 5 caratteri senza 0/o e 1/l/i, per poterlo dettare a voce |
 | Carte "Ogni giocatore ti dà" e "Paga a ogni giocatore" senza contante | Il debito si aggancia come per l'affitto (richup non lo aggancia) |
 | Tirare i dadi con il saldo negativo | Non si può, né prima né dopo il lancio: prima si vende o si dichiara bancarotta |
+| Offerta di partenza dell'asta | Nessuna offerta (0 €): i primi rilanci valgono 2, 10 o 100 € (richup parte da 2 €) |
+| Migliore offerente che fa bancarotta durante l'asta | Torna valida l'offerta precedente, invece di lasciare la proprietà invenduta |
+| Turno durante l'asta | Fermo: il giocatore di turno aspetta la fine dell'asta. Scambi e bancarotta restano possibili |
+| Costruire prima di tirare i dadi | Si può, sempre e solo nel proprio turno (anche in prigione) |
+| Regola sul debito negli scambi | Lo scambio non deve togliere niente ai creditori: conta quello che incassano subito più quello che potrebbero recuperare dopo |
 
 ---
 

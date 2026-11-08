@@ -99,7 +99,7 @@ export function Stanza({ codice }: { codice: string }): ReactNode {
   };
   return (
     <>
-      {stanza.fase === 'lobby' ? <Lobby {...comuni} /> : <Gioco {...comuni} />}
+      {stanza.fase === 'lobby' ? <Lobby {...comuni} /> : <Gioco {...comuni} attivita={stato.attivita} />}
       {stato.rete === 'perso' && (
         <p className="rete-persa" role="alert">
           Collegamento perso con il server. Riprovo da solo: controlla che il PC con PoorDown sia acceso e sulla stessa rete.

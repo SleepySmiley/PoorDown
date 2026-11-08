@@ -77,6 +77,59 @@ export function Finestra({
   );
 }
 
+/* ---------------- Finestra sopra il tabellone ---------------- */
+
+/**
+ * Finestra sopra il tabellone (asta, scambi), come in richup: copre solo il tabellone,
+ * così chat e colonne restano usabili. Senza `onChiudi` non si chiude (l'asta finisce da sola).
+ * Non ruba il fuoco a chi sta scrivendo in chat.
+ */
+export function RiquadroTabellone({
+  titolo,
+  onChiudi,
+  children,
+  className,
+}: {
+  titolo: string;
+  onChiudi?: () => void;
+  children: ReactNode;
+  className?: string;
+}): ReactNode {
+  const riquadro = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!onChiudi) return;
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onChiudi();
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [onChiudi]);
+  useEffect(() => {
+    const prima = document.activeElement;
+    if (prima instanceof HTMLInputElement || prima instanceof HTMLTextAreaElement) return;
+    riquadro.current?.focus();
+    return () => {
+      if (prima instanceof HTMLElement) prima.focus();
+    };
+  }, []);
+  return (
+    <div className="sul-tabellone" role="presentation" onClick={onChiudi}>
+      <div
+        ref={riquadro}
+        tabIndex={-1}
+        className={className ? `sul-tabellone__riquadro ${className}` : 'sul-tabellone__riquadro'}
+        role="dialog"
+        aria-label={titolo}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="sul-tabellone__testa">
+          <h2>{titolo}</h2>
+          {onChiudi && <PulsanteIcona icona="chiudi" etichetta="Chiudi" onClick={onChiudi} />}
+        </header>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Colonna sinistra ---------------- */
 
 /**
@@ -343,7 +396,6 @@ const REGOLE: Voce[] = [
     icona: 'martelletto',
     nome: 'Aste',
     descrizione: 'Se chi si ferma su una proprietà non la compra, va all’asta',
-    presto: true,
   },
   {
     chiave: 'nienteAffittoInPrigione',
@@ -356,14 +408,12 @@ const REGOLE: Voce[] = [
     icona: 'banca',
     nome: 'Ipoteche',
     descrizione: 'Ipoteca una proprietà per metà del suo prezzo; finché è ipotecata non incassi l’affitto',
-    presto: true,
   },
   {
     chiave: 'costruzioneUniforme',
     icona: 'uniforme',
     nome: 'Costruzione uniforme',
     descrizione: 'Case e alberghi si costruiscono e si vendono in modo uniforme nella regione',
-    presto: true,
   },
   { chiave: 'soldiIniziali', icona: 'banconota', nome: 'Soldi iniziali', descrizione: 'Con quanti soldi parte ogni giocatore' },
   {

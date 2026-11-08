@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   mossePossibili,
   type Aggiornamento,
+  type Attivita,
   type Comandi,
   type EventiClient,
   type EventiServer,
@@ -35,6 +36,7 @@ class Browser {
   readonly aggiornamenti: Aggiornamento[] = [];
   readonly messaggi: MessaggioChat[] = [];
   readonly scrive: IdGiocatore[] = [];
+  readonly attivita: Record<IdGiocatore, Attivita>[] = [];
   /** Tutto il testo ricevuto dal server, per controllare che non contenga segreti. */
   ricevuto = '';
   stanza: VistaStanza | null = null;
@@ -51,6 +53,7 @@ class Browser {
     });
     presa.on('messaggio', (m) => this.messaggi.push(m));
     presa.on('scrive', (id) => this.scrive.push(id));
+    presa.on('attivita', (m) => this.attivita.push(m));
   }
 
   async comando<K extends NomeComando>(nome: K, dati: Comandi[K]['dati']): Promise<Risposta<Comandi[K]['risposta']>> {
@@ -99,7 +102,10 @@ async function avviaServer() {
   const tempoReale = collegaTempoReale(io, gestore);
   await new Promise<void>((pronto) => http.listen(0, '127.0.0.1', pronto));
   const url = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
-  chiudi = () => new Promise<void>((fatto) => void io.close(() => fatto()));
+  chiudi = () => {
+    tempoReale.ferma();
+    return new Promise<void>((fatto) => void io.close(() => fatto()));
+  };
 
   async function browser(token: string): Promise<Browser> {
     const presa: Presa = apriPresa(url, { auth: { token }, transports: ['websocket'], forceNew: true, reconnection: false });
@@ -128,12 +134,15 @@ async function lobbyADue() {
   return { ...server, anna, bruno, codice };
 }
 
-/** Un giocatore semplice: vende se è in rosso, compra sempre, tira, chiude il turno. */
+/** Un giocatore semplice: in rosso vende, altrimenti compra, costruisce, tira, chiude il turno. */
 function scegliMossa(s: Stato, id: IdGiocatore): Mossa {
   const possibili = mossePossibili(s, id);
   const prima = (tipo: Mossa['tipo']) => possibili.find((m) => m.tipo === tipo);
   const io = s.giocatori.find((g) => g.id === id)!;
-  const mossa = io.saldo < 0 ? prima('vendi') ?? prima('bancarotta') : prima('compra') ?? prima('lancia') ?? prima('fine_turno');
+  const mossa =
+    io.saldo < 0
+      ? (prima('demolisci') ?? prima('vendi') ?? prima('bancarotta'))
+      : (prima('compra') ?? prima('costruisci') ?? prima('lancia') ?? prima('fine_turno'));
   if (!mossa) throw new Error(`Nessuna mossa possibile per ${io.nome}.`);
   return mossa;
 }
@@ -151,7 +160,7 @@ describe('partita completa a due', () => {
     ]);
     let mosse = 0;
     for (; mosse < 3_000 && anna.stanza!.fase === 'partita'; mosse++) {
-      // Dopo 40 turni chi aspetta si arrende: senza case (Fase 5) la partita non finirebbe mai.
+      // Dopo 40 turni chi aspetta si arrende: la prova deve finire in fretta.
       const s = anna.partita;
       if (s.turno.numero > 40) {
         const altro = s.giocatori.find((g) => g.id !== s.turno.giocatore)!;
@@ -186,6 +195,51 @@ describe('partita completa a due', () => {
     const dalVivo = anna.aggiornamenti.flatMap((a) => a.voci);
     expect(sincronizzata.registro).toEqual(dalVivo.slice(-sincronizzata.registro.length));
     expect(sincronizzata.stanza.codice).toBe(codice);
+  });
+});
+
+describe('aste e scambi in rete', () => {
+  it('l’asta si chiude da sola alla scadenza e tutti vedono l’ora del server', async () => {
+    const { anna, bruno, amb, tempoReale } = await lobbyADue();
+    await anna.ok('impostazioni', { aste: true });
+    await anna.ok('avvia', {});
+    expect(anna.aggiornamenti.at(-1)!.adesso).toBe(amb.adesso());
+
+    // Si gioca finché Anna si ferma su una proprietà libera; Bruno compra sempre.
+    for (let i = 0; i < 200 && !anna.partita.asta; i++) {
+      const s = anna.partita;
+      const chi = s.turno.giocatore === anna.io ? anna : bruno;
+      const possibili = mossePossibili(chi.partita, chi.io!);
+      const mossa = chi === anna ? possibili.find((m) => m.tipo === 'asta') : undefined;
+      await chi.ok('mossa', mossa ?? scegliMossa(chi.partita, chi.io!));
+      await vi.waitFor(() => expect(bruno.stanza!.versione).toBe(anna.stanza!.versione));
+    }
+    const asta = anna.partita.asta!;
+    expect(asta.scadenza).toBe(amb.adesso() + 10_000);
+
+    amb.avanza(3_000);
+    await bruno.ok('mossa', { tipo: 'offri', importo: 10 });
+    expect((await anna.comando('mossa', { tipo: 'offri', importo: 10 })).ok).toBe(false);
+    await anna.ok('mossa', { tipo: 'offri', importo: 12 });
+    await vi.waitFor(() => expect(bruno.partita.asta?.migliore).toEqual({ giocatore: anna.io, importo: 12 }));
+
+    amb.avanza(10_000);
+    tempoReale.manutenzione();
+    await vi.waitFor(() => expect(bruno.partita.asta).toBeNull());
+    expect(bruno.partita.proprieta[asta.casella]!.proprietario).toBe(anna.io);
+    expect(bruno.aggiornamenti.at(-1)!.voci.map((v) => v.evento.tipo)).toEqual(['asta_vinta']);
+  });
+
+  it('chi crea o guarda uno scambio lo vedono anche gli altri', async () => {
+    const { anna, bruno } = await lobbyADue();
+    await anna.ok('avvia', {});
+    bruno.presa.emit('attivita', { tipo: 'crea' });
+    await vi.waitFor(() => expect(anna.attivita.at(-1)).toEqual({ [bruno.io!]: { tipo: 'crea' } }));
+    // Dati non validi: ignorati.
+    bruno.presa.emit('attivita', { tipo: 'guarda' } as unknown as Attivita);
+    bruno.presa.emit('attivita', null);
+    await vi.waitFor(() => expect(anna.attivita.at(-1)).toEqual({}));
+    expect(anna.attivita).toHaveLength(2);
   });
 });
 

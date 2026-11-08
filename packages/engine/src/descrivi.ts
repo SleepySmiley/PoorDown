@@ -3,7 +3,7 @@
 import { giocatore } from './conti';
 import type { EventoStanza } from './protocollo';
 import { tabellone } from './tabelloni';
-import type { Casella, Evento, IdGiocatore, NomeMazzo, Stato } from './tipi';
+import type { Casella, Evento, IdGiocatore, NomeMazzo, Pacchetto, Stato } from './tipi';
 
 /** 1500 → "1.500 €". In italiano il punto delle migliaia si mette anche sotto i 10.000. */
 export function euro(importo: number): string {
@@ -45,7 +45,7 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
     case 'acquisto':
       return `${nome(evento.giocatore)} compra ${casella(evento.casella)} per ${euro(evento.prezzo)}.`;
     case 'affitto':
-      return `${nome(evento.da)} paga ${euro(evento.importo)} di affitto a ${nome(evento.a)} per ${casella(evento.casella)}.`;
+      return `${nome(evento.da)} paga ${euro(evento.importo)} di affitto ${a(nome(evento.a))} per ${casella(evento.casella)}.`;
     case 'tassa':
       return `${nome(evento.giocatore)} paga ${euro(evento.importo)} di ${casella(evento.casella)}.`;
     case 'carta':
@@ -76,10 +76,41 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
         : `${nome(evento.giocatore)} va in vacanza e salta il prossimo turno.`;
     case 'vendita':
       return `${nome(evento.giocatore)} vende ${casella(evento.casella)} alla banca per ${euro(evento.importo)}.`;
+    case 'costruzione':
+      return `${nome(evento.giocatore)} costruisce ${evento.livello === 5 ? 'un albergo' : 'una casa'} ${a(casella(evento.casella))} per ${euro(evento.costo)}.`;
+    case 'demolizione':
+      return `${nome(evento.giocatore)} vende alla banca ${evento.livello === 4 ? 'l’albergo' : 'una casa'} di ${casella(evento.casella)} per ${euro(evento.importo)}.`;
+    case 'ipoteca':
+      return `${nome(evento.giocatore)} ipoteca ${casella(evento.casella)} e riceve ${euro(evento.importo)}.`;
+    case 'riscatto':
+      return `${nome(evento.giocatore)} toglie l’ipoteca da ${casella(evento.casella)} per ${euro(evento.importo)}.`;
+    case 'asta':
+      return `${nome(evento.giocatore)} mette all’asta ${casella(evento.casella)}.`;
+    case 'asta_vinta':
+      return `${nome(evento.giocatore)} vince l’asta e compra ${casella(evento.casella)} per ${euro(evento.importo)}.`;
+    case 'asta_deserta':
+      return evento.offerente
+        ? `${nome(evento.offerente)} non ha più i soldi per pagare: ${casella(evento.casella)} resta alla banca.`
+        : `Nessuna offerta: ${casella(evento.casella)} resta alla banca.`;
+    case 'scambio_proposto':
+      return evento.trattativa > 0
+        ? `${nome(evento.da)} fa una controproposta ${a(nome(evento.a))}.`
+        : `${nome(evento.da)} propone uno scambio ${a(nome(evento.a))}.`;
+    case 'scambio_accettato': {
+      const parte = (chi: IdGiocatore, p: Pacchetto) => {
+        const cose = contenuto(p, casella);
+        return cose ? `${nome(chi)} dà ${cose}` : `${nome(chi)} non dà niente`;
+      };
+      return `${nome(evento.a)} accetta lo scambio proposto da ${nome(evento.da)}. ${parte(evento.da, evento.dare)}; ${parte(evento.a, evento.avere)}.`;
+    }
+    case 'scambio_rifiutato':
+      return `${nome(evento.a)} rifiuta lo scambio proposto da ${nome(evento.da)}.`;
+    case 'scambio_annullato':
+      return `${nome(evento.da)} ritira lo scambio proposto ${a(nome(evento.a))}.`;
     case 'debito':
       return `${nome(evento.da)} non ha abbastanza contante e resta in debito di ${euro(evento.importo)} con ${nome(evento.a)}.`;
     case 'rimborso':
-      return `${nome(evento.da)} restituisce ${euro(evento.importo)} a ${nome(evento.a)}.`;
+      return `${nome(evento.da)} restituisce ${euro(evento.importo)} ${a(nome(evento.a))}.`;
     case 'bancarotta': {
       const recuperi = evento.recuperi.map((r) => ` ${nome(r.creditore)} recupera ${euro(r.importo)} dalla banca.`);
       return `${nome(evento.giocatore)} fa bancarotta. Le sue proprietà tornano alla banca.${recuperi.join('')}`;
@@ -114,12 +145,28 @@ export function descriviVoce(evento: EventoStanza, partita: Stato | null): strin
   }
 }
 
+/** "a Siena", "ad Aosta". */
+function a(nome: string): string {
+  return `${/^a/i.test(nome) ? 'ad' : 'a'} ${nome}`;
+}
+
+/** "Siena, Pisa, la Carta Grazia e 100 €", oppure "" se il pacchetto è vuoto. */
+export function contenuto(p: Pacchetto, casella: (i: number) => string): string {
+  const cose = [
+    ...p.caselle.map(casella),
+    ...(p.grazie.length === 1 ? ['la Carta Grazia'] : p.grazie.length > 1 ? [`${p.grazie.length} Carte Grazia`] : []),
+    ...(p.soldi > 0 ? [euro(p.soldi)] : []),
+  ];
+  if (cose.length <= 1) return cose[0] ?? '';
+  return `${cose.slice(0, -1).join(', ')} e ${cose.at(-1)!}`;
+}
+
 /** "a Napoli", "ad Aosta", "alla Stazione Nord", "all’Acquedotto", "alla casella Busta"… */
 function destinazione(c: Casella): string {
   const vocale = /^[AEIOUÀÈÉÌÒÙ]/i.test(c.nome);
   switch (c.tipo) {
     case 'citta':
-      return `${/^a/i.test(c.nome) ? 'ad' : 'a'} ${c.nome}`;
+      return a(c.nome);
     case 'prigione':
       return 'in visita alla Prigione';
     case 'vacanza':

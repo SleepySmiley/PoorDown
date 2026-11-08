@@ -190,6 +190,8 @@ const TRACCIATI = {
     </>
   ),
   scollegato: <path d="M2.5 8.5a14 14 0 0 1 5.2-3.2M12 4.5a14 14 0 0 1 9.5 4M5.8 12.2a9 9 0 0 1 4.4-2.3M15.8 10.6a9 9 0 0 1 2.4 1.6M9.2 15.8a4.5 4.5 0 0 1 5.6 0M12 19.5h0M3.5 3.5l17 17" />,
+  matita: <path d="M4 20h4.5L19.5 9 15 4.5 4 15.5zM12.5 7l4.5 4.5" />,
+  nota: <path d="M5 4h14v16H5zM8.5 9h7M8.5 12.5h7M8.5 16h4" />,
 } as const;
 
 export type NomeIcona = keyof typeof TRACCIATI;

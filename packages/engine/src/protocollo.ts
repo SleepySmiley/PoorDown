@@ -72,6 +72,12 @@ export interface MessaggioChat {
   testo: string;
 }
 
+/**
+ * Cosa sta facendo un giocatore con gli scambi, perché gli altri lo vedano (matita e occhio accanto agli scambi).
+ * Non fa parte della partita: non si salva e non cambia la versione della stanza.
+ */
+export type Attivita = { tipo: 'crea' } | { tipo: 'guarda'; scambio: number } | { tipo: 'tratta'; scambio: number };
+
 /** Inviato dal server a ogni cambiamento della stanza. */
 export interface Aggiornamento {
   stanza: VistaStanza;
@@ -79,6 +85,8 @@ export interface Aggiornamento {
   io: IdGiocatore | null;
   /** Voci del registro nate con questo aggiornamento. */
   voci: VoceRegistro[];
+  /** Orologio del server (ms) all'invio: il browser lo usa per i conti alla rovescia, come l'asta. */
+  adesso: number;
 }
 
 /** Tutto quello che serve per disegnare la stanza da zero: all'ingresso e dopo una risincronizzazione. */
@@ -89,6 +97,10 @@ export interface Istantanea {
   registro: VoceRegistro[];
   /** Ultimi messaggi della chat, dal più vecchio. */
   chat: MessaggioChat[];
+  /** Chi sta creando, guardando o trattando uno scambio. */
+  attivita: Record<IdGiocatore, Attivita>;
+  /** Orologio del server (ms) all'invio. */
+  adesso: number;
 }
 
 /** Una riga di "Tutte le stanze" (solo stanze pubbliche). */
@@ -168,6 +180,8 @@ export type EventiClient = {
 } & {
   /** Senza risposta: avvisa gli altri che si sta scrivendo in chat. */
   sta_scrivendo: () => void;
+  /** Senza risposta: cosa si sta facendo con gli scambi (`null`: niente). */
+  attivita: (a: Attivita | null) => void;
 };
 
 /** Eventi che il server invia ai browser. */
@@ -176,6 +190,8 @@ export interface EventiServer {
   messaggio: (m: MessaggioChat) => void;
   /** Un giocatore sta scrivendo in chat. */
   scrive: (giocatore: IdGiocatore) => void;
+  /** Chi sta creando, guardando o trattando uno scambio, per intero a ogni cambiamento. */
+  attivita: (mappa: Record<IdGiocatore, Attivita>) => void;
   /** La stanza è stata chiusa dal server. */
   stanza_chiusa: (codice: string) => void;
 }

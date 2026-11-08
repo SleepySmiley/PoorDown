@@ -69,11 +69,11 @@ function voce(n: number): VoceRegistro {
 }
 
 function istantanea(versione: number, extra: Partial<Istantanea> = {}): Istantanea {
-  return { stanza: vista(versione), io: null, registro: [], chat: [], ...extra };
+  return { stanza: vista(versione), io: null, registro: [], chat: [], attivita: {}, adesso: 0, ...extra };
 }
 
 function aggiornamento(versione: number, ...voci: VoceRegistro[]): Aggiornamento {
-  return { stanza: vista(versione), io: 'io', voci };
+  return { stanza: vista(versione), io: 'io', voci, adesso: 0 };
 }
 
 function prepara(versioneIniziale = 5) {

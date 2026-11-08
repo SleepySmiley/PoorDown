@@ -236,3 +236,74 @@ describe('salvataggio', () => {
     expect(copia.chat.map((m) => m.n)).toEqual([1, 2]);
   });
 });
+
+describe('economia e tempo', () => {
+  /** Partita a due con le aste: Anna è ferma su Courmayeur (libera) e deve decidere. */
+  function astaPronta() {
+    const amb = ambienteDiProva();
+    const { stanza } = stanzaDiProva({ ordineCasuale: false, aste: true }, amb);
+    const [anna, bruno] = siedi(stanza, 'anna', 'bruno');
+    stanza.avvia(TOKEN.anna);
+    const p = stanza.partita!;
+    p.turno = { ...p.turno, fase: 'dopo_lancio', dadi: [1, 2], acquisto: 1 };
+    p.giocatori[0]!.posizione = 1;
+    return { amb, stanza, anna: anna!, bruno: bruno! };
+  }
+
+  it('l’asta usa l’orologio del server e si chiude da sola alla scadenza', () => {
+    const { amb, stanza, bruno } = astaPronta();
+    expect(stanza.attesa()).toBeNull();
+    expect(stanza.mossa(TOKEN.anna, { tipo: 'asta' }).ok).toBe(true);
+    expect(stanza.partita!.asta!.scadenza).toBe(amb.adesso() + 10_000);
+    expect(stanza.attesa()).toBe(10_000);
+
+    amb.avanza(4_000);
+    expect(stanza.mossa(TOKEN.bruno, { tipo: 'offri', importo: 12 }).ok).toBe(true);
+    expect(stanza.attesa()).toBe(10_000);
+    amb.avanza(9_999);
+    stanza.manutenzione();
+    expect(stanza.partita!.asta).not.toBeNull();
+    amb.avanza(1);
+    stanza.manutenzione();
+    expect(stanza.partita!.asta).toBeNull();
+    expect(stanza.partita!.proprieta[1]!.proprietario).toBe(bruno);
+    expect(stanza.registro.at(-1)!.evento).toEqual({ tipo: 'asta_vinta', giocatore: bruno, casella: 1, importo: 12 });
+    expect(stanza.attesa()).toBeNull();
+  });
+
+  it('le attività sugli scambi arrivano a tutti e spariscono con lo scambio o con il giocatore', () => {
+    const { stanza, anna, bruno } = astaPronta();
+    stanza.raccogliAttivita();
+    stanza.cambiaAttivita(TOKEN.bruno, { tipo: 'crea' });
+    expect(stanza.raccogliAttivita()).toEqual({ [bruno]: { tipo: 'crea' } });
+    expect(stanza.raccogliAttivita()).toBeNull();
+    // Gli spettatori non hanno attività.
+    stanza.collega('conn-carla', TOKEN.carla);
+    stanza.cambiaAttivita(TOKEN.carla, { tipo: 'crea' });
+    expect(stanza.raccogliAttivita()).toBeNull();
+
+    const pacchetto = { soldi: 10, caselle: [], grazie: [] };
+    const vuoto = { soldi: 0, caselle: [], grazie: [] };
+    expect(stanza.mossa(TOKEN.bruno, { tipo: 'proponi', a: anna, dare: pacchetto, avere: vuoto, nota: '' }).ok).toBe(true);
+    const id = stanza.partita!.scambi[0]!.id;
+    stanza.cambiaAttivita(TOKEN.anna, { tipo: 'guarda', scambio: id });
+    stanza.cambiaAttivita(TOKEN.bruno, { tipo: 'guarda', scambio: id });
+    expect(stanza.raccogliAttivita()).toEqual({ [anna]: { tipo: 'guarda', scambio: id }, [bruno]: { tipo: 'guarda', scambio: id } });
+    stanza.scollega('conn-bruno');
+    expect(stanza.raccogliAttivita()).toEqual({ [anna]: { tipo: 'guarda', scambio: id } });
+    expect(stanza.mossa(TOKEN.anna, { tipo: 'rifiuta', scambio: id }).ok).toBe(true);
+    expect(stanza.raccogliAttivita()).toEqual({});
+  });
+
+  it('le partite salvate prima delle aste e degli scambi riprendono', () => {
+    const { amb, stanza } = astaPronta();
+    const dati = JSON.parse(JSON.stringify(stanza.esporta())) as ReturnType<Stanza['esporta']>;
+    const vecchia = dati.partita as unknown as Record<string, unknown>;
+    delete vecchia.asta;
+    delete vecchia.scambi;
+    delete vecchia.prossimoScambio;
+    const copia = Stanza.importa(dati, amb);
+    expect(copia.partita).toMatchObject({ asta: null, scambi: [], prossimoScambio: 1 });
+    expect(copia.mossa(TOKEN.anna, { tipo: 'compra' }).ok).toBe(true);
+  });
+});

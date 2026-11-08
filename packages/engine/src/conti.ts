@@ -139,3 +139,31 @@ export function valoreVendita(stato: Stato, casella: number): number {
   if (!c || !p || p.ipotecata) return 0;
   return Math.floor(c.prezzo / 2);
 }
+
+/** Quanto dà la banca per ipotecare la proprietà: metà del prezzo. */
+export function valoreIpoteca(tab: Tabellone, casella: number): number {
+  const c = proprietabile(tab, casella);
+  return c ? Math.floor(c.prezzo / 2) : 0;
+}
+
+/** Quanto costa togliere l'ipoteca: il 110% di quanto si è ricevuto. */
+export function costoRiscatto(tab: Tabellone, casella: number): number {
+  return Math.floor((valoreIpoteca(tab, casella) * 11) / 10);
+}
+
+/** Nella regione c'è almeno una città ipotecata. */
+export function regioneIpotecata(stato: Stato, regione: number): boolean {
+  return caselleDellaRegione(tabellone(stato.mappa), regione).some((i) => stato.proprieta[i]?.ipotecata === true);
+}
+
+/** Quanto costa il prossimo edificio su una città che è al `livello` indicato: una casa, o l'albergo sopra 4 case. */
+export function costoProssimoEdificio(tab: Tabellone, c: Citta, livello: number): number {
+  const regione = tab.regioni[c.regione]!;
+  return livello >= LIVELLO_ALBERGO - 1 ? regione.costoAlbergo : regione.costoCasa;
+}
+
+/** Quanto rende vendere alla banca l'ultimo edificio di una città al `livello` indicato: metà del suo costo. */
+export function rimborsoEdificio(tab: Tabellone, c: Citta, livello: number): number {
+  const regione = tab.regioni[c.regione]!;
+  return Math.floor((livello === LIVELLO_ALBERGO ? regione.costoAlbergo : regione.costoCasa) / 2);
+}

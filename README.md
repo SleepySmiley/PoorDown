@@ -42,6 +42,8 @@ $env:PORT=3001; npm start
 
 **Gioca** porta nella prima stanza pubblica in attesa, **Tutte le stanze** mostra quelle aperte. Chi apre il link a partita iniziata la guarda come spettatore. Ricaricando la pagina si ritrova il proprio posto.
 
+Le regole facoltative (aste, ipoteche, costruzione uniforme e le altre) si scelgono nelle impostazioni della stanza prima di iniziare. Gli scambi si propongono dal pannello **Scambi**, anche fuori dal proprio turno.
+
 Per provare una partita da solo con due schede dello stesso browser, aggiungi `?profilo=due` all'indirizzo della seconda: è un giocatore diverso.
 
 ### Partite salvate

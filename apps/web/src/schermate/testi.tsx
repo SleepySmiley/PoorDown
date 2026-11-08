@@ -5,6 +5,8 @@ import { descriviVoce, type EventoStanza, type IdGiocatore, type VistaStanza, ty
 import type { RigaRegistro } from '../ui/comuni';
 
 function protagonista(e: EventoStanza): IdGiocatore | null {
+  // Lo scambio lo accetta o lo rifiuta chi l'ha ricevuto.
+  if (e.tipo === 'scambio_accettato' || e.tipo === 'scambio_rifiutato') return e.a;
   if ('giocatore' in e) return e.giocatore;
   if ('da' in e) return e.da;
   return null;

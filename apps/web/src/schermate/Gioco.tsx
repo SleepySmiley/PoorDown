@@ -1,14 +1,19 @@
 import '../stili/gioco.css';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  costoProssimoEdificio,
+  costoRiscatto,
   euro,
   LIVELLO_ALBERGO,
   possedute,
   proprietabile,
+  rimborsoEdificio,
   TENTATIVI_PRIGIONE,
   tabellone,
+  valoreIpoteca,
   valoreVendita,
   verifica,
+  type Attivita,
   type Azione,
   type Giocatore,
   type IdGiocatore,
@@ -24,9 +29,11 @@ import { caselleVista } from '../ui/caselle';
 import { Dado, Pedina, Registro, Stemma } from '../ui/comuni';
 import { iniziale } from '../ui/utili';
 import { stilePopover } from '../ui/geometria';
-import { Icona } from '../ui/icone';
+import { Icona, type NomeIcona } from '../ui/icone';
+import { Asta } from './Asta';
 import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
 import { useScena } from './regia';
+import { EditorScambio, PannelloScambi, VediScambio } from './Scambi';
 import { SchedaProprieta, Tabellone } from './Tabellone';
 import { righeRegistro } from './testi';
 
@@ -70,6 +77,58 @@ function Pulsante({
   ) : (
     pulsante
   );
+}
+
+/** Pulsante a icona sulla scheda della proprietà: il suggerimento dice cosa fa e, se è spento, perché. */
+function AzioneScheda({
+  icona,
+  etichetta,
+  blocco,
+  pericolo,
+  onClick,
+}: {
+  icona: NomeIcona;
+  etichetta: string;
+  blocco: string | null;
+  pericolo?: boolean;
+  onClick: () => void;
+}): ReactNode {
+  return (
+    <span className="con-suggerimento con-suggerimento--righe" data-testo={blocco ? `${etichetta}\n${blocco}` : etichetta}>
+      <button
+        type="button"
+        className={pericolo ? 'pulsante-icona pulsante-icona--azione pulsante-icona--pericolo' : 'pulsante-icona pulsante-icona--azione'}
+        aria-label={etichetta}
+        disabled={blocco !== null}
+        onClick={onClick}
+      >
+        <Icona nome={icona} />
+      </button>
+    </span>
+  );
+}
+
+/** Cosa sta facendo un giocatore, al centro del tabellone, per chi aspetta. */
+function cosaFa(attivita: Attivita | undefined): string {
+  switch (attivita?.tipo) {
+    case 'crea':
+      return 'sta creando uno scambio…';
+    case 'guarda':
+      return 'sta guardando uno scambio…';
+    case 'tratta':
+      return 'sta preparando una controproposta…';
+    default:
+      return 'sta giocando…';
+  }
+}
+
+/** Le finestre degli scambi: nuova proposta (o controproposta su `base`) oppure uno scambio da vedere. */
+type FinestraScambio = { tipo: 'crea'; base?: number } | { tipo: 'vedi'; id: number };
+
+function attivitaDi(f: FinestraScambio | null): Attivita | null {
+  if (!f) return null;
+  if (f.tipo === 'vedi') return { tipo: 'guarda', scambio: f.id };
+  return f.base === undefined ? { tipo: 'crea' } : { tipo: 'tratta', scambio: f.base };
 }
 
 /** I pulsanti del turno per chi gioca adesso. */
@@ -131,8 +190,19 @@ function AzioniTurno({
 
   const acquisto = t.acquisto !== null ? proprietabile(tab, t.acquisto) : null;
   const libera = acquisto && t.acquisto !== null && partita.proprieta[t.acquisto]?.proprietario === null;
+  // Con le aste la proprietà libera va comprata o messa all'asta: solo dopo si prosegue.
+  const daDecidere = libera && partita.impostazioni.aste;
   return (
     <div className="centro-gioco__azioni">
+      {daDecidere && (
+        <Pulsante
+          testo="Asta"
+          icona="martelletto"
+          stile="secondario"
+          blocco={blocco({ tipo: 'asta' })}
+          onClick={() => onMossa({ tipo: 'asta' })}
+        />
+      )}
       {libera && (
         <Pulsante
           testo={`Compra per ${euro(acquisto.prezzo)}`}
@@ -141,7 +211,7 @@ function AzioniTurno({
           onClick={() => onMossa({ tipo: 'compra' })}
         />
       )}
-      {t.rilancio ? (
+      {daDecidere ? null : t.rilancio ? (
         <Pulsante testo="Tira ancora" icona="dado" blocco={blocco({ tipo: 'lancia' })} onClick={() => onMossa({ tipo: 'lancia' })} />
       ) : (
         <Pulsante
@@ -183,6 +253,7 @@ export function Gioco({
   registro,
   chat,
   scrivono,
+  attivita,
   onEsci,
 }: {
   stanza: VistaStanza;
@@ -190,6 +261,8 @@ export function Gioco({
   registro: VoceRegistro[];
   chat: MessaggioChat[];
   scrivono: IdGiocatore[];
+  /** Chi sta creando, guardando o trattando uno scambio. */
+  attivita: Record<IdGiocatore, Attivita>;
   onEsci: () => void;
 }): ReactNode {
   const scena = useScena(collegamento);
@@ -207,14 +280,63 @@ export function Gioco({
   const [impostazioni, setImpostazioni] = useState(false);
   const [bancarotta, setBancarotta] = useState(false);
   const [consiglio, setConsiglio] = useState(true);
+  const [finestraChiesta, setFinestraScambio] = useState<FinestraScambio | null>(null);
 
-  const mossa = useCallback((m: Mossa) => {
+  // Asta e scambi seguono la partita aggiornata, senza aspettare le animazioni: lì conta ogni secondo.
+  const vivo = stanza.partita ?? partita;
+  const giocoIo = vivo.fase === 'in_corso' && vivo.giocatori.some((g) => g.id === io && !g.eliminato) ? io : null;
+
+  const mossa = useCallback((m: Mossa, poi?: () => void) => {
     setInviando(true);
     void collegamento.comando('mossa', m).then((r) => {
       setInviando(false);
       if (!r.ok) avvisa(r.messaggio, 'errore');
+      else poi?.();
     });
   }, []);
+
+  /* ---------- Scambi ---------- */
+
+  // La finestra resta aperta finché ha senso: lo scambio esiste ancora, io sono ancora in gioco.
+  const scambioVisto = finestraChiesta?.tipo === 'vedi' ? vivo.scambi.find((x) => x.id === finestraChiesta.id) : undefined;
+  const baseTrattativa =
+    finestraChiesta?.tipo === 'crea' && finestraChiesta.base !== undefined
+      ? vivo.scambi.find((x) => x.id === finestraChiesta.base)
+      : undefined;
+  const finestraValida =
+    vivo.fase === 'in_corso' &&
+    (finestraChiesta?.tipo === 'vedi'
+      ? scambioVisto !== undefined
+      : finestraChiesta?.tipo === 'crea' && giocoIo !== null && (finestraChiesta.base === undefined || baseTrattativa !== undefined));
+  const finestraScambio = finestraValida ? finestraChiesta : null;
+
+  // Gli altri vedono se sto creando, guardando o trattando uno scambio.
+  useEffect(() => collegamento.segnalaAttivita(attivitaDi(finestraScambio)), [finestraScambio]);
+  useEffect(() => () => collegamento.segnalaAttivita(null), []);
+
+  // Chi riceve una proposta la vede subito, a meno che non stia già preparando uno scambio.
+  const finestraAttuale = useRef(finestraScambio);
+  useEffect(() => {
+    finestraAttuale.current = finestraScambio;
+  }, [finestraScambio]);
+  useEffect(
+    () =>
+      collegamento.ascoltaVoci((voci) => {
+        for (const v of voci) {
+          const e = v.evento;
+          if (e.tipo !== 'scambio_proposto' || e.a !== io) continue;
+          if (finestraAttuale.current?.tipo === 'crea') {
+            const da = collegamento.leggi().stanza?.partita?.giocatori.find((g) => g.id === e.da);
+            avvisa(`${da?.nome ?? 'Un giocatore'} ti ha proposto uno scambio: lo trovi in «Scambi».`);
+          } else {
+            setFinestraScambio({ tipo: 'vedi', id: e.scambio });
+          }
+        }
+      }),
+    [io],
+  );
+
+
 
   /* ---------- Schede aperte ---------- */
 
@@ -256,7 +378,7 @@ export function Gioco({
       <div className="centro-gioco__azioni">
         <p className="sta-giocando">
           <Pedina colore={corrente.colore} className="pedina--mini" />
-          <b>{corrente.nome}</b> sta giocando…
+          <b>{corrente.nome}</b> {cosaFa(attivita[corrente.id])}
         </p>
       </div>
     );
@@ -278,7 +400,8 @@ export function Gioco({
           {azioni}
           {inRosso && (
             <p className="centro-gioco__nota centro-gioco__nota--rosso">
-              Hai il saldo negativo: vendi una proprietà da «Le mie proprietà» o dichiara bancarotta.
+              Hai il saldo negativo: vendi case o proprietà da «Le mie proprietà»
+              {partita.impostazioni.ipoteche ? ', ipotecale' : ''} o proponi uno scambio. Altrimenti dichiara bancarotta.
             </p>
           )}
         </>
@@ -297,30 +420,114 @@ export function Gioco({
   const casellaMia = mia ? caselle[mia.n] : undefined;
 
   const azioniMia = (() => {
-    if (!mia || !io) return null;
-    const vendita: Mossa = { tipo: 'vendi', casella: mia.n };
-    const blocco = scena.occupata || inviando ? 'Un attimo…' : motivo(partita, io, vendita);
-    const importo = valoreVendita(partita, mia.n);
+    const c = mia ? proprietabile(tab, mia.n) : null;
+    const p = mia ? partita.proprieta[mia.n] : null;
+    if (!mia || !io || !c || !p) return null;
+    const n = mia.n;
+    const occupato = scena.occupata || inviando ? 'Un attimo…' : null;
+    const blocco = (m: Mossa) => occupato ?? motivo(partita, io, m);
+    const vendita: Mossa = { tipo: 'vendi', casella: n };
+    const importo = valoreVendita(partita, n);
+    let edifici: ReactNode = null;
+    if (c.tipo === 'citta') {
+      const su: Mossa = { tipo: 'costruisci', casella: n };
+      const giu: Mossa = { tipo: 'demolisci', casella: n };
+      const costo = costoProssimoEdificio(tab, c, p.livello);
+      edifici = (
+        <>
+          <AzioneScheda
+            icona="su"
+            etichetta={
+              p.livello >= LIVELLO_ALBERGO
+                ? 'Costruisci'
+                : `Costruisci ${p.livello === LIVELLO_ALBERGO - 1 ? 'l’albergo' : 'una casa'} per ${euro(costo)}`
+            }
+            blocco={blocco(su)}
+            onClick={() => mossa(su)}
+          />
+          <AzioneScheda
+            icona="giu"
+            etichetta={
+              p.livello === 0
+                ? 'Vendi una casa'
+                : `Vendi ${p.livello === LIVELLO_ALBERGO ? 'l’albergo' : 'una casa'} per ${euro(rimborsoEdificio(tab, c, p.livello))}`
+            }
+            blocco={blocco(giu)}
+            onClick={() => mossa(giu)}
+          />
+        </>
+      );
+    }
     return (
       <>
+        {edifici}
         <span className="scheda__azioni-spazio" />
-        <span className="con-suggerimento" data-testo={blocco ?? undefined}>
-          <button
-            type="button"
-            className="pulsante pulsante--piccolo pulsante--pericolo"
-            disabled={blocco !== null}
-            onClick={() => {
-              mossa(vendita);
-              setMia(null);
-            }}
-          >
-            <Icona nome="cestino" />
-            Vendi per {euro(importo)}
-          </button>
-        </span>
+        <AzioneScheda
+          icona="cestino"
+          pericolo
+          etichetta={p.ipotecata ? 'Vendi alla banca: è ipotecata, non ricevi niente' : `Vendi alla banca per ${euro(importo)}`}
+          blocco={blocco(vendita)}
+          onClick={() => mossa(vendita, () => setMia(null))}
+        />
       </>
     );
   })();
+
+  const ipotecaMia = (() => {
+    const p = mia ? partita.proprieta[mia.n] : null;
+    if (!mia || !io || !p || !partita.impostazioni.ipoteche) return null;
+    const m: Mossa = p.ipotecata ? { tipo: 'riscatta', casella: mia.n } : { tipo: 'ipoteca', casella: mia.n };
+    const blocco = scena.occupata || inviando ? 'Un attimo…' : motivo(partita, io, m);
+    const spiegazione = p.ipotecata
+      ? 'Costa il 110% di quanto hai ricevuto con l’ipoteca.'
+      : `Ricevi ${euro(valoreIpoteca(tab, mia.n))} dalla banca, ma finché è ipotecata chi si ferma qui non paga l’affitto.`;
+    return (
+      <span className="con-suggerimento con-suggerimento--righe" data-testo={blocco ? `${spiegazione}\n${blocco}` : spiegazione}>
+        <button
+          type="button"
+          className={`pulsante pulsante--piccolo ${p.ipotecata ? 'pulsante--secondario' : 'pulsante--ambra'}`}
+          disabled={blocco !== null}
+          onClick={() => mossa(m)}
+        >
+          <Icona nome="banca" />
+          {p.ipotecata ? `Togli l’ipoteca per ${euro(costoRiscatto(tab, mia.n))}` : `Ipoteca per ${euro(valoreIpoteca(tab, mia.n))}`}
+        </button>
+      </span>
+    );
+  })();
+
+  /* ---------- Finestre sopra il tabellone ---------- */
+
+  let finestraSopra: ReactNode = null;
+  if (vivo.asta && inCorso) {
+    finestraSopra = <Asta partita={vivo} io={giocoIo} inviando={inviando} onOffri={(importo) => mossa({ tipo: 'offri', importo })} />;
+  } else if (finestraScambio?.tipo === 'vedi' && scambioVisto) {
+    finestraSopra = (
+      <VediScambio
+        key={scambioVisto.id}
+        partita={vivo}
+        io={giocoIo}
+        scambio={scambioVisto}
+        attivita={attivita}
+        inviando={inviando}
+        onMossa={(m) => mossa(m, () => setFinestraScambio(null))}
+        onTratta={() => setFinestraScambio({ tipo: 'crea', base: scambioVisto.id })}
+        onChiudi={() => setFinestraScambio(null)}
+      />
+    );
+  } else if (finestraScambio?.tipo === 'crea' && giocoIo) {
+    finestraSopra = (
+      <EditorScambio
+        key={finestraScambio.base ?? 'nuovo'}
+        partita={vivo}
+        io={giocoIo}
+        base={baseTrattativa}
+        inviando={inviando}
+        onInvia={(proposta) => mossa(proposta, () => setFinestraScambio(null))}
+        onChiudi={() => setFinestraScambio(null)}
+      />
+    );
+  }
 
   return (
     <>
@@ -360,17 +567,20 @@ export function Gioco({
               setScheda((x) => (x === n ? null : n));
             }}
             sopra={
-              popoverBordo !== null && (
-                <SchedaProprieta
-                  key={popoverBordo}
-                  mappa={partita.mappa}
-                  partita={partita}
-                  n={popoverBordo}
-                  onChiudi={() => setScheda(null)}
-                  className={stilePopover(popoverBordo).classe}
-                  style={stilePopover(popoverBordo).stile}
-                />
-              )
+              <>
+                {popoverBordo !== null && (
+                  <SchedaProprieta
+                    key={popoverBordo}
+                    mappa={partita.mappa}
+                    partita={partita}
+                    n={popoverBordo}
+                    onChiudi={() => setScheda(null)}
+                    className={stilePopover(popoverBordo).classe}
+                    style={stilePopover(popoverBordo).stile}
+                  />
+                )}
+                {finestraSopra}
+              </>
             }
           />
         }
@@ -411,6 +621,16 @@ export function Gioco({
               </div>
             )}
 
+            {inCorso && (
+              <PannelloScambi
+                partita={vivo}
+                io={giocoIo}
+                attivita={attivita}
+                onCrea={giocoIo ? () => setFinestraScambio({ tipo: 'crea' }) : undefined}
+                onApri={(id) => setFinestraScambio({ tipo: 'vedi', id })}
+              />
+            )}
+
             {me ? (
               <section className="pannello mie" aria-labelledby="titolo-mie">
                 <header className="pannello__testa pannello__testa--centrata">
@@ -421,7 +641,10 @@ export function Gioco({
                 <div className="pannello__scorri">
                   {consiglio && (
                     <div className="consiglio">
-                      <p>Clicca una tua proprietà per vederla o venderla alla banca, durante il tuo turno.</p>
+                      <p>
+                        Clicca una tua proprietà per costruire, vendere{partita.impostazioni.ipoteche ? ' o ipotecare' : ''}, durante il
+                        tuo turno.
+                      </p>
                       <button type="button" className="consiglio__ok" onClick={() => setConsiglio(false)}>
                         <Icona nome="spunta" />
                         Ok, capito
@@ -495,8 +718,9 @@ export function Gioco({
           n={mia.n}
           onChiudi={() => setMia(null)}
           className="scheda--mia"
-          style={{ top: Math.max(16, Math.min(mia.top - 120, window.innerHeight - 470)), right: mia.right }}
+          style={{ top: Math.max(16, Math.min(mia.top - 120, window.innerHeight - 520)), right: mia.right }}
           azioni={azioniMia}
+          ipoteca={ipotecaMia}
         />
       )}
 

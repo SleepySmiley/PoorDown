@@ -9,6 +9,8 @@ export {
   affitto,
   attivi,
   caselleDellaRegione,
+  costoProssimoEdificio,
+  costoRiscatto,
   edifici,
   giocatore,
   LIVELLO_ALBERGO,
@@ -16,10 +18,14 @@ export {
   possedute,
   possiedeRegione,
   proprietabile,
+  regioneConEdifici,
+  rimborsoEdificio,
+  valoreIpoteca,
   valoreLiquidazione,
   valoreVendita,
   VALORE_GRAZIA,
 } from './conti';
+export { acquistoInSospeso, ASTA_MS, RILANCI } from './economia';
 export { descrivi, descriviVoce, euro } from './descrivi';
 export { GIOCATORI_MAX, GIOCATORI_MIN, IMPOSTAZIONI_PREDEFINITE, SOLDI_INIZIALI_POSSIBILI } from './impostazioni';
 export { nomeCasuale, pulisciNome } from './nomi';
@@ -33,6 +39,16 @@ export {
   NOME_MAX,
   REGISTRO_MAX,
 } from './protocollo';
-export { applica, azioniPossibili, TENTATIVI_PRIGIONE, verifica } from './regole';
+export { applica, applicaScadenze, azioniPossibili, prossimaScadenza, TENTATIVI_PRIGIONE, verifica } from './regole';
+export {
+  caselleIpotecate,
+  NOTA_MAX,
+  PACCHETTO_VUOTO,
+  pacchettoVuoto,
+  problemiScambio,
+  PROPOSTE_IN_ATTESA_MAX,
+  SCAMBI_APERTI_MAX,
+  type BozzaScambio,
+} from './scambi';
 export { tabellone, TABELLONI } from './tabelloni';
 export { comeMossa, mossePossibili, vistaPartita } from './vista';
