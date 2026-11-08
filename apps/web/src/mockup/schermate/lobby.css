@@ -1,0 +1,187 @@
+/* Lobby */
+
+.centro-lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k) * 22);
+  width: 100%;
+  height: 100%;
+  padding-top: calc(var(--k) * 70);
+}
+
+.centro-lobby__dadi {
+  display: flex;
+  gap: calc(var(--k) * 18);
+}
+
+/* I dadi sono il punto focale del centro, come in richup. */
+.centro-lobby__dadi .dado,
+.centro-gioco__dadi .dado {
+  width: calc(var(--k) * 104);
+  height: calc(var(--k) * 104);
+  padding: calc(var(--k) * 19);
+  border-radius: calc(var(--k) * 17);
+  box-shadow:
+    0 calc(var(--k) * 8) 0 #a7afbb,
+    0 calc(var(--k) * 13) calc(var(--k) * 24) rgb(0 0 0 / 0.55);
+}
+
+.centro-lobby__dadi .dado .punto,
+.centro-gioco__dadi .dado .punto {
+  width: calc(var(--k) * 16);
+  height: calc(var(--k) * 16);
+}
+
+.centro-lobby__dadi .dado:first-child {
+  transform: rotate(-8deg);
+}
+
+.centro-lobby__dadi .dado:last-child {
+  transform: rotate(6deg) translateY(6%);
+}
+
+.centro-lobby__avviso,
+.centro-lobby__attesa {
+  margin-top: calc(var(--k) * -10);
+  color: var(--tab-tenue);
+  font-size: 0.9375rem;
+}
+
+.centro-lobby__attesa {
+  margin-top: 0;
+  color: var(--tab-testo);
+  font-size: 1.0625rem;
+}
+
+.centro-lobby__attesa b {
+  font: 600 1.1875rem/1 var(--stretto);
+}
+
+/* ---------- Scelta del colore (ospite appena arrivato) ---------- */
+
+.scelta-colore {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.scelta-colore__titolo {
+  font: 700 1.5rem/1 var(--stretto);
+  color: #fff;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
+}
+
+.scelta-colore__griglia {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 18px 22px;
+}
+
+.colore-pedina {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--colore);
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 4.5px rgb(0 0 0 / 0.55);
+  transition: transform 0.18s cubic-bezier(0.3, 0.7, 0.3, 1.4);
+}
+
+.colore-pedina:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.colore-pedina[aria-checked='true'] {
+  transform: scale(1.32);
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 4.5px var(--testo),
+    0 0 0 9px var(--ambra);
+}
+
+.colore-pedina:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+/* Colore già preso: barrato. */
+.colore-pedina:disabled::after {
+  content: '';
+  position: absolute;
+  inset: 45% -4px auto;
+  height: 3px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--inchiostro);
+  transform: rotate(-40deg);
+}
+
+/* ---------- Cambia colore (popover nella lista giocatori) ---------- */
+
+.giocatori {
+  position: relative;
+}
+
+.popover-colori {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 18px;
+  border-radius: 6px;
+  background: var(--smalto);
+  color: var(--testo);
+  box-shadow:
+    inset 0 0 0 1px var(--bordo),
+    0 12px 30px rgb(0 0 0 / 0.5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .popover-colori {
+    animation: compare-piccolo 0.15s ease-out;
+  }
+}
+
+.popover-colori p {
+  font: 700 1.125rem/1 var(--stretto);
+  color: var(--accento);
+}
+
+.popover-colori .scelta-colore__griglia {
+  grid-template-columns: repeat(6, auto);
+  justify-content: space-between;
+  gap: 14px 0;
+}
+
+.popover-colori .colore-pedina {
+  width: 28px;
+  height: 28px;
+}
+
+.popover-colori .colore-pedina[aria-checked='true'] {
+  transform: scale(1.15);
+}
+
+/* ---------- Impostazioni e finestre ---------- */
+
+.impostazioni__nota {
+  padding: 10px 14px;
+  background: #2b2412;
+  color: #ffd47a;
+  font-size: 0.8125rem;
+}
+
+.espelli {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
