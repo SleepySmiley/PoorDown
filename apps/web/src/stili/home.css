@@ -1,0 +1,695 @@
+/* Home: stessa impaginazione del riferimento, grafica Partenze. */
+
+.home {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.home__testata {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26px 32px;
+}
+
+.home__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  color: var(--testo-tenue);
+  font: 500 1.0625rem/1 var(--normale);
+  text-decoration: none;
+}
+
+.home__link:hover {
+  background: var(--riga);
+  color: var(--testo);
+}
+
+/* ---------- Cartelli sparsi in fondo ---------- */
+
+.home__sfondo {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 100vh;
+  min-height: 720px;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse 40% 34% at 50% 104%, rgb(255 184 28 / 0.22), transparent 70%);
+}
+
+.cartello {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  display: grid;
+  place-items: center;
+  width: calc(58px * var(--d));
+  height: calc(58px * var(--d));
+  border-radius: calc(7px * var(--d));
+  background: var(--segnale);
+  color: #fff;
+  opacity: calc(0.25 + var(--d) * 0.6);
+  transform: translate(-50%, -50%) rotate(var(--r));
+  box-shadow:
+    inset 0 0 0 calc(3px * var(--d)) var(--segnale),
+    inset 0 0 0 calc(5px * var(--d)) #fff;
+}
+
+.cartello .icona {
+  width: 52%;
+  height: 52%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cartello {
+    animation:
+      cartello-entra 0.7s calc(var(--i) * 60ms + 200ms) both cubic-bezier(0.2, 0.8, 0.3, 1.2),
+      cartello-oscilla 6s calc(var(--i) * -0.7s) ease-in-out infinite;
+  }
+}
+
+@keyframes cartello-entra {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 40%) rotate(var(--r)) scale(0.6);
+  }
+}
+
+@keyframes cartello-oscilla {
+  50% {
+    translate: 0 -7px;
+  }
+}
+
+/* ---------- Colonna centrale ---------- */
+
+.home__centro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding-top: 92px;
+  transition: padding-top 0.4s cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+
+.home__centro--stanze {
+  padding-top: 48px;
+}
+
+.marchio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dado-home {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.dado-home__corpo {
+  display: block;
+  transform: rotate(-10deg);
+}
+
+.dado-home .dado {
+  width: 104px;
+  height: 104px;
+  padding: 19px;
+  border-radius: 18px;
+  box-shadow:
+    0 8px 0 #a7afbb,
+    0 18px 30px rgb(0 0 0 / 0.5);
+}
+
+.dado-home .dado .punto {
+  width: 15px;
+  height: 15px;
+}
+
+.dado-home:hover .dado-home__corpo:not(.dado-home__corpo--rotola) {
+  transform: rotate(-4deg) translateY(-3px);
+  transition: transform 0.2s;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dado-home__corpo--rotola {
+    animation: dado-rotola 0.9s cubic-bezier(0.25, 0.7, 0.3, 1) both;
+  }
+}
+
+@keyframes dado-rotola {
+  0% {
+    transform: rotate(-10deg);
+  }
+
+  35% {
+    transform: translateY(-46px) rotate(190deg) scale(1.05);
+  }
+
+  65% {
+    transform: translateY(0) rotate(330deg) scale(1);
+  }
+
+  78% {
+    transform: translateY(0) rotate(345deg) scale(1.06, 0.92);
+  }
+
+  100% {
+    transform: rotate(350deg);
+  }
+}
+
+.marchio__nome {
+  margin-top: 30px;
+  padding: 6px 30px 12px;
+  border-radius: 12px;
+  background: var(--segnale);
+  color: #fff;
+  font: 700 88px/1 var(--stretto);
+  letter-spacing: 0.005em;
+  box-shadow:
+    inset 0 0 0 5px var(--segnale),
+    inset 0 0 0 8px #fff;
+  transition:
+    font-size 0.4s cubic-bezier(0.3, 0.7, 0.3, 1),
+    padding 0.4s cubic-bezier(0.3, 0.7, 0.3, 1),
+    margin 0.4s cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+
+.marchio__motto {
+  margin-top: 14px;
+  color: var(--testo-tenue);
+  font: 500 1.375rem/1.2 var(--normale);
+  transition: font-size 0.4s cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+
+.home__centro--stanze .marchio__nome {
+  margin-top: 22px;
+  padding: 4px 18px 7px;
+  font-size: 48px;
+}
+
+.home__centro--stanze .marchio__motto {
+  margin-top: 8px;
+  font-size: 1.0625rem;
+}
+
+/* ---------- Nome, Gioca e altri ingressi ---------- */
+
+.ingresso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 300px;
+  margin-top: 76px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ingresso,
+  .elenco-stanze {
+    animation: compare 0.35s cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+}
+
+@keyframes compare {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+
+.campo-nome {
+  position: relative;
+  width: 100%;
+}
+
+.campo-nome .campo {
+  height: 48px;
+  padding-right: 3.25rem;
+}
+
+.campo-nome__dado {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--testo-tenue);
+}
+
+.campo-nome__dado:hover {
+  background: var(--segnale-chiaro);
+  color: var(--accento);
+}
+
+.campo-nome__dado .icona {
+  width: 24px;
+  height: 24px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .campo-nome__dado .gira {
+    animation: rotola 0.45s cubic-bezier(0.3, 0.6, 0.3, 1);
+  }
+}
+
+@keyframes rotola {
+  from {
+    transform: rotate(-200deg) scale(0.7);
+  }
+}
+
+.pulsante--gioca {
+  width: 100%;
+  height: 80px;
+  border-radius: 6px;
+  font-size: 2.25rem;
+  gap: 0.75rem;
+  box-shadow: 0 5px 0 var(--segnale-scuro);
+}
+
+.pulsante--gioca:active {
+  box-shadow: 0 2px 0 var(--segnale-scuro);
+  transform: translateY(3px);
+}
+
+.pulsante--gioca .icona {
+  width: 34px;
+  height: 34px;
+  stroke-width: 2.4;
+}
+
+.ingresso__altri {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.pulsante--tenue {
+  padding: 0.5rem 1rem;
+  background: var(--smalto);
+  color: var(--accento);
+  font-size: 1.125rem;
+  box-shadow: 0 2px 0 var(--cemento-scuro);
+}
+
+.pulsante--tenue:hover {
+  background: var(--segnale-chiaro);
+}
+
+/* ---------- Tutte le stanze (stesso riquadro) ---------- */
+
+.elenco-stanze {
+  width: 564px;
+  max-width: calc(100vw - 32px);
+  margin-top: 40px;
+  padding: 30px 30px 24px;
+  border-radius: 12px;
+  background: var(--palette);
+  color: var(--carta-palette);
+  box-shadow: 0 0 0 3px #3a3f48;
+}
+
+.elenco-stanze__barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.elenco-stanze__spazio {
+  flex: 1;
+}
+
+.pulsante--contorno-chiaro {
+  background: transparent;
+  color: var(--carta-palette);
+  box-shadow: inset 0 0 0 2px #59606d;
+}
+
+.pulsante--contorno-chiaro:hover {
+  background: var(--palette-chiara);
+}
+
+.pulsante-icona--contorno {
+  width: 38px;
+  height: 38px;
+  color: var(--carta-palette);
+  box-shadow: inset 0 0 0 2px #59606d;
+}
+
+.pulsante-icona--contorno:hover {
+  background: var(--palette-chiara);
+  color: #fff;
+}
+
+.elenco-stanze__invito {
+  margin: 24px 0 12px;
+  text-align: center;
+  color: #c3c8d1;
+}
+
+.elenco-stanze__lista {
+  display: grid;
+  gap: 8px;
+  max-height: 292px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4a505b transparent;
+}
+
+.stanza-card {
+  display: flex;
+  width: 100%;
+  min-height: 76px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #2a2e36;
+  color: var(--carta-palette);
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+.stanza-card:hover {
+  background: #353a45;
+}
+
+.stanza-card__sinistra {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  padding: 12px 16px;
+  font-size: 1.125rem;
+}
+
+.stanza-card__posti {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.stanza-card .pedina.pedina--posto {
+  width: 16px;
+  height: 16px;
+  box-shadow: none;
+}
+
+.posto-libero {
+  width: 8px;
+  height: 8px;
+  margin: 0 4px;
+  border-radius: 50%;
+  background: #59606d;
+}
+
+.posto-ospite {
+  width: 18px;
+  height: 18px;
+  color: var(--carta-palette);
+}
+
+.stanza-card__destra {
+  display: grid;
+  justify-items: end;
+  align-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #22262d;
+}
+
+.stanza-card__mappa {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #aab1bd;
+  font: 600 1rem/1 var(--stretto);
+}
+
+.stanza-card__mappa .icona {
+  width: 16px;
+  height: 16px;
+}
+
+.stanza-card__standard {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #3a3f49;
+  font-size: 0.8125rem;
+}
+
+.stanza-card__regole {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.regola-icona {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 0.9375rem/1 var(--stretto);
+}
+
+.regola-icona .icona {
+  width: 19px;
+  height: 19px;
+}
+
+.regola-icona:not(.regola-icona--soldi)::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff6b5e;
+  box-shadow: 0 0 0 2px #22262d;
+}
+
+.regola-icona.regola-icona--attiva::after {
+  background: #3ccf7f;
+}
+
+.elenco-stanze__nota {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: #9aa1ad;
+  font-size: 0.875rem;
+}
+
+.elenco-stanze__nota .icona {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- Come si gioca (sotto la piega) ---------- */
+
+.come-si-gioca {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 80px 32px 140px;
+}
+
+.come-si-gioca__titolo {
+  text-align: center;
+  font: 700 2.5rem/1 var(--stretto);
+  color: var(--accento);
+}
+
+.come-si-gioca__passi {
+  display: grid;
+  gap: 18px;
+  margin-top: 40px;
+}
+
+.passo {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 300px;
+  align-items: center;
+  gap: 24px;
+  min-height: 132px;
+  padding: 22px 28px;
+  border-radius: 8px;
+  background: var(--smalto);
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.5s,
+    transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.passo--visto {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .passo {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Il numero del passo è un cartello di binario. */
+.passo__binario {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  background: var(--segnale);
+  color: #fff;
+  font: 700 2rem/1 var(--stretto);
+  box-shadow:
+    inset 0 0 0 3px var(--segnale),
+    inset 0 0 0 5px #fff;
+}
+
+.passo__testo p {
+  font-size: 1.1875rem;
+  text-wrap: pretty;
+}
+
+.passo__testo .passo__dettaglio {
+  margin-top: 4px;
+  color: var(--testo-tenue);
+  font-size: 1rem;
+}
+
+.passo__figura {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 80px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .passo__figura > * {
+    animation: figura-entra 0.5s 0.25s both cubic-bezier(0.2, 0.8, 0.3, 1.3);
+  }
+}
+
+@keyframes figura-entra {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+.passo__soldi {
+  font-size: 2rem;
+}
+
+.passo__dadi {
+  display: flex;
+  gap: 12px;
+}
+
+/* Tre caselle come sul tabellone: grafite, stemma della regione, prezzo in etichetta. */
+.passo__citta {
+  display: flex;
+  gap: 4px;
+  padding: 18px 4px 4px;
+  border-radius: 8px;
+  background: #121418;
+}
+
+.mini-casella {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 74px;
+  height: 92px;
+  border-radius: 4px;
+  background: linear-gradient(#272c35, #1f232a 70%);
+  color: #f4f1e8;
+  text-align: center;
+}
+
+.mini-casella__stemma {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 26px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+}
+
+.mini-casella__nome {
+  padding-top: 22px;
+  font: 600 1.0625rem/1 var(--stretto);
+}
+
+.mini-casella__prezzo {
+  margin: auto 0 7px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  background: #363c47;
+  font: 600 0.875rem/1 var(--stretto);
+}
+
+.passo__case {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.passo__case .icona {
+  width: 44px;
+  height: 44px;
+  fill: var(--g3);
+  color: var(--testo);
+  stroke-width: 1.4;
+}
+
+.passo__case .icona:last-child {
+  width: 58px;
+  height: 58px;
+  fill: var(--g6);
+}
+
+.passo__bandiera {
+  width: 58px;
+  height: 58px;
+  color: var(--rosso);
+}
+
+@media (max-width: 760px) {
+  .passo {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .passo__figura {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

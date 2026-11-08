@@ -1,0 +1,772 @@
+/* PoorDown · stile "Partenze": colori, caratteri e componenti comuni. */
+
+:root {
+  /* Tema scuro unico per tutte le schermate. */
+  --segnale: #2a64c8;
+  --segnale-scuro: #1f50a6;
+  --segnale-chiaro: #1d2a40;
+  --accento: #8db4ff;
+  --cemento: #0f1115;
+  --cemento-scuro: #353b46;
+  --smalto: #1a1d23;
+  --riga: #242830;
+  --bordo: #2a2f38;
+  --palette: #14161a;
+  --palette-chiara: #262a31;
+  --palette-bordo: #2b3039;
+  --carta-palette: #f4f1e8;
+  --ambra: #ffb81c;
+  --testo: #eceff3;
+  --testo-tenue: #9ba4b2;
+  --inchiostro: #14243d;
+  --rosso: #ef4b3f;
+  --verde: #2fbf71;
+
+  --stretto: 'Barlow Condensed', system-ui, sans-serif;
+  --normale: 'Barlow', system-ui, sans-serif;
+
+  /* Regioni (gruppi 1–8) */
+  --g1: #8c5a3c;
+  --g2: #3db2e8;
+  --g3: #00965e;
+  --g4: #f08c00;
+  --g5: #8e44ad;
+  --g6: #e2231a;
+  --g7: #f5c400;
+  --g8: #2a56c6;
+
+  /* Testo sopra gli stemmi delle regioni chiare */
+  --su-g2: var(--inchiostro);
+  --su-g4: var(--inchiostro);
+  --su-g7: var(--inchiostro);
+
+  /* I 12 colori delle pedine: chiari, mentre le regioni sono scure e piene.
+     Così il blocco del proprietario non si confonde mai con lo stemma della regione. */
+  --p1: #ff8f80;
+  --p2: #7ee0ae;
+  --p3: #ffb47a;
+  --p4: #8cb4ff;
+  --p5: #cfa2ff;
+  --p6: #f0e27a;
+  --p7: #ff9fd0;
+  --p8: #74e0e4;
+  --p9: #c9a37e;
+  --p10: #bfe86e;
+  --p11: #ff6b9a;
+  --p12: #c9d1db;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--cemento);
+  color: var(--testo);
+  font-family: var(--normale);
+  font-size: 1rem;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ambra);
+  outline-offset: 2px;
+}
+
+.solo-lettori {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* =====================================================================
+   Componenti comuni
+   ===================================================================== */
+
+.icona {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* ---------- Insegna (logo) ---------- */
+
+.insegna {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem 0.3125rem;
+  border-radius: 5px;
+  background: var(--segnale);
+  color: #fff;
+  font: 700 1.5rem/1 var(--stretto);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  box-shadow:
+    inset 0 0 0 2px var(--segnale),
+    inset 0 0 0 3.5px #fff;
+}
+
+/* ---------- Palette ---------- */
+
+.palette {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  perspective: 300px;
+  white-space: nowrap;
+}
+
+.paletta {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-width: 0.78em;
+  height: 1.45em;
+  padding: 0 0.1em;
+  border-radius: 2px;
+  background: linear-gradient(var(--palette-chiara) 0 50%, var(--palette) 50% 100%);
+  color: var(--carta-palette);
+  font-family: var(--stretto);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.paletta::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 1px;
+  background: rgb(0 0 0 / 0.65);
+}
+
+/* Punto delle migliaia e due punti dell'ora: stampati tra le palette, non girano. */
+.palette__separatore {
+  align-self: flex-end;
+  margin: 0 -1px;
+  font-family: var(--stretto);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.palette__unita {
+  margin-left: 0.25em;
+  font-family: var(--stretto);
+  font-weight: 600;
+}
+
+/* Su fondo scuro le palette si staccano con un grigio più chiaro. */
+.pannello--scuro .paletta {
+  background: linear-gradient(#3d424c 0 50%, #33373f 50% 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .paletta {
+    animation: gira-paletta 0.55s calc(var(--i) * 55ms + 120ms) both cubic-bezier(0.3, 0.1, 0.3, 1.35);
+  }
+}
+
+@keyframes gira-paletta {
+  0% {
+    transform: rotateX(92deg);
+    filter: brightness(0.6);
+  }
+
+  70% {
+    transform: rotateX(-14deg);
+  }
+
+  100% {
+    transform: rotateX(0);
+    filter: none;
+  }
+}
+
+/* ---------- Pedine ---------- */
+
+.pedina {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--colore);
+  /* I colori delle pedine sono tutti chiari: il testo sopra è sempre scuro. */
+  color: var(--inchiostro);
+  font: 600 0.875rem/1 var(--stretto);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 3.5px rgb(0 0 0 / 0.55);
+}
+
+.pedina--mini {
+  width: 10px;
+  height: 10px;
+  box-shadow: none;
+}
+
+.pedina--media {
+  width: 30px;
+  height: 30px;
+  font-size: 1.0625rem;
+}
+
+.pedina--grande {
+  width: 40px;
+  height: 40px;
+  font-size: 1.25rem;
+}
+
+.pannello--scuro .pedina:not(.pedina--mini) {
+  box-shadow:
+    0 0 0 2.5px var(--palette),
+    0 0 0 4px var(--carta-palette);
+}
+
+/* In prigione: le sbarre sopra la pedina. */
+.in-prigione {
+  position: relative;
+  display: inline-flex;
+}
+
+.in-prigione::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-linear-gradient(90deg, transparent 0 5px, rgb(20 20 24 / 0.8) 5px 7.5px);
+}
+
+/* ---------- Stemma della regione ---------- */
+
+.stemma {
+  flex: none;
+  overflow: visible;
+}
+
+.stemma text {
+  font: 700 7.6px/1 var(--stretto);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Dadi ---------- */
+
+.dado {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  padding: 9px;
+  background: #fff;
+  color: var(--inchiostro);
+  border-radius: 7px;
+  box-shadow: 0 3px 0 #a7afbb;
+}
+
+.dado .punto {
+  width: 9px;
+  height: 9px;
+  place-self: center;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- Pulsanti ---------- */
+
+.pulsante {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.5625rem 1.125rem;
+  font: 600 1.125rem/1.2 var(--stretto);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.1s;
+}
+
+.pulsante:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.pulsante:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pulsante--primario {
+  background: var(--segnale);
+  color: #fff;
+}
+
+.pulsante--primario:hover:not(:disabled) {
+  background: var(--segnale-scuro);
+}
+
+.pulsante--secondario {
+  background: var(--smalto);
+  color: var(--accento);
+  box-shadow: inset 0 0 0 2px var(--segnale);
+}
+
+.pulsante--secondario:hover:not(:disabled) {
+  background: var(--segnale-chiaro);
+}
+
+.pulsante--ambra {
+  background: var(--ambra);
+  color: var(--palette);
+}
+
+.pulsante--ambra:hover:not(:disabled) {
+  background: #ffc84d;
+}
+
+.pulsante--pericolo {
+  background: var(--smalto);
+  color: var(--rosso);
+  box-shadow: inset 0 0 0 2px var(--rosso);
+}
+
+.pulsante--pericolo:hover:not(:disabled) {
+  background: rgb(239 75 63 / 0.14);
+}
+
+.pulsante--fantasma {
+  background: transparent;
+  color: var(--testo);
+}
+
+.pulsante--fantasma:hover:not(:disabled) {
+  background: var(--riga);
+}
+
+.pulsante--piccolo {
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+}
+
+.pulsante--grande {
+  padding: 0.875rem 1.5rem;
+  font-size: 1.375rem;
+}
+
+.pulsante--largo {
+  width: 100%;
+}
+
+.pulsante-icona {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--testo-tenue);
+}
+
+.pulsante-icona:hover {
+  background: var(--riga);
+  color: var(--testo);
+}
+
+.pulsante-icona--pieno {
+  background: var(--segnale);
+  color: #fff;
+}
+
+.pulsante-icona--pieno:hover {
+  background: var(--segnale-scuro);
+  color: #fff;
+}
+
+/* ---------- Testata di lobby e partita ---------- */
+
+.testata {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  height: 60px;
+  padding: 0 1rem 0 1.25rem;
+  background: var(--smalto);
+  border-bottom: 3px solid var(--segnale);
+}
+
+.testata__stanza {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+}
+
+.testata__etichetta {
+  color: var(--testo-tenue);
+  font: 600 0.8125rem/1 var(--normale);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.testata__azioni {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.testata__azioni .pulsante {
+  margin-left: 0.5rem;
+}
+
+/* ---------- Pannelli ---------- */
+
+.pannello {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--smalto);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--bordo);
+}
+
+.pannello__testa {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 52px;
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  border-bottom: 1px solid var(--riga);
+}
+
+.pannello__titolo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: auto;
+  font: 700 1.25rem/1.1 var(--stretto);
+  color: var(--accento);
+}
+
+/* Il pittogramma del titolo è un riquadro di segnaletica. */
+.pannello__titolo .icona {
+  width: 26px;
+  height: 26px;
+  padding: 4px;
+  border-radius: 3px;
+  background: var(--segnale);
+  color: #fff;
+}
+
+.pannello__conta {
+  color: var(--testo-tenue);
+  font-weight: 500;
+}
+
+.pannello__corpo {
+  padding: 0.875rem;
+}
+
+.pannello--scuro {
+  background: var(--palette);
+  color: var(--carta-palette);
+  box-shadow: inset 0 0 0 1px var(--palette-bordo);
+}
+
+.pannello--scuro .pannello__testa {
+  border-bottom-color: var(--palette-bordo);
+}
+
+.pannello--scuro .pannello__titolo {
+  color: var(--ambra);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pannello--scuro .pannello__titolo .icona {
+  background: var(--ambra);
+  color: var(--palette);
+}
+
+.pannello--scuro .pannello__conta {
+  color: #9aa1ad;
+}
+
+.pannello--scuro .pulsante-icona {
+  color: #aab1bd;
+}
+
+.pannello--scuro .pulsante-icona:hover {
+  background: var(--palette-chiara);
+  color: #fff;
+}
+
+.suggerimento {
+  color: var(--testo-tenue);
+  font-size: 0.875rem;
+}
+
+/* ---------- Interruttore ---------- */
+
+.interruttore {
+  position: relative;
+  flex: none;
+  width: 62px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--cemento-scuro);
+  transition: background-color 0.15s;
+}
+
+.interruttore__leva {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  transition: transform 0.18s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+.interruttore__testo {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  font: 700 0.875rem/1 var(--stretto);
+  color: var(--testo-tenue);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.interruttore[aria-checked='true'] {
+  background: var(--segnale);
+}
+
+.interruttore[aria-checked='true'] .interruttore__leva {
+  transform: translateX(32px);
+}
+
+.interruttore[aria-checked='true'] .interruttore__testo {
+  right: auto;
+  left: 10px;
+  color: #fff;
+}
+
+.interruttore:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ---------- Chat ---------- */
+
+.chat__messaggi {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.chat__vuota,
+.chat__avviso {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  color: var(--testo-tenue);
+  font-size: 0.9375rem;
+}
+
+.chat__avviso {
+  flex: none;
+  border-top: 1px solid var(--riga);
+}
+
+.messaggio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 85%;
+}
+
+.messaggio + .messaggio {
+  margin-top: 0.125rem;
+}
+
+.messaggio__autore {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.375rem 0 0.125rem;
+  font: 600 0.875rem/1.2 var(--stretto);
+  color: var(--testo-tenue);
+}
+
+.messaggio__testo {
+  padding: 0.375rem 0.625rem;
+  border-radius: 2px 6px 6px 6px;
+  background: var(--riga);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+.messaggio--mio {
+  align-self: flex-end;
+  align-items: flex-end;
+  margin-top: 0.375rem;
+}
+
+.messaggio--mio .messaggio__testo {
+  border-radius: 6px 2px 6px 6px;
+  background: var(--segnale);
+  color: #fff;
+}
+
+.chat__scrivi {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem 0.75rem;
+  border-top: 1px solid var(--riga);
+}
+
+.chat__scrivi input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4375rem 0.625rem;
+  border: 2px solid var(--cemento-scuro);
+  border-radius: 4px;
+  background: var(--smalto);
+}
+
+.chat__scrivi input:focus {
+  outline: none;
+  border-color: var(--accento);
+}
+
+/* ---------- Registro eventi ---------- */
+
+.registro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--tab-tenue, var(--testo-tenue));
+  font-size: 0.875rem;
+  text-align: center;
+  mask-image: linear-gradient(#000 70%, transparent);
+}
+
+/* Solo l'ultimo evento è chiaro; gli altri sono grigi e sbiadiscono, così non rubano la scena ai dadi. */
+.registro__voce {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  max-width: 100%;
+  opacity: calc(1 - var(--eta) * 0.1);
+}
+
+.registro__voce:first-child {
+  color: var(--tab-testo, var(--testo));
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.registro__voce b {
+  font-weight: 500;
+}
+
+.registro__voce:first-child b {
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .registro__voce:first-child {
+    animation: voce-entra 0.35s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+}
+
+@keyframes voce-entra {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* ---------- Campo di testo ---------- */
+
+.campo {
+  width: 100%;
+  padding: 0.6875rem 0.875rem;
+  border: 2px solid var(--cemento-scuro);
+  border-radius: 4px;
+  background: var(--smalto);
+  font-size: 1.125rem;
+}
+
+.campo:focus {
+  outline: none;
+  border-color: var(--accento);
+}

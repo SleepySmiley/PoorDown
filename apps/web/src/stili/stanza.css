@@ -1,0 +1,424 @@
+/* Elementi delle schermate vere che i mockup non avevano: avvisi, caricamento, stanza piena,
+   fine partita, collegamento perso, suggerimenti dei pulsanti disattivati. */
+
+/* ---------- Suggerimento sopra un pulsante (anche disattivato) ---------- */
+
+.con-suggerimento {
+  position: relative;
+  display: inline-flex;
+}
+
+.con-suggerimento[data-testo]::after {
+  content: attr(data-testo);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 40;
+  width: max-content;
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--palette);
+  color: var(--carta-palette);
+  box-shadow:
+    inset 0 0 0 1px var(--palette-bordo),
+    0 6px 16px rgb(0 0 0 / 0.4);
+  font: 400 0.8125rem/1.35 var(--normale);
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+
+.con-suggerimento[data-testo]:hover::after,
+.con-suggerimento[data-testo]:focus-within::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ---------- Avvisi a comparsa ---------- */
+
+.avvisi {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 200;
+  display: grid;
+  gap: 8px;
+  width: min(460px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.avviso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 14px;
+  border-radius: 6px;
+  background: var(--smalto);
+  color: var(--testo);
+  box-shadow:
+    inset 4px 0 0 var(--segnale),
+    inset 0 0 0 1px var(--bordo),
+    0 10px 28px rgb(0 0 0 / 0.5);
+  font-size: 0.9375rem;
+  pointer-events: auto;
+}
+
+.avviso--errore {
+  box-shadow:
+    inset 4px 0 0 var(--rosso),
+    inset 0 0 0 1px var(--bordo),
+    0 10px 28px rgb(0 0 0 / 0.5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .avviso {
+    animation: avviso-entra 0.25s cubic-bezier(0.3, 0.7, 0.3, 1);
+  }
+}
+
+@keyframes avviso-entra {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.avviso__icona {
+  color: var(--accento);
+}
+
+.avviso--errore .avviso__icona {
+  color: var(--rosso);
+}
+
+.avviso__testo {
+  flex: 1;
+  text-wrap: pretty;
+}
+
+.avviso__chiudi {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--testo-tenue);
+}
+
+.avviso__chiudi:hover {
+  background: var(--riga);
+  color: var(--testo);
+}
+
+.avviso__chiudi .icona {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- Collegamento perso ---------- */
+
+.rete-persa {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  padding: 8px 16px;
+  background: #4a1f1b;
+  color: #ffd9d4;
+  font-size: 0.9375rem;
+  text-align: center;
+  box-shadow: 0 2px 0 var(--rosso);
+}
+
+/* ---------- Caricamento della stanza ---------- */
+
+.caricamento {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+}
+
+.caricamento__dado .dado {
+  width: 72px;
+  height: 72px;
+  padding: 13px;
+  border-radius: 12px;
+}
+
+.caricamento__dado .dado .punto {
+  width: 11px;
+  height: 11px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .caricamento__dado {
+    animation: caricamento-gira 1.1s cubic-bezier(0.4, 0.1, 0.3, 1) infinite;
+  }
+}
+
+@keyframes caricamento-gira {
+  0% {
+    transform: rotate(0) translateY(0);
+  }
+
+  40% {
+    transform: rotate(180deg) translateY(-14px);
+  }
+
+  70%,
+  100% {
+    transform: rotate(360deg) translateY(0);
+  }
+}
+
+.caricamento__titolo {
+  font: 700 1.75rem/1.1 var(--stretto);
+}
+
+.caricamento__consiglio {
+  max-width: 440px;
+  color: var(--testo-tenue);
+  text-wrap: pretty;
+}
+
+.caricamento__consiglio b {
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--segnale-chiaro);
+  color: var(--accento);
+  font: 600 0.8125rem/1.4 var(--normale);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Home: ingresso da un link ---------- */
+
+.marchio__collegamento {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ingresso__invito {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--testo-tenue);
+  text-align: center;
+}
+
+.ingresso__invito .palette {
+  font-size: 1.125rem;
+}
+
+.stanza-card__codice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stanza-card__fase {
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #2b2412;
+  color: #ffd47a;
+  font: 600 0.6875rem/1.2 var(--normale);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.elenco-stanze__vuoto {
+  margin-bottom: 28px;
+  text-wrap: pretty;
+}
+
+/* ---------- Lobby: stanza piena ---------- */
+
+.stanza-piena {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 420px;
+  padding: 26px 28px;
+  border-radius: 10px;
+  background: rgb(15 17 21 / 0.92);
+  box-shadow:
+    inset 0 0 0 1px var(--bordo),
+    0 16px 40px rgb(0 0 0 / 0.55);
+  text-align: center;
+}
+
+.stanza-piena__titolo {
+  font: 700 1.75rem/1 var(--stretto);
+}
+
+.stanza-piena__testo {
+  color: var(--testo-tenue);
+}
+
+.stanza-piena__azioni {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* ---------- Colonne ---------- */
+
+.condividi__nota {
+  margin-top: 8px;
+  color: var(--ambra);
+  font-size: 0.8125rem;
+}
+
+.chat__scrive {
+  flex: none;
+  min-height: 1.5em;
+  padding: 0 14px;
+  color: var(--testo-tenue);
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+.chat__scrive:empty {
+  min-height: 0;
+}
+
+.giocatore--assente .pedina {
+  filter: grayscale(0.7);
+  opacity: 0.6;
+}
+
+.giocatore__scollegato {
+  color: var(--rosso);
+}
+
+.giocatore__esito {
+  color: var(--rosso);
+  font: 600 0.9375rem/1 var(--stretto);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.impostazione--presto .impostazione__nome,
+.impostazione--presto .impostazione__descrizione,
+.impostazione--presto .impostazione__icona {
+  opacity: 0.6;
+}
+
+/* Doppia classe: deve vincere sul .come-si-gioca della home, che arriva dopo. */
+.finestra__scorri.come-si-gioca--finestra {
+  max-height: min(70vh, 640px);
+  padding: 16px 20px 20px;
+}
+
+/* Nella finestra stretta la figura va sotto il testo, come sul telefono. */
+.come-si-gioca--finestra .come-si-gioca__passi {
+  gap: 10px;
+  margin-top: 0;
+}
+
+.come-si-gioca--finestra .passo {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px 16px;
+  min-height: 0;
+  padding: 16px 18px;
+}
+
+.come-si-gioca--finestra .passo__binario {
+  width: 44px;
+  height: 44px;
+  font-size: 1.625rem;
+}
+
+.come-si-gioca--finestra .passo__testo p {
+  font-size: 1.0625rem;
+}
+
+.come-si-gioca--finestra .passo__testo .passo__dettaglio {
+  font-size: 0.9375rem;
+}
+
+.come-si-gioca--finestra .passo__figura {
+  grid-column: 2;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+/* ---------- Partita ---------- */
+
+.centro-gioco__nota {
+  max-width: 70%;
+  margin-top: calc(var(--k) * -14);
+  color: var(--tab-tenue);
+  font-size: 0.875rem;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.centro-gioco__nota--rosso {
+  color: #ff8f85;
+}
+
+.fine-partita {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--k) * 18);
+  padding-top: calc(var(--k) * 40);
+  text-align: center;
+}
+
+.fine-partita__titolo {
+  color: var(--ambra);
+  font: 700 calc(var(--k) * 54) / 1 var(--stretto);
+}
+
+.fine-partita__vincitore {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.25rem;
+}
+
+.fine-partita__vincitore b {
+  font: 700 1.625rem/1 var(--stretto);
+}
+
+.mie__vuoto {
+  padding: 12px 16px;
+  color: var(--testo-tenue);
+  font-size: 0.875rem;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.spettatore {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: var(--smalto);
+  color: var(--testo-tenue);
+  box-shadow: inset 0 0 0 1px var(--bordo);
+}

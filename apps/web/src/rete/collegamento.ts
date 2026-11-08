@@ -91,6 +91,11 @@ export class Collegamento {
     return this.stato;
   }
 
+  /** La stanza che si sta seguendo (anche mentre si aspetta di entrarci), `null` se nessuna. */
+  codiceSeguito(): string | null {
+    return this.codice;
+  }
+
   /** Chiamata a ogni cambiamento dello stato. Restituisce la funzione per smettere. */
   ascolta(fn: () => void): () => void {
     this.ascoltatori.add(fn);
@@ -125,9 +130,10 @@ export class Collegamento {
     return this.rientra(codice);
   }
 
+  /** Smette di seguire la stanza e dimentica anche l'ultimo avviso (già mostrato a chi esce). */
   async esci(): Promise<void> {
     this.codice = null;
-    this.cambia(senzaStanza());
+    this.cambia({ ...senzaStanza(), avviso: null });
     if (this.presa.connected) await this.comando('esci', {});
   }
 

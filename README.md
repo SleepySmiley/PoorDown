@@ -33,9 +33,16 @@ Se la 3000 è occupata, scegline un'altra con la variabile `PORT`:
 $env:PORT=3001; npm start
 ```
 
-### Provare le stanze (provvisorio)
+### Giocare con gli amici
 
-Finché non arrivano le schermate vere (Fase 4), all'indirizzo `/prova` c'è un banco di prova senza grafica: si crea una stanza, gli amici entrano con il link, si siedono al tavolo e giocano. Per giocare da due schede dello stesso browser aggiungi `?profilo=due` all'indirizzo della seconda: è un giocatore diverso.
+1. Apri il gioco, scrivi il tuo nome (o tira il dado per uno a caso) e premi **Crea una stanza privata**.
+2. Nella stanza premi **Copia** e manda il link agli amici, oppure fagli inquadrare il codice QR con il telefono.
+3. Ognuno sceglie il colore della pedina e preme **Entra nella partita**.
+4. Chi ha creato la stanza (l'host) sceglie le impostazioni e preme **Inizia la partita**.
+
+**Gioca** porta nella prima stanza pubblica in attesa, **Tutte le stanze** mostra quelle aperte. Chi apre il link a partita iniziata la guarda come spettatore. Ricaricando la pagina si ritrova il proprio posto.
+
+Per provare una partita da solo con due schede dello stesso browser, aggiungi `?profilo=due` all'indirizzo della seconda: è un giocatore diverso.
 
 ### Partite salvate
 

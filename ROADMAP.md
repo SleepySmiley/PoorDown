@@ -104,10 +104,12 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** due browser giocano una partita completa tramite script di test. ✔ Fatto: test di rete con due client fino alla fine della partita, più prova con tre browser Edge (partita completa, ricarica a metà partita, spettatrice, riavvio del server).
 
 ### Fase 4 — Prima partita giocabile · L ⭐
-- [ ] Home, pagina di ingresso alla stanza, lobby completa con le 12 impostazioni
-- [ ] Schermata di gioco: tabellone, pedine animate, dadi, pulsanti del turno, lista giocatori con saldi, log, chat, scheda proprietà, prigione
+- [x] Home, pagina di ingresso alla stanza, lobby completa con le 12 impostazioni
+- [x] Schermata di gioco: tabellone, pedine animate, dadi, pulsanti del turno, lista giocatori con saldi, log, chat, scheda proprietà, prigione
+- [x] In più: elenco delle stanze pubbliche e "Gioca", stanza piena con "Guarda la partita", espulsione e stanza inesistente con avviso, avviso di collegamento perso, link di rete e codice QR per gli amici, vendita delle proprietà dalla lista, bancarotta, fine partita essenziale (la schermata completa arriva nella Fase 7). Tolti la pagina provvisoria e il banco di prova `/prova`
+- Le impostazioni delle fasi successive (bot, timer di turno, aste, ipoteche, costruzione uniforme) si vedono in lobby con il segno "Presto" e non si possono ancora cambiare
 
-**Fatto quando:** tu e i tuoi amici fate una partita vera in rete locale. **Primo traguardo da provare insieme.**
+**Fatto quando:** tu e i tuoi amici fate una partita vera in rete locale. **Primo traguardo da provare insieme.** Verificato con due e tre browser Edge: partita fino alla bancarotta, ricarica a metà partita, spettatore, espulsione, prigione, vendita.
 
 ### Fase 5 — Economia completa · L
 - [ ] Case e hotel con costruzione uniforme, vendita edifici, ipoteche e riscatto (la vendita delle proprietà c'è dalla Fase 2)
