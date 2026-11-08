@@ -4,7 +4,7 @@
  */
 
 import { accredita, type Contesto } from './contesto';
-import { attivi, giocatore, possedute, valoreLiquidazione } from './conti';
+import { attivi, caselleDellaRegione, costoEdifici, giocatore, possedute, possiedeRegione, proprietabile, valoreLiquidazione } from './conti';
 import { segnaPatrimonio } from './statistiche';
 import { chiudiOrologio, tempoIniziale } from './tempo';
 import type { Debito, Evento, Giocatore, MotivoUscita, Stato } from './tipi';
@@ -67,15 +67,57 @@ export function chiudiTurno(ctx: Contesto): void {
   passaTurno(ctx);
 }
 
+/** Il compagno che eredita i beni di `g`: il primo della sua squadra ancora in gioco, dopo di lui nell'ordine dei turni. */
+function eredeDi(s: Stato, g: Giocatore): Giocatore | undefined {
+  if (g.squadra === null) return undefined;
+  const i = s.giocatori.indexOf(g);
+  const ordine = [...s.giocatori.slice(i + 1), ...s.giocatori.slice(0, i)];
+  return ordine.find((x) => !x.eliminato && x.squadra === g.squadra);
+}
+
+/**
+ * A squadre, le città di chi esce tornate alla banca possono lasciare incompleta una regione in cui i compagni
+ * hanno case: quegli edifici tornano alla banca a metà del loro costo, come se li vendessero.
+ */
+function vendiEdificiRimasti(ctx: Contesto, liberate: readonly number[]): void {
+  const { s, tab } = ctx;
+  const regioni = new Set(liberate.flatMap((i) => (tab.caselle[i]?.tipo === 'citta' ? [(tab.caselle[i] as { regione: number }).regione] : [])));
+  for (const regione of regioni) {
+    const perProprietario = new Map<string, number[]>();
+    for (const i of caselleDellaRegione(tab, regione)) {
+      const p = s.proprieta[i]!;
+      if (p.proprietario && p.livello > 0 && !possiedeRegione(s, p.proprietario, regione)) {
+        perProprietario.set(p.proprietario, [...(perProprietario.get(p.proprietario) ?? []), i]);
+      }
+    }
+    for (const [id, caselle] of perProprietario) {
+      let importo = 0;
+      for (const i of caselle) {
+        const c = proprietabile(tab, i);
+        if (c?.tipo === 'citta') importo += Math.floor(costoEdifici(tab, c, s.proprieta[i]!.livello) / 2);
+        s.proprieta[i]!.livello = 0;
+      }
+      const g = giocatore(s, id)!;
+      ctx.eventi.push({ tipo: 'edifici_venduti', giocatore: id, caselle, importo });
+      accredita(ctx, g, importo);
+    }
+  }
+}
+
 /**
  * Il giocatore esce dalla partita. La banca liquida i suoi beni e paga i creditori fino al debito.
  * Le proprietà tornano libere, senza edifici né ipoteca; le Carte Grazia tornano nei mazzi.
+ * A squadre, se resta un compagno in gioco:
+ * - senza debiti verso altri giocatori, il compagno eredita il contante, le proprietà (così come sono) e le Carte Grazia;
+ * - con debiti, i creditori sono pagati dalla liquidazione e quello che avanza va in contanti al compagno;
+ *   se così una regione dei compagni resta incompleta, i loro edifici lì tornano alla banca a metà prezzo.
  * I suoi scambi aperti spariscono e, se all'asta era il migliore offerente, torna buona l'offerta precedente.
- * Se resta un solo giocatore, la partita finisce; se toccava a lui, il turno passa.
+ * Se resta un solo giocatore (a squadre: una sola squadra), la partita finisce; se toccava a lui, il turno passa.
  * @param automatica bancarotta decisa dal gioco perché il tempo è scaduto in debito.
  */
 export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, automatica = false): void {
   const { s } = ctx;
+  const erede = eredeDi(s, g);
   let disponibile = valoreLiquidazione(s, g.id);
   const recuperi: Debito[] = [];
   for (const d of g.debiti) {
@@ -86,8 +128,24 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
     recuperi.push({ creditore: d.creditore, importo });
     disponibile -= importo;
   }
+  // Senza debiti verso altri giocatori il compagno prende tutto così com'è; altrimenti solo il contante avanzato.
+  const passaTutto = erede !== undefined && g.debiti.length === 0;
+  const caselle = possedute(s, g.id);
+  const eredita: Extract<Evento, { tipo: 'eredita' }> | null = erede
+    ? {
+        tipo: 'eredita',
+        da: g.id,
+        a: erede.id,
+        soldi: passaTutto ? Math.max(0, g.saldo) : disponibile,
+        caselle: passaTutto ? caselle : [],
+        grazie: passaTutto ? g.carteGrazia.length : 0,
+      }
+    : null;
 
-  for (const i of possedute(s, g.id)) s.proprieta[i] = { proprietario: null, livello: 0, ipotecata: false };
+  for (const i of caselle) {
+    s.proprieta[i] = passaTutto ? { ...s.proprieta[i]!, proprietario: erede.id } : { proprietario: null, livello: 0, ipotecata: false };
+  }
+  if (passaTutto) erede.carteGrazia.push(...g.carteGrazia);
   g.saldo = 0;
   g.debiti = [];
   g.carteGrazia = [];
@@ -105,22 +163,34 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
   s.turno.votazione.voti = s.turno.votazione.voti.filter((id) => id !== g.id);
   if (s.turno.votazione.voti.length === 0) s.turno.votazione.scadenza = null;
 
+  const alCompagno = passaTutto ? { erede: erede.id } : {};
   ctx.eventi.push(
     motivo === 'bancarotta'
-      ? { tipo: 'bancarotta', giocatore: g.id, recuperi, ...(automatica ? { automatica: true as const } : {}) }
-      : { tipo: 'rimozione', giocatore: g.id, motivo, recuperi },
+      ? { tipo: 'bancarotta', giocatore: g.id, recuperi, ...alCompagno, ...(automatica ? { automatica: true as const } : {}) }
+      : { tipo: 'rimozione', giocatore: g.id, motivo, recuperi, ...alCompagno },
   );
   for (const r of recuperi) accredita(ctx, giocatore(s, r.creditore)!, r.importo);
+  if (eredita && erede) {
+    ctx.eventi.push(eredita);
+    accredita(ctx, erede, eredita.soldi);
+  }
+  if (!passaTutto) vendiEdificiRimasti(ctx, caselle);
 
   const rimasti = attivi(s);
-  if (rimasti.length <= 1) {
+  const squadre = new Set(rimasti.map((x) => x.squadra));
+  if (rimasti.length <= 1 || (s.impostazioni.squadre && squadre.size <= 1)) {
     s.fase = 'finita';
     s.vincitore = rimasti[0]?.id ?? null;
+    s.squadraVincitrice = s.impostazioni.squadre ? (rimasti[0]?.squadra ?? null) : null;
     s.asta = null;
     s.scambi = [];
     s.statistiche.fine = ctx.adesso;
     segnaPatrimonio(s);
-    ctx.eventi.push({ tipo: 'fine', vincitore: s.vincitore });
+    ctx.eventi.push(
+      s.squadraVincitrice === null
+        ? { tipo: 'fine', vincitore: s.vincitore }
+        : { tipo: 'fine', vincitore: s.vincitore, squadra: s.squadraVincitrice },
+    );
     return;
   }
   if (s.turno.giocatore === g.id) passaTurno(ctx);

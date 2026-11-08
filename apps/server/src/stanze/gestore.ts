@@ -55,7 +55,7 @@ export class GestoreStanze {
       .map((s) => ({
         codice: s.codice,
         fase: s.fase,
-        giocatori: s.posti.map(({ nome, colore }) => ({ nome, colore })),
+        giocatori: s.posti.map(({ nome, colore, bot }) => ({ nome, colore, bot })),
         giocatoriMax: s.impostazioni.giocatoriMax,
         mappa: s.impostazioni.mappa,
         impostazioni: { ...s.impostazioni },

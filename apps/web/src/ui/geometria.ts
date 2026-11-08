@@ -3,39 +3,73 @@ import { euro, proprietabile, type Tabellone } from '@poordown/engine';
 import { variabili } from './utili';
 
 /* ---------------- Geometria ----------------
-   11×11 caselle: angoli larghi ANGOLO volte una casella normale.
+   Una griglia quadrata: 11×11 per i tabelloni da 40 caselle, 13×13 per quello da 48.
+   Gli angoli sono larghi ANGOLO volte una casella normale.
    Partenza in alto a sinistra, si gira in senso orario. */
 
 /** Unica fonte della proporzione: la griglia del tabellone la riceve da qui. */
 export const ANGOLO = 1.53;
-const TOTALE = 9 + ANGOLO * 2;
+/** Larghezza del tabellone da 40 caselle, in caselle normali: serve a scalare le misure degli altri. */
+const TOTALE_CLASSICO = 9 + ANGOLO * 2;
 
 export type Lato = 'alto' | 'destra' | 'basso' | 'sinistra' | 'angolo';
 
-export function posto(n: number): { riga: number; colonna: number; lato: Lato } {
-  if (n === 0) return { riga: 1, colonna: 1, lato: 'angolo' };
-  if (n < 10) return { riga: 1, colonna: n + 1, lato: 'alto' };
-  if (n === 10) return { riga: 1, colonna: 11, lato: 'angolo' };
-  if (n < 20) return { riga: n - 9, colonna: 11, lato: 'destra' };
-  if (n === 20) return { riga: 11, colonna: 11, lato: 'angolo' };
-  if (n < 30) return { riga: 11, colonna: 11 - (n - 20), lato: 'basso' };
-  if (n === 30) return { riga: 11, colonna: 1, lato: 'angolo' };
-  return { riga: 11 - (n - 30), colonna: 1, lato: 'sinistra' };
+export interface Geometria {
+  /** Caselle per lato, contando un angolo: 10 o 12. */
+  lato: number;
+  /** Righe e colonne della griglia. */
+  tracce: string;
+  /** Una casella normale, in percentuale del tabellone. */
+  unita: number;
+  /** Quanto sono piccole le caselle rispetto al tabellone da 40 (1 per quello): le misure interne si scalano così. */
+  scala: number;
+  /** Riga e colonna della casella nella griglia (da 1), e il lato su cui sta. */
+  posto(n: number): { riga: number; colonna: number; lato: Lato };
+  /** Centro della casella, in percentuale del tabellone. */
+  centro(n: number): { x: number; y: number };
 }
 
-/** Centro di una riga o colonna della griglia, in percentuale del tabellone. */
-function centroTraccia(i: number): number {
-  if (i === 1) return (ANGOLO / 2 / TOTALE) * 100;
-  if (i === 11) return ((TOTALE - ANGOLO / 2) / TOTALE) * 100;
-  return ((ANGOLO + i - 1.5) / TOTALE) * 100;
-}
+const CACHE = new Map<number, Geometria>();
 
-export function centroCasella(n: number): { x: number; y: number } {
-  const { riga, colonna } = posto(n);
-  return { x: centroTraccia(colonna), y: centroTraccia(riga) };
-}
+/** La geometria di un tabellone con `caselle` caselle (un multiplo di 4). */
+export function geometria(caselle: number): Geometria {
+  const salvata = CACHE.get(caselle);
+  if (salvata) return salvata;
+  const L = caselle / 4;
+  const totale = L - 1 + ANGOLO * 2;
 
-export const UNITA = 100 / TOTALE;
+  const posto = (n: number): { riga: number; colonna: number; lato: Lato } => {
+    if (n === 0) return { riga: 1, colonna: 1, lato: 'angolo' };
+    if (n < L) return { riga: 1, colonna: n + 1, lato: 'alto' };
+    if (n === L) return { riga: 1, colonna: L + 1, lato: 'angolo' };
+    if (n < 2 * L) return { riga: n - L + 1, colonna: L + 1, lato: 'destra' };
+    if (n === 2 * L) return { riga: L + 1, colonna: L + 1, lato: 'angolo' };
+    if (n < 3 * L) return { riga: L + 1, colonna: L + 1 - (n - 2 * L), lato: 'basso' };
+    if (n === 3 * L) return { riga: L + 1, colonna: 1, lato: 'angolo' };
+    return { riga: L + 1 - (n - 3 * L), colonna: 1, lato: 'sinistra' };
+  };
+
+  /** Centro di una riga o colonna della griglia, in percentuale del tabellone. */
+  const centroTraccia = (i: number): number => {
+    if (i === 1) return (ANGOLO / 2 / totale) * 100;
+    if (i === L + 1) return ((totale - ANGOLO / 2) / totale) * 100;
+    return ((ANGOLO + i - 1.5) / totale) * 100;
+  };
+
+  const geo: Geometria = {
+    lato: L,
+    tracce: `${ANGOLO}fr repeat(${L - 1}, minmax(0, 1fr)) ${ANGOLO}fr`,
+    unita: 100 / totale,
+    scala: TOTALE_CLASSICO / totale,
+    posto,
+    centro(n) {
+      const { riga, colonna } = posto(n);
+      return { x: centroTraccia(colonna), y: centroTraccia(riga) };
+    },
+  };
+  CACHE.set(caselle, geo);
+  return geo;
+}
 
 const NOMI_LIVELLI = ['Affitto', 'Con 1 casa', 'Con 2 case', 'Con 3 case', 'Con 4 case', 'Con l’albergo'];
 
@@ -59,10 +93,11 @@ export function righeAffitto(tab: Tabellone, n: number): [string, string][] {
 }
 
 /** Posizione della scheda aperta accanto alla casella, verso il centro del tabellone. */
-export function stilePopover(n: number): { classe: string; stile: CSSProperties } {
-  const { lato } = posto(n);
-  const { x, y } = centroCasella(n);
-  const bordo = `${(ANGOLO / TOTALE) * 100}%`;
+export function stilePopover(n: number, caselle: number): { classe: string; stile: CSSProperties } {
+  const geo = geometria(caselle);
+  const { lato } = geo.posto(n);
+  const { x, y } = geo.centro(n);
+  const bordo = `${ANGOLO * geo.unita}%`;
   return {
     classe: `scheda--popover scheda--da-${lato === 'angolo' ? 'alto' : lato}`,
     stile: variabili({ '--x': `${x}%`, '--y': `${y}%`, '--bordo': bordo }),

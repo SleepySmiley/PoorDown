@@ -61,6 +61,8 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       return `${nome(evento.da)} paga ${euro(evento.importo)} di affitto ${a(nome(evento.a))} per ${casella(evento.casella)}.`;
     case 'tassa':
       return `${nome(evento.giocatore)} paga ${euro(evento.importo)} di ${casella(evento.casella)}.`;
+    case 'premio':
+      return `${nome(evento.giocatore)} si ferma sul ${casella(evento.casella)} e riceve ${euro(evento.importo)}.`;
     case 'carta':
       return `${nome(evento.giocatore)} pesca una ${NOME_MAZZO[evento.mazzo]}: «${evento.testo}»`;
     case 'prigione':
@@ -127,11 +129,29 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
     case 'bancarotta': {
       const recuperi = evento.recuperi.map((r) => ` ${nome(r.creditore)} recupera ${euro(r.importo)} dalla banca.`);
       const prima = evento.automatica ? 'Tempo scaduto in debito: ' : '';
-      return `${prima}${nome(evento.giocatore)} fa bancarotta. Le sue proprietà tornano alla banca.${recuperi.join('')}`;
+      // Se le proprietà passano a un compagno di squadra, lo dice la riga dell'eredità.
+      const proprieta = evento.erede ? '' : ' Le sue proprietà tornano alla banca.';
+      return `${prima}${nome(evento.giocatore)} fa bancarotta.${proprieta}${recuperi.join('')}`;
     }
     case 'rimozione': {
       const recuperi = evento.recuperi.map((r) => ` ${nome(r.creditore)} recupera ${euro(r.importo)} dalla banca.`);
-      return `${MOTIVO_RIMOZIONE[evento.motivo]}: ${nome(evento.giocatore)} esce dalla partita e le sue proprietà tornano alla banca.${recuperi.join('')}`;
+      const proprieta = evento.erede ? '' : ' e le sue proprietà tornano alla banca';
+      return `${MOTIVO_RIMOZIONE[evento.motivo]}: ${nome(evento.giocatore)} esce dalla partita${proprieta}.${recuperi.join('')}`;
+    }
+    case 'eredita': {
+      const cose = [
+        ...evento.caselle.map((i) => (stato.proprieta[i]?.ipotecata ? `${casella(i)} (ipotecata)` : casella(i))),
+        ...(evento.grazie === 1 ? ['la Carta Grazia'] : evento.grazie > 1 ? [`${evento.grazie} Carte Grazia`] : []),
+        ...(evento.soldi > 0 ? [euro(evento.soldi)] : []),
+      ];
+      if (cose.length === 0) return `${nome(evento.a)} non eredita niente da ${nome(evento.da)}.`;
+      const elenco = cose.length === 1 ? cose[0]! : `${cose.slice(0, -1).join(', ')} e ${cose.at(-1)!}`;
+      return `${nome(evento.a)} eredita da ${nome(evento.da)}: ${elenco}.`;
+    }
+    case 'edifici_venduti': {
+      const citta = evento.caselle.map(casella);
+      const elenco = citta.length === 1 ? citta[0]! : `${citta.slice(0, -1).join(', ')} e ${citta.at(-1)!}`;
+      return `La regione non è più tutta della squadra: ${nome(evento.giocatore)} vende alla banca gli edifici di ${elenco} per ${euro(evento.importo)}.`;
     }
     case 'tempo_scaduto':
       return evento.assente
@@ -146,6 +166,7 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
         ? `${nome(evento.da)} vota per far uscire ${nome(evento.contro)} dalla partita (${evento.voti} di ${evento.servono}).`
         : `${nome(evento.da)} ritira il voto contro ${nome(evento.contro)}.`;
     case 'fine':
+      if (evento.squadra !== undefined) return `Partita finita. Vince la squadra ${stato.squadre[evento.squadra] ?? ''}.`;
       return evento.vincitore ? `Partita finita. Vince ${nome(evento.vincitore)}.` : 'Partita finita.';
   }
 }
@@ -207,6 +228,8 @@ function destinazione(c: Casella): string {
     case 'tassa':
     case 'vai_in_prigione':
       return `alla casella ${c.nome}`;
+    case 'premio':
+      return `al ${c.nome}`;
     default:
       return vocale ? `all’${c.nome}` : `alla ${c.nome}`;
   }

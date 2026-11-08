@@ -4,16 +4,17 @@
  */
 
 import type { Affitti, Carta, Casella, Regione, Tabellone } from '../tipi';
+import { BUSTA, GRAZIA } from './mazzi';
 
 const REGIONI: Regione[] = [
-  { nome: 'Valle d’Aosta', costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Sardegna', costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Toscana', costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Sicilia', costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Veneto', costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Campania', costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Lazio', costoCasa: 200, costoAlbergo: 200 },
-  { nome: 'Lombardia', costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Valle d’Aosta', sigla: 'VDA', colore: 1, costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Sardegna', sigla: 'SAR', colore: 2, costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Toscana', sigla: 'TOS', colore: 3, costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Sicilia', sigla: 'SIC', colore: 4, costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Veneto', sigla: 'VEN', colore: 5, costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Campania', sigla: 'CAM', colore: 6, costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Lazio', sigla: 'LAZ', colore: 7, costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Lombardia', sigla: 'LOM', colore: 8, costoCasa: 200, costoAlbergo: 200 },
 ];
 
 function citta(nome: string, regione: number, prezzo: number, affitti: Affitti): Casella {
@@ -63,35 +64,6 @@ const CASELLE: Casella[] = [
   citta('Milano', 7, 400, [44, 190, 580, 1350, 1625, 1925]),
 ];
 
-const GRAZIA: Carta = {
-  testo: 'Carta Grazia. Esci gratis di prigione. Puoi tenerla o scambiarla.',
-  effetto: { tipo: 'grazia' },
-};
-
-/** Busta: soprattutto soldi. */
-const BUSTA: Carta[] = [
-  { testo: 'Torna alla Partenza.', effetto: { tipo: 'vai_a', casella: 0 } },
-  { testo: 'Rimborso delle tasse. Ricevi 100 €.', effetto: { tipo: 'soldi', importo: 100 } },
-  { testo: 'Interessi sul conto di risparmio. Ricevi 50 €.', effetto: { tipo: 'soldi', importo: 50 } },
-  { testo: 'Premio di un concorso. Ricevi 150 €.', effetto: { tipo: 'soldi', importo: 150 } },
-  { testo: 'Eredità da un parente lontano. Ricevi 100 €.', effetto: { tipo: 'soldi', importo: 100 } },
-  { testo: 'Rimborso dell’assicurazione. Ricevi 25 €.', effetto: { tipo: 'soldi', importo: 25 } },
-  { testo: 'Vendi la vecchia bicicletta. Ricevi 30 €.', effetto: { tipo: 'soldi', importo: 30 } },
-  { testo: 'Buono regalo. Ricevi 20 €.', effetto: { tipo: 'soldi', importo: 20 } },
-  { testo: 'Bolletta della luce. Paga 60 €.', effetto: { tipo: 'soldi', importo: -60 } },
-  { testo: 'Revisione dell’auto. Paga 50 €.', effetto: { tipo: 'soldi', importo: -50 } },
-  { testo: 'Visita dal dentista. Paga 50 €.', effetto: { tipo: 'soldi', importo: -50 } },
-  { testo: 'Multa per sosta vietata. Paga 40 €.', effetto: { tipo: 'soldi', importo: -40 } },
-  { testo: 'È il tuo compleanno. Ogni giocatore ti dà 10 €.', effetto: { tipo: 'da_ognuno', importo: 10 } },
-  { testo: 'Hai anticipato la cena per tutti. Ogni giocatore ti dà 50 €.', effetto: { tipo: 'da_ognuno', importo: 50 } },
-  {
-    testo: 'Manutenzione degli immobili. Paga 40 € per ogni casa e 115 € per ogni albergo.',
-    effetto: { tipo: 'riparazioni', casa: 40, albergo: 115 },
-  },
-  { testo: 'Vai in prigione.', effetto: { tipo: 'prigione' } },
-  GRAZIA,
-];
-
 /** Cartolina: soprattutto spostamenti. */
 const CARTOLINA: Carta[] = [
   { testo: 'Torna alla Partenza.', effetto: { tipo: 'vai_a', casella: 0 } },
@@ -119,6 +91,7 @@ const CARTOLINA: Carta[] = [
 export const CLASSICO: Tabellone = {
   id: 'classica',
   nome: 'Classico',
+  descrizione: '40 caselle, 8 regioni italiane: il tabellone di sempre.',
   caselle: CASELLE,
   regioni: REGIONI,
   partenza: { passaggio: 200, arrivo: 300 },

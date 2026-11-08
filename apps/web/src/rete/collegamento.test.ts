@@ -58,6 +58,7 @@ function vista(versione: number, codice = 'abcde'): VistaStanza {
     versione,
     host: null,
     impostazioni: { ...IMPOSTAZIONI_PREDEFINITE },
+    squadre: [],
     partecipanti: [],
     spettatori: 0,
     partita: null,

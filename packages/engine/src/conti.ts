@@ -15,6 +15,33 @@ export function attivi(stato: Stato): Giocatore[] {
   return stato.giocatori.filter((g) => !g.eliminato);
 }
 
+/** La squadra del giocatore; `null` se la partita non è a squadre. */
+export function squadraDi(stato: Stato, id: IdGiocatore): number | null {
+  return giocatore(stato, id)?.squadra ?? null;
+}
+
+/** Due giocatori diversi della stessa squadra. */
+export function compagni(stato: Stato, a: IdGiocatore, b: IdGiocatore): boolean {
+  if (a === b) return false;
+  const sa = squadraDi(stato, a);
+  return sa !== null && sa === squadraDi(stato, b);
+}
+
+/** Lo stesso giocatore o un suo compagno di squadra: tra alleati non si paga l'affitto. */
+export function alleati(stato: Stato, a: IdGiocatore, b: IdGiocatore): boolean {
+  return a === b || compagni(stato, a, b);
+}
+
+/**
+ * Ha vinto la partita: è il vincitore oppure, a squadre, è nella squadra vincitrice
+ * (anche se nel frattempo era uscito: la squadra vince insieme).
+ */
+export function haVinto(stato: Stato, id: IdGiocatore): boolean {
+  if (stato.fase !== 'finita') return false;
+  if (stato.squadraVincitrice !== null) return squadraDi(stato, id) === stato.squadraVincitrice;
+  return stato.vincitore === id;
+}
+
 export function proprietabile(tab: Tabellone, casella: number): Proprietabile | null {
   const c = tab.caselle[casella];
   return c && (c.tipo === 'citta' || c.tipo === 'stazione' || c.tipo === 'servizio') ? c : null;
@@ -37,9 +64,12 @@ export function caselleDellaRegione(tab: Tabellone, regione: number): number[] {
   return risultato;
 }
 
-/** Il giocatore possiede tutte le città della regione (ipotecate comprese). */
+/** Il giocatore (con i compagni di squadra) possiede tutte le città della regione, ipotecate comprese. */
 export function possiedeRegione(stato: Stato, id: IdGiocatore, regione: number): boolean {
-  return caselleDellaRegione(tabellone(stato.mappa), regione).every((i) => stato.proprieta[i]?.proprietario === id);
+  return caselleDellaRegione(tabellone(stato.mappa), regione).every((i) => {
+    const proprietario = stato.proprieta[i]?.proprietario;
+    return proprietario != null && alleati(stato, proprietario, id);
+  });
 }
 
 /** Nella regione c'è almeno una casa o un albergo. */
@@ -47,15 +77,19 @@ export function regioneConEdifici(stato: Stato, regione: number): boolean {
   return caselleDellaRegione(tabellone(stato.mappa), regione).some((i) => (stato.proprieta[i]?.livello ?? 0) > 0);
 }
 
-/** Quante caselle dello stesso tipo possiede il proprietario, senza contare quelle ipotecate. */
+/** Quante caselle dello stesso tipo possiedono il proprietario e i suoi compagni, senza contare quelle ipotecate. */
 function contaNonIpotecate(stato: Stato, id: IdGiocatore, tipo: 'stazione' | 'servizio'): number {
   const tab = tabellone(stato.mappa);
-  return stato.proprieta.filter((p, i) => p?.proprietario === id && !p.ipotecata && tab.caselle[i]?.tipo === tipo).length;
+  return stato.proprieta.filter(
+    (p, i) => p?.proprietario != null && alleati(stato, p.proprietario, id) && !p.ipotecata && tab.caselle[i]?.tipo === tipo,
+  ).length;
 }
 
 /**
  * Affitto che paga chi si ferma sulla casella. 0 se è libera, ipotecata o se il proprietario
  * è in prigione con la regola attiva. Per i servizi serve la somma dei dadi.
+ * A squadre la regione completa, le stazioni e i servizi si contano con quelli dei compagni;
+ * che tra compagni non si paghi lo decide chi applica l'affitto.
  */
 export function affitto(stato: Stato, casella: number, sommaDadi: number): number {
   const tab = tabellone(stato.mappa);

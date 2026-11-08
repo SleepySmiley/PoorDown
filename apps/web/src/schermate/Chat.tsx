@@ -5,6 +5,7 @@ import { silenzia, useSilenziati } from '../rete/silenziati';
 import { avvisa } from '../ui/avvisi';
 import { Pedina, PulsanteIcona } from '../ui/comuni';
 import { Icona } from '../ui/icone';
+import { Binario } from './Colonne';
 
 function chiScrive(
   stanza: VistaStanza,
@@ -37,6 +38,12 @@ export function Chat({
 }): ReactNode {
   const [testo, setTesto] = useState('');
   const [invio, setInvio] = useState(false);
+  // A squadre si scrive a tutti o solo alla propria squadra.
+  const [aSquadra, setASquadra] = useState(false);
+  const mia = stanza.partecipanti.find((p) => p.id === io)?.squadra ?? null;
+  const conSquadra = stanza.impostazioni.squadre && mia !== null;
+  const nomeSquadra = mia === null ? '' : (stanza.squadre[mia] ?? `Squadra ${mia + 1}`);
+  const soloSquadra = conSquadra && aSquadra;
   const lista = useRef<HTMLOListElement>(null);
   const silenziati = useSilenziati(stanza.codice);
   // I messaggi di chi ho silenziato non si vedono (i miei sì, sempre).
@@ -65,6 +72,27 @@ export function Chat({
         </span>
         <h2 className="chat__titolo">Chat</h2>
       </header>
+      {conSquadra && (
+        <div className="chat__canali" role="group" aria-label="A chi scrivi">
+          <button
+            type="button"
+            className={soloSquadra ? 'chat__canale' : 'chat__canale chat__canale--attivo'}
+            aria-pressed={!soloSquadra}
+            onClick={() => setASquadra(false)}
+          >
+            Tutti
+          </button>
+          <button
+            type="button"
+            className={soloSquadra ? 'chat__canale chat__canale--attivo' : 'chat__canale'}
+            aria-pressed={soloSquadra}
+            onClick={() => setASquadra(true)}
+          >
+            <Binario indice={mia} nome={nomeSquadra} className="binario--riga" />
+            Squadra
+          </button>
+        </div>
+      )}
       {visibili.length === 0 ? (
         <p className="chat__vuota">
           {messaggi.length > 0 ? 'I messaggi di chi hai silenziato sono nascosti.' : 'Ancora nessun messaggio.'}
@@ -75,7 +103,10 @@ export function Chat({
             const mio = m.da === io;
             const stessoAutore = visibili[i - 1]?.da === m.da;
             return (
-              <li key={m.n} className={mio ? 'messaggio messaggio--mio' : 'messaggio'}>
+              <li
+                key={m.n}
+                className={['messaggio', mio ? 'messaggio--mio' : '', m.squadra !== undefined ? 'messaggio--squadra' : ''].join(' ')}
+              >
                 {!mio && !stessoAutore && (
                   <span className="messaggio__autore">
                     <Pedina colore={m.colore} className="pedina--mini" />
@@ -91,7 +122,10 @@ export function Chat({
                     </button>
                   </span>
                 )}
-                <p className="messaggio__testo">{m.testo}</p>
+                <p className="messaggio__testo">
+                  {m.squadra !== undefined && <span className="messaggio__canale">Squadra</span>}
+                  {m.testo}
+                </p>
               </li>
             );
           })}
@@ -128,7 +162,7 @@ export function Chat({
             const pulito = testo.trim();
             if (!pulito || invio) return;
             setInvio(true);
-            void collegamento.comando('scrivi', { testo: pulito }).then((r) => {
+            void collegamento.comando('scrivi', soloSquadra ? { testo: pulito, squadra: true } : { testo: pulito }).then((r) => {
               setInvio(false);
               if (r.ok) setTesto('');
               else avvisa(r.messaggio, 'errore');
@@ -141,7 +175,7 @@ export function Chat({
           <input
             id="chat-campo"
             type="text"
-            placeholder="Scrivi un messaggio…"
+            placeholder={soloSquadra ? `Scrivi a ${nomeSquadra}…` : 'Scrivi un messaggio…'}
             maxLength={CHAT_MAX}
             autoComplete="off"
             value={testo}

@@ -253,7 +253,7 @@ function Parte({
           const corpo = (
             <>
               {c.gruppo !== undefined ? (
-                <Stemma gruppo={c.gruppo} nome={tab.regioni[c.gruppo - 1]?.nome ?? ''} className="stemma--lista" />
+                <Stemma regione={tab.regioni[c.gruppo - 1]} className="stemma--lista" />
               ) : (
                 c.icona && <Icona nome={c.icona} className="voce-scambio__icona" />
               )}

@@ -1,4 +1,5 @@
 import '../stili/tavolo.css';
+import '../stili/squadre.css';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   euro,
@@ -298,7 +299,22 @@ export interface DatiRiga {
   esito?: string;
   /** In partita, per chi ha perso il collegamento: quando perde il posto (ms del server). */
   assenteFino?: number;
+  /** Giocatore automatico. */
+  bot?: boolean;
+  /** A squadre: numero (da 0) e nome della squadra. */
+  squadra?: { indice: number; nome: string };
 }
+
+/** Il numero della squadra, come il binario sui cartelli delle partenze. */
+export function Binario({ indice, nome, className }: { indice: number; nome: string; className?: string }): ReactNode {
+  return (
+    <span className={className ? `binario ${className}` : 'binario'} title={nome} aria-label={nome}>
+      {indice + 1}
+    </span>
+  );
+}
+
+const SPIEGA_BOT = 'Bot: gioca da solo. Compra, costruisce, offre alle aste e risponde agli scambi; in chat non scrive.';
 
 export function RigaGiocatore({
   g,
@@ -307,6 +323,7 @@ export function RigaGiocatore({
   bloccoEspulsione,
   onEspelli,
   onCambiaColore,
+  extra,
 }: {
   g: DatiRiga;
   puoEspellere?: boolean;
@@ -315,6 +332,8 @@ export function RigaGiocatore({
   bloccoEspulsione?: string | null;
   onEspelli?: () => void;
   onCambiaColore?: () => void;
+  /** Controllo in più prima della X (es. la squadra, per l'host). */
+  extra?: ReactNode;
 }): ReactNode {
   const etichetta = etichettaEspulsione ?? `Espelli ${g.nome}`;
   const mostraSaldo = g.saldo !== undefined;
@@ -327,8 +346,12 @@ export function RigaGiocatore({
   ].join(' ');
   return (
     <li className={classi} style={{ ['--colore' as string]: `var(--p${g.colore})` }}>
-      <span className={g.prigione ? 'in-prigione' : undefined} title={g.prigione ? 'In prigione' : undefined}>
-        <Pedina colore={g.colore} iniziale={iniziale(g.nome)} className="pedina--media" />
+      <span className="giocatore__pedina">
+        <span className={g.prigione ? 'in-prigione' : undefined} title={g.prigione ? 'In prigione' : undefined}>
+          <Pedina colore={g.colore} iniziale={iniziale(g.nome)} className="pedina--media" />
+        </span>
+        {/* La squadra è un numero sulla pedina, come sulla maglia: il nome resta largo. */}
+        {g.squadra && <Binario indice={g.squadra.indice} nome={g.squadra.nome} className="binario--maglia" />}
       </span>
       <span className="giocatore__dati">
         <span className="giocatore__nome">
@@ -336,6 +359,11 @@ export function RigaGiocatore({
             {g.nome}
             {g.tu && <span className="solo-lettori"> (tu)</span>}
           </span>
+          {g.bot && (
+            <span className="giocatore__bot" tabIndex={0} title={SPIEGA_BOT}>
+              <Icona nome="robot" className="giocatore__segno" titolo={SPIEGA_BOT} />
+            </span>
+          )}
           {g.host && !mostraSaldo && (
             <span className="distintivo distintivo--host">
               <Icona nome="corona" />
@@ -369,6 +397,7 @@ export function RigaGiocatore({
         </span>
       )}
       {g.fuori && <span className="giocatore__esito">{g.esito ?? 'Bancarotta'}</span>}
+      {extra}
       {/* La propria riga (e chi è già fuori) tiene lo spazio della X: i saldi restano in colonna. */}
       {puoEspellere &&
         (g.tu || g.fuori ? (
@@ -405,7 +434,18 @@ const STANZA: Voce[] = [
     nome: 'Stanza privata',
     descrizione: 'Non compare tra le stanze aperte: si entra solo con il link',
   },
-  { chiave: 'bot', icona: 'robot', nome: 'Bot', descrizione: 'Dei giocatori automatici occupano i posti liberi', presto: true },
+  {
+    chiave: 'bot',
+    icona: 'robot',
+    nome: 'Bot',
+    descrizione: 'Dei giocatori automatici occupano i posti liberi; chi arriva dopo prende il posto di un bot',
+  },
+  {
+    chiave: 'squadre',
+    icona: 'squadre',
+    nome: 'Squadre',
+    descrizione: 'I compagni non si pagano l’affitto, costruiscono sulle regioni della squadra e vincono insieme',
+  },
   { chiave: 'mappa', icona: 'mappa', nome: 'Tabellone', descrizione: 'Caselle, città e mazzi della partita' },
   {
     chiave: 'timerTurno',
@@ -468,11 +508,13 @@ function Controllo({
   imp,
   modificabile,
   onCambia,
+  onTabelloni,
 }: {
   voce: Voce;
   imp: Impostazioni;
   modificabile: boolean;
   onCambia: (modifiche: Partial<Impostazioni>) => void;
+  onTabelloni?: () => void;
 }): ReactNode {
   const attivo = modificabile && !voce.presto;
   switch (voce.chiave) {
@@ -512,6 +554,12 @@ function Controllo({
       return (
         <span className="impostazione__tabellone">
           <strong>{tabellone(imp.mappa).nome}</strong>
+          {onTabelloni && (
+            <button type="button" className="collegamento" onClick={onTabelloni}>
+              {modificabile ? 'Cambia tabellone' : 'Vedi i tabelloni'}
+              <Icona nome="avanti" />
+            </button>
+          )}
         </span>
       );
     default: {
@@ -534,6 +582,7 @@ function RigaImpostazione(props: {
   imp: Impostazioni;
   modificabile: boolean;
   onCambia: (modifiche: Partial<Impostazioni>) => void;
+  onTabelloni?: () => void;
 }): ReactNode {
   const { voce } = props;
   return (
@@ -561,16 +610,26 @@ export function ListaImpostazioni({
   imp,
   modificabile,
   onCambia = () => {},
+  onTabelloni,
 }: {
   imp: Impostazioni;
   modificabile: boolean;
   onCambia?: (modifiche: Partial<Impostazioni>) => void;
+  /** Apre la scelta dei tabelloni (in lobby). */
+  onTabelloni?: () => void;
 }): ReactNode {
   return (
     <>
       <ul className="impostazioni">
         {STANZA.map((voce) => (
-          <RigaImpostazione key={voce.chiave} voce={voce} imp={imp} modificabile={modificabile} onCambia={onCambia} />
+          <RigaImpostazione
+            key={voce.chiave}
+            voce={voce}
+            imp={imp}
+            modificabile={modificabile}
+            onCambia={onCambia}
+            onTabelloni={onTabelloni}
+          />
         ))}
       </ul>
       <h3 className="impostazioni__sezione">Regole di gioco</h3>

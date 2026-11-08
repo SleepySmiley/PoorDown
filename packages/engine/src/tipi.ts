@@ -4,7 +4,8 @@
  */
 
 export type IdGiocatore = string;
-export type IdMappa = 'classica';
+/** I quattro tabelloni: vedi docs/identita/tabellone-e-carte.md e docs/identita/tabelloni-alternativi.md. */
+export type IdMappa = 'classica' | 'europa' | 'grandi_aree' | 'fortuna';
 export type NomeMazzo = 'busta' | 'cartolina';
 
 /* ------------------------------------------------------------------ */
@@ -30,6 +31,11 @@ export interface Impostazioni {
   soldiIniziali: number;
   ordineCasuale: boolean;
   timerTurno: boolean;
+  /**
+   * Modalità squadre: i compagni non si pagano l'affitto, costruiscono sulle regioni della squadra,
+   * ereditano i beni di chi fa bancarotta e vincono insieme.
+   */
+  squadre: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,16 +80,26 @@ export interface Tassa extends CasellaBase {
   tassa: { tipo: 'percentuale'; valore: number } | { tipo: 'fissa'; valore: number };
 }
 
+/** Casella che regala soldi a chi ci si ferma (il Rimborso di «Colpo di fortuna»). */
+export interface Premio extends CasellaBase {
+  tipo: 'premio';
+  importo: number;
+}
+
 export interface Angolo extends CasellaBase {
   tipo: 'partenza' | 'prigione' | 'vacanza' | 'vai_in_prigione';
 }
 
 export type Proprietabile = Citta | Stazione | Servizio;
-export type Casella = Proprietabile | CasellaCarta | Tassa | Angolo;
+export type Casella = Proprietabile | CasellaCarta | Tassa | Premio | Angolo;
 export type TipoCasella = Casella['tipo'];
 
 export interface Regione {
   nome: string;
+  /** Tre lettere per lo stemma (es. "TOS"). */
+  sigla: string;
+  /** Colore dello stemma, 1–10 (le variabili --g1…--g10). Di solito l'indice della regione più uno. */
+  colore: number;
   costoCasa: number;
   costoAlbergo: number;
 }
@@ -114,6 +130,8 @@ export interface Carta {
 export interface Tabellone {
   id: IdMappa;
   nome: string;
+  /** Una frase per la scelta del tabellone in lobby. */
+  descrizione: string;
   caselle: readonly Casella[];
   regioni: readonly Regione[];
   partenza: { passaggio: number; arrivo: number };
@@ -176,6 +194,8 @@ export interface Giocatore {
   automatici: number;
   /** Da quando non è collegato (ms del server); `null` se è collegato. */
   offlineDa: number | null;
+  /** Indice della squadra in `Stato.squadre`; `null` se la partita non è a squadre. */
+  squadra: number | null;
 }
 
 export interface Proprieta {
@@ -337,7 +357,12 @@ export interface Stato {
   /** Numero del prossimo scambio proposto. */
   prossimoScambio: number;
   fase: 'in_corso' | 'finita';
+  /** Senza squadre: l'ultimo rimasto. A squadre: il primo dei vincitori ancora in gioco. */
   vincitore: IdGiocatore | null;
+  /** Nomi delle squadre (fino a 4); vuoto se la partita non è a squadre. */
+  squadre: string[];
+  /** A squadre, la squadra che ha vinto; altrimenti `null`. */
+  squadraVincitrice: number | null;
   statistiche: Statistiche;
 }
 
@@ -398,6 +423,7 @@ export type Evento =
   | { tipo: 'acquisto'; giocatore: IdGiocatore; casella: number; prezzo: number }
   | { tipo: 'affitto'; da: IdGiocatore; a: IdGiocatore; casella: number; importo: number }
   | { tipo: 'tassa'; giocatore: IdGiocatore; casella: number; importo: number }
+  | { tipo: 'premio'; giocatore: IdGiocatore; casella: number; importo: number }
   | { tipo: 'carta'; giocatore: IdGiocatore; mazzo: NomeMazzo; carta: number; testo: string }
   | { tipo: 'prigione'; giocatore: IdGiocatore; motivo: 'casella' | 'carta' | 'tre_doppi' }
   | { tipo: 'prigione_fallita'; giocatore: IdGiocatore; tentativi: number }
@@ -426,16 +452,36 @@ export type Evento =
    * `recuperi`: quanto la banca dà a ogni creditore, dal valore dei beni del fallito.
    * `automatica`: il tempo è scaduto mentre era in debito.
    */
-  | { tipo: 'bancarotta'; giocatore: IdGiocatore; recuperi: Debito[]; automatica?: true }
-  /** Uscita dalla partita per tempo, assenza, voto o espulsione: i beni vanno come in una bancarotta. */
-  | { tipo: 'rimozione'; giocatore: IdGiocatore; motivo: Exclude<MotivoUscita, 'bancarotta'>; recuperi: Debito[] }
+  | { tipo: 'bancarotta'; giocatore: IdGiocatore; recuperi: Debito[]; automatica?: true; erede?: IdGiocatore }
+  /**
+   * Uscita dalla partita per tempo, assenza, voto o espulsione: i beni vanno come in una bancarotta.
+   * `erede` (in tutte e due): a squadre, il compagno che prende le proprietà invece della banca.
+   */
+  | {
+      tipo: 'rimozione';
+      giocatore: IdGiocatore;
+      motivo: Exclude<MotivoUscita, 'bancarotta'>;
+      recuperi: Debito[];
+      erede?: IdGiocatore;
+    }
+  /**
+   * A squadre, un compagno raccoglie i beni di chi è appena uscito: il contante che gli restava (o quello che avanza
+   * dopo aver pagato i creditori), le proprietà e le Carte Grazia (queste solo se non aveva debiti verso altri giocatori).
+   */
+  | { tipo: 'eredita'; da: IdGiocatore; a: IdGiocatore; soldi: number; caselle: number[]; grazie: number }
+  /**
+   * A squadre: una città di chi è uscito è tornata alla banca e la regione non è più completa, quindi gli edifici
+   * del compagno lì tornano alla banca. `importo`: metà del loro costo, che il compagno incassa.
+   */
+  | { tipo: 'edifici_venduti'; giocatore: IdGiocatore; caselle: number[]; importo: number }
   /** Il tempo del turno è finito: da qui il gioco fa le mosse al posto suo. `assente`: non è collegato. */
   | { tipo: 'tempo_scaduto'; giocatore: IdGiocatore; assente: boolean }
   | { tipo: 'tempo_chiesto'; giocatore: IdGiocatore }
   | { tipo: 'tempo_regalato'; da: IdGiocatore; a: IdGiocatore; ms: number }
   /** `voti`: quanti sono adesso i voti a favore; `servono`: quanti ne servono per toglierlo. */
   | { tipo: 'voto'; da: IdGiocatore; contro: IdGiocatore; favorevole: boolean; voti: number; servono: number }
-  | { tipo: 'fine'; vincitore: IdGiocatore | null };
+  /** `squadra`: a squadre, la squadra vincitrice. */
+  | { tipo: 'fine'; vincitore: IdGiocatore | null; squadra?: number };
 
 export type TipoEvento = Evento['tipo'];
 
@@ -455,6 +501,7 @@ export type CodiceErrore =
   | 'non_tua'
   | 'edifici_nella_regione'
   | 'giocatori_non_validi'
+  | 'squadre_non_valide'
   | 'decidi_acquisto'
   | 'non_costruibile'
   | 'regione_incompleta'

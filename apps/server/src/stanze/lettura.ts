@@ -56,6 +56,7 @@ const CONTROLLI_IMPOSTAZIONI: { [K in keyof Impostazioni]: (v: unknown) => boole
   soldiIniziali: (v) => (SOLDI_INIZIALI_POSSIBILI as readonly unknown[]).includes(v),
   timerTurno: (v) => typeof v === 'boolean',
   ordineCasuale: (v) => typeof v === 'boolean',
+  squadre: (v) => typeof v === 'boolean',
 };
 
 /** Modifiche parziali alle impostazioni. `null` se c'è un campo sconosciuto o un valore fuori dai limiti. */

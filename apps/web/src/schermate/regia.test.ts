@@ -42,7 +42,8 @@ function stanzaCon(partita: Stato, versione: number): VistaStanza {
     versione,
     host: 'a',
     impostazioni: partita.impostazioni,
-    partecipanti: partita.giocatori.map((g) => ({ id: g.id, nome: g.nome, colore: g.colore, connesso: true })),
+    partecipanti: partita.giocatori.map((g) => ({ id: g.id, nome: g.nome, colore: g.colore, connesso: true, bot: false, squadra: null })),
+    squadre: [],
     spettatori: 0,
     partita: vistaPartita(partita),
   };

@@ -25,7 +25,7 @@
   --stretto: 'Barlow Condensed', system-ui, sans-serif;
   --normale: 'Barlow', system-ui, sans-serif;
 
-  /* Regioni (gruppi 1–8) */
+  /* Regioni (gruppi 1–10: il tabellone Europa ne ha 10) */
   --g1: #8c5a3c;
   --g2: #3db2e8;
   --g3: #00965e;
@@ -34,6 +34,8 @@
   --g6: #e2231a;
   --g7: #f5c400;
   --g8: #2a56c6;
+  --g9: #00838f;
+  --g10: #b0127a;
 
   /* Testo sopra gli stemmi delle regioni chiare */
   --su-g2: var(--inchiostro);

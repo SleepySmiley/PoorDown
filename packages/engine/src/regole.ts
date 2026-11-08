@@ -6,7 +6,18 @@
 
 import { tiraDadi } from './caso';
 import { accredita, errore, paga, pagaBanca, type Contesto } from './contesto';
-import { affitto, attivi, edifici, giocatore, possedute, proprietabile, regioneConEdifici, valoreVendita } from './conti';
+import {
+  affitto,
+  alleati,
+  attivi,
+  compagni,
+  edifici,
+  giocatore,
+  possedute,
+  proprietabile,
+  regioneConEdifici,
+  valoreVendita,
+} from './conti';
 import {
   acquistoInSospeso,
   apriAsta,
@@ -446,7 +457,8 @@ function arriva(ctx: Contesto, g: Giocatore): void {
         s.turno.acquisto = casella;
         return;
       }
-      if (p.proprietario === g.id) return;
+      // Sulle proprie caselle, e a squadre su quelle dei compagni, non si paga.
+      if (alleati(s, p.proprietario, g.id)) return;
       const dadi = s.turno.dadi;
       const importo = affitto(s, casella, dadi ? dadi[0] + dadi[1] : 0);
       if (importo <= 0) return;
@@ -462,6 +474,10 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       pagaBanca(ctx, g, importo, true);
       return;
     }
+    case 'premio':
+      ctx.eventi.push({ tipo: 'premio', giocatore: g.id, casella, importo: c.importo });
+      accredita(ctx, g, c.importo);
+      return;
     case 'carta':
       pesca(ctx, g, c.mazzo);
       return;
@@ -522,11 +538,12 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
       if (effetto.importo >= 0) accredita(ctx, g, effetto.importo);
       else pagaBanca(ctx, g, -effetto.importo, true);
       return;
+    // Tra compagni di squadra non si paga: la carta riguarda solo gli avversari.
     case 'da_ognuno':
-      for (const altro of attivi(s)) if (altro.id !== g.id) paga(ctx, altro, g.id, effetto.importo);
+      for (const altro of attivi(s)) if (altro.id !== g.id && !compagni(s, g.id, altro.id)) paga(ctx, altro, g.id, effetto.importo);
       return;
     case 'a_ognuno':
-      for (const altro of attivi(s)) if (altro.id !== g.id) paga(ctx, g, altro.id, effetto.importo);
+      for (const altro of attivi(s)) if (altro.id !== g.id && !compagni(s, g.id, altro.id)) paga(ctx, g, altro.id, effetto.importo);
       return;
     case 'vai_a':
       muovi(ctx, g, (((effetto.casella - g.posizione) % n) + n) % n);

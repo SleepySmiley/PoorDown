@@ -40,8 +40,8 @@ export function volte(n: number): string {
 }
 
 function protagonista(e: EventoStanza): IdGiocatore | null {
-  // Lo scambio lo accetta o lo rifiuta chi l'ha ricevuto.
-  if (e.tipo === 'scambio_accettato' || e.tipo === 'scambio_rifiutato') return e.a;
+  // Lo scambio lo accetta o lo rifiuta chi l'ha ricevuto; l'eredità la riceve il compagno.
+  if (e.tipo === 'scambio_accettato' || e.tipo === 'scambio_rifiutato' || e.tipo === 'eredita') return e.a;
   if ('giocatore' in e) return e.giocatore;
   if ('da' in e) return e.da;
   return null;

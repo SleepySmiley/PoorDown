@@ -1,5 +1,5 @@
 /*
- * Una stanza: posti al tavolo, host, impostazioni, partita, registro e chat.
+ * Una stanza: posti al tavolo, host, impostazioni, squadre, bot, partita, registro e chat.
  * Non sa niente di Socket.IO: riceve comandi già letti e risponde con una `Risposta`.
  * Ogni modifica finisce in un "pacchetto" che il livello di rete raccoglie con `raccogli()` e manda a tutti.
  */
@@ -14,20 +14,30 @@ import {
   connessione,
   contaMessaggio,
   creaPartita,
+  durataScena,
   espelli as espelliDallaPartita,
   GIOCATORI_MIN,
   GRAZIA_MS,
+  IMPOSTAZIONI_PREDEFINITE,
+  mescola,
+  mosseDeiBot,
+  NOME_SQUADRA_MAX,
   nomeCasuale,
+  NOMI_SQUADRE_PREDEFINITI,
+  PENSIERO_BOT_MS,
   prossimaScadenza,
   pulisciNome,
   REGISTRO_MAX,
   sposta,
+  SQUADRE_MAX,
   statisticheIniziali,
+  TURNI_TRA_PROPOSTE_BOT,
   vistaPartita,
   type Attivita,
   type Azione,
   type CodiceErroreServer,
   type Esito,
+  type Evento,
   type EventoStanza,
   type FaseStanza,
   type IdGiocatore,
@@ -47,14 +57,23 @@ export type Token = string;
 
 /** In lobby, chi resta senza schede aperte sulla stanza per questo tempo perde il posto. */
 export const ATTESA_LOBBY_MS = 2 * 60_000;
+/** I bot entrano in lobby a ondate: uno ogni 2,5–6 secondi, finché ci sono posti liberi. */
+export const ARRIVO_BOT_MIN_MS = 2_500;
+export const ARRIVO_BOT_MAX_MS = 6_000;
+/** Se l'host espelle un bot con i bot attivi, ne entra subito un altro. */
+export const RIMPIAZZO_BOT_MS = 1_000;
 
 export interface Posto {
   id: IdGiocatore;
   token: Token;
   nome: string;
   colore: number;
-  /** Da quando non ha più schede aperte sulla stanza; `null` se è collegato. */
+  /** Da quando non ha più schede aperte sulla stanza; `null` se è collegato (i bot lo sono sempre). */
   offlineDa: number | null;
+  /** Giocatore automatico: non ha un browser e non diventa mai host. Il suo token non è presentabile da nessuno. */
+  bot: boolean;
+  /** A squadre, la sua squadra (0–3); altrimenti `null`. */
+  squadra: number | null;
 }
 
 /** La stanza come si salva su file. */
@@ -64,7 +83,9 @@ export interface DatiStanza {
   versione: number;
   host: IdGiocatore | null;
   impostazioni: Impostazioni;
-  posti: Omit<Posto, 'offlineDa'>[];
+  /** `bot` e `squadra` mancano nelle stanze salvate prima della Fase 8. */
+  posti: (Omit<Posto, 'offlineDa' | 'bot' | 'squadra'> & Partial<Pick<Posto, 'bot' | 'squadra'>>)[];
+  nomiSquadre?: string[];
   partita: Stato | null;
   registro: VoceRegistro[];
   chat: MessaggioChat[];
@@ -85,6 +106,8 @@ export function si<T>(dati: T): { ok: true; dati: T } {
   return { ok: true, dati };
 }
 
+const SQUADRE_SPENTE = no('squadre_spente', 'In questa stanza non si gioca a squadre.');
+
 export class Stanza {
   fase: FaseStanza = 'lobby';
   versione = 0;
@@ -92,6 +115,8 @@ export class Stanza {
   impostazioni: Impostazioni;
   /** In ordine di ingresso. */
   posti: Posto[] = [];
+  /** I nomi delle quattro squadre possibili. */
+  nomiSquadre: string[] = [...NOMI_SQUADRE_PREDEFINITI];
   partita: Stato | null = null;
   registro: VoceRegistro[] = [];
   chat: MessaggioChat[] = [];
@@ -112,6 +137,14 @@ export class Stanza {
    * (niente turni automatici né rimozioni); quando qualcuno torna, ripartono da dove erano.
    */
   private pausaDa: number | null = null;
+  /** In lobby: quando entra il prossimo bot; `null` se non ne serve nessuno. */
+  private prossimoBot: number | null = null;
+  /** In partita: quando gioca il prossimo bot; `null` se nessun bot ha da fare. */
+  private prossimaMossaBot: number | null = null;
+  /** Fin quando i browser mostrano le animazioni già mandate: i bot aspettano che finiscano. */
+  private fineScena = 0;
+  /** Il turno in cui ogni bot ha proposto l'ultimo scambio: non insiste a ogni turno. */
+  private readonly ultimaProposta = new Map<IdGiocatore, number>();
 
   constructor(
     readonly codice: string,
@@ -168,23 +201,33 @@ export class Stanza {
   /* Lobby                                                               */
   /* ------------------------------------------------------------------ */
 
+  /** Prende un posto al tavolo. Le persone hanno la precedenza: se è tutto pieno, chi arriva prende il posto dell'ultimo bot. */
   siediti(token: Token, nome: string, colore: number): Risposta<{ io: IdGiocatore }> {
     if (this.fase !== 'lobby') return no('partita_iniziata', 'La partita è già cominciata: puoi solo guardarla.');
     if (this.postoDi(token)) return no('gia_seduto', 'Sei già al tavolo.');
-    if (this.posti.length >= this.impostazioni.giocatoriMax) return no('stanza_piena', 'La stanza è piena.');
-    const problema = this.controllaColore(colore);
+    const piena = this.posti.length >= this.impostazioni.giocatoriMax;
+    const bot = piena ? this.posti.findLast((p) => p.bot) : undefined;
+    if (piena && !bot) return no('stanza_piena', 'La stanza è piena.');
+    const problema = this.controllaColore(colore, bot);
     if (problema) return problema;
 
+    const voci: EventoStanza[] = [];
+    if (bot) {
+      this.posti = this.posti.filter((p) => p !== bot);
+      voci.push({ tipo: 'uscita', giocatore: bot.id, nome: bot.nome, motivo: 'volontaria' });
+    }
     const posto: Posto = {
       id: this.idLibero(),
       token,
       nome: pulisciNome(nome) || nomeCasuale(this.amb.caso),
       colore,
       offlineDa: this.collegato(token) ? null : this.amb.adesso(),
+      bot: false,
+      squadra: this.squadraPerNuovo(),
     };
     this.posti.push(posto);
     this.host ??= posto.id;
-    this.segna({ tipo: 'ingresso', giocatore: posto.id, nome: posto.nome, colore });
+    this.segna(...voci, { tipo: 'ingresso', giocatore: posto.id, nome: posto.nome, colore });
     return si({ io: posto.id });
   }
 
@@ -200,19 +243,36 @@ export class Stanza {
     return si(null);
   }
 
+  /**
+   * Accendendo le squadre, chi è seduto viene diviso in due squadre; spegnendole, le squadre si dimenticano.
+   * Se il massimo dei giocatori scende sotto quelli seduti, escono prima i bot. Spegnere i bot non toglie quelli già entrati.
+   */
   cambiaImpostazioni(token: Token, modifiche: Partial<Impostazioni>): Risposta<null> {
     const problema = this.soloHostInLobby(token, 'Solo l’host può cambiare le impostazioni.');
     if (problema) return problema;
-    const nuove = { ...this.impostazioni, ...modifiche };
-    if (JSON.stringify(nuove) === JSON.stringify(this.impostazioni)) return si(null);
+    const prima = this.impostazioni;
+    const nuove = { ...prima, ...modifiche };
+    if (JSON.stringify(nuove) === JSON.stringify(prima)) return si(null);
     this.impostazioni = nuove;
-    this.segna();
+    if (nuove.squadre !== prima.squadre) {
+      for (const p of this.posti) p.squadra = null;
+      if (nuove.squadre) for (const p of this.posti) p.squadra = this.squadraPerNuovo();
+    }
+    const voci: EventoStanza[] = [];
+    while (this.posti.length > nuove.giocatoriMax) {
+      const bot = this.posti.findLast((p) => p.bot);
+      if (!bot) break;
+      this.posti = this.posti.filter((p) => p !== bot);
+      voci.push({ tipo: 'uscita', giocatore: bot.id, nome: bot.nome, motivo: 'volontaria' });
+    }
+    this.segna(...voci);
     return si(null);
   }
 
   /**
-   * In lobby l'host libera il posto di un giocatore. In partita, solo nelle stanze private, lo toglie dalla
-   * partita (non mentre gioca il suo turno): i suoi beni tornano alla banca e perde il posto, ma può guardare.
+   * In lobby l'host libera il posto di un giocatore (anche di un bot: se i bot sono attivi, ne entra presto un altro).
+   * In partita, solo nelle stanze private, lo toglie dalla partita (non mentre gioca il suo turno): i suoi beni
+   * tornano alla banca e perde il posto, ma può guardare.
    */
   espelli(token: Token, id: IdGiocatore): Risposta<null> {
     if (this.fase === 'partita') return this.espelliInPartita(token, id);
@@ -221,6 +281,7 @@ export class Stanza {
     const posto = this.posti.find((p) => p.id === id);
     if (!posto) return no('giocatore_assente', 'Questo giocatore non è più nella stanza.');
     if (posto.token === token) return no('richiesta_non_valida', 'Non puoi espellere te stesso.');
+    if (posto.bot && this.impostazioni.bot) this.prossimoBot = this.amb.adesso() + RIMPIAZZO_BOT_MS;
     this.rimuovi(posto, 'espulsione');
     return si(null);
   }
@@ -241,6 +302,54 @@ export class Stanza {
     return si(null);
   }
 
+  /** A squadre, in lobby: si entra nella squadra che si vuole; l'host può spostare chiunque, bot compresi. */
+  cambiaSquadra(token: Token, squadra: number, id?: IdGiocatore): Risposta<null> {
+    const io = this.postoDi(token);
+    if (!io) return no('non_seduto', 'Prima siediti al tavolo.');
+    if (this.fase !== 'lobby') return no('partita_iniziata', 'Le squadre si scelgono prima di cominciare.');
+    if (!this.impostazioni.squadre) return SQUADRE_SPENTE;
+    if (!Number.isInteger(squadra) || squadra < 0 || squadra >= SQUADRE_MAX) {
+      return no('richiesta_non_valida', `Le squadre sono al massimo ${SQUADRE_MAX}.`);
+    }
+    const bersaglio = id === undefined ? io : this.posti.find((p) => p.id === id);
+    if (!bersaglio) return no('giocatore_assente', 'Questo giocatore non è più nella stanza.');
+    if (bersaglio !== io && io.id !== this.host) return no('solo_host', 'Solo l’host può spostare gli altri giocatori.');
+    if (bersaglio.squadra === squadra) return si(null);
+    bersaglio.squadra = squadra;
+    this.segna();
+    return si(null);
+  }
+
+  /** L'host dà un nome a una squadra; un nome vuoto riporta quello predefinito. */
+  rinominaSquadra(token: Token, squadra: number, nome: string): Risposta<null> {
+    const problema = this.soloHostInLobby(token, 'Solo l’host può dare un nome alle squadre.');
+    if (problema) return problema;
+    if (!this.impostazioni.squadre) return SQUADRE_SPENTE;
+    if (!Number.isInteger(squadra) || squadra < 0 || squadra >= SQUADRE_MAX) {
+      return no('richiesta_non_valida', `Le squadre sono al massimo ${SQUADRE_MAX}.`);
+    }
+    const pulito = Array.from(pulisciNome(nome)).slice(0, NOME_SQUADRA_MAX).join('').trim();
+    const nuovo = pulito || NOMI_SQUADRE_PREDEFINITI[squadra]!;
+    if (this.nomiSquadre[squadra] === nuovo) return si(null);
+    this.nomiSquadre[squadra] = nuovo;
+    this.segna();
+    return si(null);
+  }
+
+  /** L'host rifà le squadre a sorte, tenendo il numero di squadre in uso (almeno due). */
+  mescolaSquadre(token: Token): Risposta<null> {
+    const problema = this.soloHostInLobby(token, 'Solo l’host può mescolare le squadre.');
+    if (problema) return problema;
+    if (!this.impostazioni.squadre) return SQUADRE_SPENTE;
+    const usate = [...new Set(this.posti.map((p) => p.squadra).filter((x): x is number => x !== null))].sort();
+    const squadre = usate.length >= 2 ? usate : [0, 1];
+    mescola(this.posti, this.amb.caso).forEach((p, i) => {
+      p.squadra = squadre[i % squadre.length]!;
+    });
+    this.segna();
+    return si(null);
+  }
+
   avvia(token: Token): Risposta<null> {
     const problema = this.soloHostInLobby(token, 'Solo l’host può avviare la partita.');
     if (problema) return problema;
@@ -249,15 +358,18 @@ export class Stanza {
       return no('troppi_giocatori', 'Ci sono più giocatori del massimo scelto nelle impostazioni: espelline qualcuno.');
     }
     const esito = creaPartita(
-      this.posti.map(({ id, nome, colore }) => ({ id, nome, colore })),
+      this.posti.map(({ id, nome, colore, squadra }) => ({ id, nome, colore, squadra })),
       this.impostazioni,
       this.amb.caso,
       this.amb.adesso(),
+      this.nomiSquadre,
     );
     if (!esito.ok) return no(esito.codice, esito.messaggio);
     this.fase = 'partita';
     this.partita = esito.stato;
     this.pausaDa = null;
+    this.fineScena = 0;
+    this.ultimaProposta.clear();
     this.aggiornaPresenze();
     this.segna(...esito.eventi);
     return si(null);
@@ -280,6 +392,7 @@ export class Stanza {
     this.fase = 'lobby';
     this.partita = null;
     this.pausaDa = null;
+    this.prossimaMossaBot = null;
     this.registro = [];
     this.togliAttivita(() => true);
     for (const p of this.posti) if (p.offlineDa !== null) p.offlineDa = adesso;
@@ -323,10 +436,14 @@ export class Stanza {
     return this.mappaAttivita();
   }
 
-  /** La chat non cambia la versione: il messaggio va mandato a parte. */
-  scrivi(token: Token, testo: string): Risposta<MessaggioChat> {
+  /**
+   * La chat non cambia la versione: il messaggio va mandato a parte (a tutti, o con `squadra` solo ai compagni:
+   * chi può leggerlo lo dice `puoLeggere`).
+   */
+  scrivi(token: Token, testo: string, squadra = false): Risposta<MessaggioChat> {
     const posto = this.postoDi(token);
     if (!posto) return no('non_seduto', 'Solo i giocatori possono scrivere in chat.');
+    if (squadra && (!this.impostazioni.squadre || posto.squadra === null)) return SQUADRE_SPENTE;
     const pulito = testo.trim();
     if (!pulito) return no('richiesta_non_valida', 'Il messaggio è vuoto.');
     if (Array.from(pulito).length > CHAT_MAX) return no('richiesta_non_valida', `Il messaggio supera i ${CHAT_MAX} caratteri.`);
@@ -337,6 +454,7 @@ export class Stanza {
       nome: posto.nome,
       colore: posto.colore,
       testo: pulito,
+      ...(squadra && posto.squadra !== null ? { squadra: posto.squadra } : {}),
     };
     this.chat.push(messaggio);
     if (this.chat.length > CHAT_CRONOLOGIA) this.chat.splice(0, this.chat.length - CHAT_CRONOLOGIA);
@@ -345,35 +463,58 @@ export class Stanza {
     return si(messaggio);
   }
 
+  /** Il messaggio è per tutti, oppure è della chat di squadra e chi presenta il token è in quella squadra. */
+  puoLeggere(token: Token, messaggio: MessaggioChat): boolean {
+    return messaggio.squadra === undefined || this.postoDi(token)?.squadra === messaggio.squadra;
+  }
+
   /* ------------------------------------------------------------------ */
   /* Tempo                                                               */
   /* ------------------------------------------------------------------ */
 
   /** Toglie dalla lobby chi è sparito da troppo tempo; in partita applica le scadenze rimaste indietro. */
   manutenzione(): void {
-    if (this.fase === 'partita') {
-      this.scadenze();
+    if (this.fase === 'lobby') {
+      const adesso = this.amb.adesso();
+      for (const posto of [...this.posti]) {
+        if (posto.offlineDa !== null && adesso - posto.offlineDa >= ATTESA_LOBBY_MS) this.rimuovi(posto, 'assenza');
+      }
+    }
+    this.scadenze();
+  }
+
+  /**
+   * Fa quello che è arrivato il momento di fare. In lobby: fa entrare un bot. In partita: chiude l'asta, gioca il turno
+   * di chi ha finito il tempo, applica voti e assenze, poi fa giocare un bot. In pausa niente.
+   */
+  scadenze(): void {
+    const adesso = this.amb.adesso();
+    if (this.fase === 'lobby') {
+      if (this.prossimoBot !== null && this.prossimoBot <= adesso) {
+        this.prossimoBot = null;
+        this.aggiungiBot();
+      }
       return;
     }
-    if (this.fase !== 'lobby') return;
-    const adesso = this.amb.adesso();
-    for (const posto of [...this.posti]) {
-      if (posto.offlineDa !== null && adesso - posto.offlineDa >= ATTESA_LOBBY_MS) this.rimuovi(posto, 'assenza');
+    if (this.fase !== 'partita' || !this.partita || this.pausaDa !== null) return;
+    const esito = applicaScadenze(this.partita, this.amb.caso, adesso);
+    if (esito?.ok) this.registra(esito);
+    if (this.prossimaMossaBot !== null && this.prossimaMossaBot <= adesso) {
+      this.prossimaMossaBot = null;
+      this.giocaBot();
     }
   }
 
-  /** Applica quello che è scaduto nella partita: fine dell'asta, tempo del turno, voti, assenze. In pausa niente. */
-  scadenze(): void {
-    if (this.fase !== 'partita' || !this.partita || this.pausaDa !== null) return;
-    const esito = applicaScadenze(this.partita, this.amb.caso, this.amb.adesso());
-    if (esito?.ok) this.registra(esito);
-  }
-
-  /** Millisecondi alla prossima scadenza della partita, `null` se non ce ne sono o se la partita è in pausa. */
+  /** Millisecondi alla prossima cosa da fare (scadenza della partita, mossa o arrivo di un bot); `null` se niente. */
   attesa(): number | null {
-    if (this.fase !== 'partita' || !this.partita || this.pausaDa !== null) return null;
-    const scadenza = prossimaScadenza(this.partita);
-    return scadenza === null ? null : Math.max(0, scadenza - this.amb.adesso());
+    const tempi: number[] = [];
+    if (this.fase === 'lobby' && this.prossimoBot !== null) tempi.push(this.prossimoBot);
+    if (this.fase === 'partita' && this.partita && this.pausaDa === null) {
+      const scadenza = prossimaScadenza(this.partita);
+      if (scadenza !== null) tempi.push(scadenza);
+      if (this.prossimaMossaBot !== null) tempi.push(this.prossimaMossaBot);
+    }
+    return tempi.length === 0 ? null : Math.max(0, Math.min(...tempi) - this.amb.adesso());
   }
 
   /** La partita è ferma perché nessun giocatore in gioco è collegato. */
@@ -405,7 +546,15 @@ export class Stanza {
       versione: this.versione,
       host: this.host,
       impostazioni: { ...this.impostazioni },
-      partecipanti: this.posti.map((p) => ({ id: p.id, nome: p.nome, colore: p.colore, connesso: p.offlineDa === null })),
+      partecipanti: this.posti.map((p) => ({
+        id: p.id,
+        nome: p.nome,
+        colore: p.colore,
+        connesso: p.offlineDa === null,
+        bot: p.bot,
+        squadra: p.squadra,
+      })),
+      squadre: [...this.nomiSquadre],
       spettatori,
       partita: this.partita ? vistaPartita(this.partita) : null,
     };
@@ -416,7 +565,7 @@ export class Stanza {
       stanza: this.vista(),
       io: this.io(token),
       registro: [...this.registro],
-      chat: [...this.chat],
+      chat: this.chat.filter((m) => this.puoLeggere(token, m)),
       attivita: this.mappaAttivita(),
       adesso: this.amb.adesso(),
     };
@@ -446,7 +595,8 @@ export class Stanza {
       versione: this.versione,
       host: this.host,
       impostazioni: this.impostazioni,
-      posti: this.posti.map(({ id, token, nome, colore }) => ({ id, token, nome, colore })),
+      posti: this.posti.map(({ id, token, nome, colore, bot, squadra }) => ({ id, token, nome, colore, bot, squadra })),
+      nomiSquadre: this.nomiSquadre,
       partita: this.partita,
       registro: this.registro,
       chat: this.chat,
@@ -459,15 +609,20 @@ export class Stanza {
   /**
    * Dopo un riavvio nessuno è collegato: chi era in lobby ha il solito tempo per tornare;
    * la partita resta in pausa dall'ultimo salvataggio finché non torna qualcuno.
+   * Le stanze salvate prima della Fase 8 non hanno bot né squadre.
    */
   static importa(dati: DatiStanza, amb: Ambiente): Stanza {
-    const stanza = new Stanza(dati.codice, amb, dati.impostazioni);
+    const stanza = new Stanza(dati.codice, amb, { ...IMPOSTAZIONI_PREDEFINITE, ...dati.impostazioni });
     const adesso = amb.adesso();
     const pausaDa = dati.pausaDa ?? adesso;
     stanza.fase = dati.fase;
     stanza.versione = dati.versione;
     stanza.host = dati.host;
-    stanza.posti = dati.posti.map((p) => ({ ...p, offlineDa: adesso }));
+    stanza.posti = dati.posti.map((p) => {
+      const bot = p.bot ?? false;
+      return { ...p, bot, squadra: p.squadra ?? null, offlineDa: bot ? null : adesso };
+    });
+    stanza.nomiSquadre = NOMI_SQUADRE_PREDEFINITI.map((nome, i) => dati.nomiSquadre?.[i] ?? nome);
     stanza.partita = dati.partita && aggiornaSalvata(dati.partita, pausaDa);
     if (stanza.fase === 'partita') stanza.pausaDa = pausaDa;
     stanza.registro = dati.registro;
@@ -475,6 +630,96 @@ export class Stanza {
     stanza.prossimaVoce = dati.prossimaVoce;
     stanza.prossimoMessaggio = dati.prossimoMessaggio;
     return stanza;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Bot                                                                 */
+  /* ------------------------------------------------------------------ */
+
+  private bot(): IdGiocatore[] {
+    return this.posti.filter((p) => p.bot).map((p) => p.id);
+  }
+
+  /** Un bot prende un posto libero: nome casuale "Sostantivo Aggettivo", un colore libero a caso. */
+  private aggiungiBot(): void {
+    if (!this.impostazioni.bot || !this.posti.some((p) => !p.bot) || this.posti.length >= this.impostazioni.giocatoriMax) {
+      return;
+    }
+    const liberi = Array.from({ length: COLORI }, (_, i) => i + 1).filter((c) => !this.posti.some((p) => p.colore === c));
+    if (liberi.length === 0) return;
+    let nome = nomeCasuale(this.amb.caso);
+    for (let i = 0; i < 10 && this.posti.some((p) => p.nome === nome); i++) nome = nomeCasuale(this.amb.caso);
+    const id = this.idLibero();
+    const colore = liberi[this.amb.caso.intero(liberi.length)]!;
+    this.posti.push({ id, token: `bot:${id}`, nome, colore, offlineDa: null, bot: true, squadra: this.squadraPerNuovo() });
+    this.segna({ tipo: 'ingresso', giocatore: id, nome, colore });
+  }
+
+  private puoProporre(id: IdGiocatore): boolean {
+    const ultima = this.ultimaProposta.get(id);
+    return this.partita !== null && (ultima === undefined || this.partita.turno.numero - ultima >= TURNI_TRA_PROPOSTE_BOT);
+  }
+
+  /** Un bot fa la sua prossima mossa. Se tocca a più bot (all'asta, per esempio), ne sceglie uno a caso. */
+  private giocaBot(): void {
+    const partita = this.partita;
+    if (this.fase !== 'partita' || !partita) return;
+    const mosse = mosseDeiBot(partita, this.bot(), (id) => this.puoProporre(id));
+    if (mosse.length === 0) return;
+    const scelta = mosse[this.amb.caso.intero(mosse.length)]!;
+    const adesso = this.amb.adesso();
+    let esito = applica(partita, scelta.azione, this.amb.caso, adesso);
+    if (!esito.ok) {
+      // Non dovrebbe succedere: per non fermare la partita, il bot di turno finisce il turno come può.
+      console.error(`  Mossa del bot rifiutata (${scelta.azione.tipo}): ${esito.messaggio}`);
+      if (partita.turno.giocatore !== scelta.giocatore) return;
+      for (const tipo of ['fine_turno', 'lancia', 'bancarotta'] as const) {
+        esito = applica(partita, { tipo, giocatore: scelta.giocatore }, this.amb.caso, adesso);
+        if (esito.ok) break;
+      }
+      if (!esito.ok) return;
+    }
+    if (scelta.azione.tipo === 'proponi') this.ultimaProposta.set(scelta.giocatore, partita.turno.numero);
+    this.registra(esito);
+  }
+
+  /**
+   * Decide quando i bot faranno la prossima cosa. In lobby: se servono bot, il prossimo entra tra qualche secondo.
+   * In partita: un bot gioca quando i browser hanno finito di mostrare le animazioni, più un attimo per "pensare";
+   * all'asta e agli scambi risponde dopo un paio di secondi.
+   */
+  private pianificaBot(eventi: readonly EventoStanza[]): void {
+    const adesso = this.amb.adesso();
+    if (this.fase === 'lobby') {
+      this.prossimaMossaBot = null;
+      const servono =
+        this.impostazioni.bot && this.posti.some((p) => !p.bot) && this.posti.length < this.impostazioni.giocatoriMax;
+      if (!servono) this.prossimoBot = null;
+      else this.prossimoBot ??= adesso + ARRIVO_BOT_MIN_MS + this.amb.caso.intero(ARRIVO_BOT_MAX_MS - ARRIVO_BOT_MIN_MS);
+      return;
+    }
+    this.prossimoBot = null;
+    const partita = this.partita;
+    if (this.fase !== 'partita' || !partita) {
+      this.prossimaMossaBot = null;
+      return;
+    }
+    const delGioco = eventi.filter((e): e is Evento => !['ingresso', 'uscita', 'nuovo_host', 'nuova_partita'].includes(e.tipo));
+    this.fineScena = Math.max(this.fineScena, adesso) + durataScena(partita, delGioco);
+    const mosse = mosseDeiBot(partita, this.bot(), (id) => this.puoProporre(id));
+    if (mosse.length === 0) {
+      this.prossimaMossaBot = null;
+      return;
+    }
+    const tipi = new Set(mosse.map((m) => m.azione.tipo));
+    const caso = this.amb.caso;
+    if (partita.asta && [...tipi].every((t) => t === 'offri')) {
+      this.prossimaMossaBot = adesso + 800 + caso.intero(1000);
+    } else if ([...tipi].every((t) => t === 'accetta' || t === 'rifiuta')) {
+      this.prossimaMossaBot = adesso + 2000 + caso.intero(1500);
+    } else {
+      this.prossimaMossaBot = Math.max(this.fineScena, adesso) + PENSIERO_BOT_MS + caso.intero(500);
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -496,11 +741,21 @@ export class Stanza {
     return id;
   }
 
-  private controllaColore(colore: number): Risposta<never> | null {
+  /** La squadra di chi entra: la più piccola tra quelle in uso (o tra le prime due, finché non ce ne sono due). */
+  private squadraPerNuovo(): number | null {
+    if (!this.impostazioni.squadre) return null;
+    const conta = Array.from({ length: SQUADRE_MAX }, (_, i) => this.posti.filter((p) => p.squadra === i).length);
+    const usate = conta.flatMap((n, i) => (n > 0 ? [i] : []));
+    const candidate = usate.length >= 2 ? usate : [0, 1];
+    return candidate.reduce((a, b) => (conta[b]! < conta[a]! ? b : a));
+  }
+
+  /** @param escluso un posto che si sta per liberare: il suo colore conta come libero. */
+  private controllaColore(colore: number, escluso?: Posto): Risposta<never> | null {
     if (!Number.isInteger(colore) || colore < 1 || colore > COLORI) {
       return no('richiesta_non_valida', `Il colore deve essere un numero da 1 a ${COLORI}.`);
     }
-    if (this.posti.some((p) => p.colore === colore)) {
+    if (this.posti.some((p) => p !== escluso && p.colore === colore)) {
       return no('colore_preso', 'Un altro giocatore ha appena preso questo colore: scegline un altro.');
     }
     return null;
@@ -513,21 +768,28 @@ export class Stanza {
     return null;
   }
 
-  /** Libera il posto. Se era dell'host, il ruolo passa al primo della lista. */
+  /**
+   * Libera il posto. Se era dell'host, il ruolo passa alla prima persona della lista (mai a un bot).
+   * Se non resta nessuna persona, se ne vanno anche i bot.
+   */
   private rimuovi(posto: Posto, motivo: 'volontaria' | 'espulsione' | 'assenza'): void {
     this.posti = this.posti.filter((p) => p !== posto);
     const voci: EventoStanza[] = [{ tipo: 'uscita', giocatore: posto.id, nome: posto.nome, motivo }];
     if (this.host === posto.id) {
-      const erede = this.posti[0];
+      const erede = this.posti.find((p) => !p.bot);
       this.host = erede?.id ?? null;
       if (erede) voci.push({ tipo: 'nuovo_host', giocatore: erede.id, nome: erede.nome });
+    }
+    if (!this.posti.some((p) => !p.bot)) {
+      for (const bot of this.posti) voci.push({ tipo: 'uscita', giocatore: bot.id, nome: bot.nome, motivo: 'volontaria' });
+      this.posti = [];
     }
     this.segna(...voci);
   }
 
   /**
    * Accoglie il nuovo stato della partita e toglie le attività sugli scambi che non ci sono più
-   * (o di chi è uscito). Se l'host esce per tempo, assenza o voto, il ruolo passa al primo giocatore in gioco.
+   * (o di chi è uscito). Se l'host esce per tempo, assenza o voto, il ruolo passa alla prima persona in gioco.
    */
   private registra(esito: Extract<Esito, { ok: true }>): void {
     const partita = esito.stato;
@@ -540,7 +802,7 @@ export class Stanza {
     );
     const voci: EventoStanza[] = [...esito.eventi];
     if (esito.eventi.some((e) => e.tipo === 'rimozione' && e.giocatore === this.host)) {
-      const erede = partita.giocatori.find((g) => !g.eliminato && this.posti.some((p) => p.id === g.id));
+      const erede = partita.giocatori.find((g) => !g.eliminato && this.posti.some((p) => p.id === g.id && !p.bot));
       if (erede) {
         this.host = erede.id;
         voci.push({ tipo: 'nuovo_host', giocatore: erede.id, nome: erede.nome });
@@ -551,18 +813,22 @@ export class Stanza {
 
   /**
    * Allinea la partita alle connessioni: chi è in gioco e non ha schede aperte risulta assente (i suoi turni
-   * passano da soli e dopo due minuti esce). Se nessun giocatore in gioco è collegato la partita va in pausa;
-   * al ritorno del primo, gli orologi si spostano avanti del tempo passato in pausa.
+   * passano da soli e dopo due minuti esce). I bot sono sempre presenti.
+   * La partita va in pausa se nessuna persona in gioco è collegata (se in gioco restano solo bot, quando non guarda
+   * più nessuno); al ritorno del primo, gli orologi si spostano avanti del tempo passato in pausa.
    */
   private aggiornaPresenze(): void {
     if (this.fase !== 'partita' || !this.partita) return;
     const adesso = this.amb.adesso();
     const inGioco = this.partita.giocatori.filter((g) => !g.eliminato);
+    const posto = (id: IdGiocatore) => this.posti.find((p) => p.id === id);
     const collegato = (id: IdGiocatore) => {
-      const posto = this.posti.find((p) => p.id === id);
-      return posto !== undefined && this.collegato(posto.token);
+      const p = posto(id);
+      return p !== undefined && (p.bot || this.collegato(p.token));
     };
-    if (!inGioco.some((g) => collegato(g.id))) {
+    const persone = inGioco.filter((g) => !posto(g.id)?.bot);
+    const qualcuno = persone.length > 0 ? persone.some((g) => collegato(g.id)) : this.connessioni.size > 0;
+    if (!qualcuno) {
       this.pausaDa ??= adesso;
       return;
     }
@@ -595,6 +861,7 @@ export class Stanza {
       this.nuove.push(voce);
     }
     if (this.registro.length > REGISTRO_MAX) this.registro.splice(0, this.registro.length - REGISTRO_MAX);
+    this.pianificaBot(eventi);
   }
 }
 
@@ -603,21 +870,29 @@ export class Stanza {
  * - Prima della Fase 5 mancavano asta e scambi.
  * - Prima della Fase 6 mancavano gli orologi: la banca di tempo riparte da capo, il turno da `adesso`.
  * - Prima della Fase 7 mancavano le statistiche: si contano da `adesso`.
+ * - Prima della Fase 8 mancavano le squadre: la partita non è a squadre.
  */
 function aggiornaSalvata(salvata: Stato, adesso: number): Stato {
   type G = Stato['giocatori'][number];
   type T = Stato['turno'];
-  const v = salvata as Omit<Stato, 'asta' | 'scambi' | 'prossimoScambio' | 'giocatori' | 'turno' | 'statistiche'> &
-    Partial<Pick<Stato, 'asta' | 'scambi' | 'prossimoScambio' | 'statistiche'>> & {
-      giocatori: (Omit<G, 'banca' | 'automatici' | 'offlineDa'> & Partial<Pick<G, 'banca' | 'automatici' | 'offlineDa'>>)[];
+  const v = salvata as Omit<
+    Stato,
+    'asta' | 'scambi' | 'prossimoScambio' | 'giocatori' | 'turno' | 'statistiche' | 'squadre' | 'squadraVincitrice'
+  > &
+    Partial<Pick<Stato, 'asta' | 'scambi' | 'prossimoScambio' | 'statistiche' | 'squadre' | 'squadraVincitrice'>> & {
+      giocatori: (Omit<G, 'banca' | 'automatici' | 'offlineDa' | 'squadra'> &
+        Partial<Pick<G, 'banca' | 'automatici' | 'offlineDa' | 'squadra'>>)[];
       turno: Omit<T, 'tempo' | 'votazione'> & Partial<Pick<T, 'tempo' | 'votazione'>>;
     };
   const asta = v.asta ?? null;
   return {
     ...v,
+    impostazioni: { ...IMPOSTAZIONI_PREDEFINITE, ...v.impostazioni },
     asta,
     scambi: v.scambi ?? [],
     prossimoScambio: v.prossimoScambio ?? 1,
+    squadre: v.squadre ?? [],
+    squadraVincitrice: v.squadraVincitrice ?? null,
     statistiche: v.statistiche ?? {
       ...statisticheIniziali(v.mappa, adesso),
       fine: v.fase === 'finita' ? adesso : null,
@@ -628,6 +903,7 @@ function aggiornaSalvata(salvata: Stato, adesso: number): Stato {
       banca: g.banca ?? BANCA_INIZIALE_MS,
       automatici: g.automatici ?? 0,
       offlineDa: g.offlineDa ?? null,
+      squadra: g.squadra ?? null,
     })),
     turno: {
       ...v.turno,

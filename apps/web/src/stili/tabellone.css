@@ -1,11 +1,12 @@
-/* Tabellone: 11×11, Partenza in alto a sinistra, senso orario.
+/* Tabellone: 11×11 (13×13 con 48 caselle), Partenza in alto a sinistra, senso orario.
    Come in richup l'unico colore pieno è il proprietario: caselle grafite piatte che si
    toccano, testi bianchi, la regione solo nello stemma, gli angoli grigi come le altre caselle. */
 
 .tabellone {
   --lato: var(--lato-tabellone, 820px);
-  /* 1px a 820 px di lato: tutte le misure interne scalano con il tabellone. */
-  --k: calc(var(--lato) * 0.00122);
+  /* 1px a 820 px di lato: tutte le misure interne scalano con il tabellone.
+     Con più caselle per lato (--scala < 1, da geometria.ts) le caselle sono più piccole e tutto si riduce con loro. */
+  --k: calc(var(--lato) * 0.00122 * var(--scala, 1));
 
   /* Colori del tabellone scuro */
   --tab-fondo: var(--cemento);
@@ -76,15 +77,15 @@ button.casella:hover {
   border-top-left-radius: calc(var(--k) * 10);
 }
 
-.casella--angolo-10 {
+.casella--angolo-1 {
   border-top-right-radius: calc(var(--k) * 10);
 }
 
-.casella--angolo-20 {
+.casella--angolo-2 {
   border-bottom-right-radius: calc(var(--k) * 10);
 }
 
-.casella--angolo-30 {
+.casella--angolo-3 {
   border-bottom-left-radius: calc(var(--k) * 10);
 }
 
@@ -173,9 +174,18 @@ button.casella:hover {
   letter-spacing: -0.02em;
 }
 
+/* Due parole lunghe (es. Porto Cervo): su due righe. */
+.casella__nome--due-righe {
+  font-size: calc(var(--k) * 14);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  white-space: normal;
+}
+
 .casella--stazione .casella__nome,
 .casella--servizio .casella__nome,
 .casella--tassa .casella__nome,
+.casella--premio .casella__nome,
 .casella--carta .casella__nome {
   font-size: calc(var(--k) * 16);
 }
@@ -218,15 +228,23 @@ button.casella:hover {
 }
 
 .casella--carta .casella__nome,
-.casella--tassa .casella__nome {
+.casella--tassa .casella__nome,
+.casella--premio .casella__nome {
   margin-top: auto;
   margin-bottom: calc(var(--k) * 9);
 }
 
 .casella--alto.casella--carta .casella__nome,
-.casella--alto.casella--tassa .casella__nome {
+.casella--alto.casella--tassa .casella__nome,
+.casella--alto.casella--premio .casella__nome {
   margin-top: calc(var(--k) * 9);
   margin-bottom: auto;
+}
+
+/* Rimborso: come una tassa, ma in ambra perché si incassa. */
+.casella--premio .casella__icona,
+.casella--premio .casella__importo {
+  color: var(--ambra);
 }
 
 /* Prezzo: un'etichetta neutra sul bordo esterno, solo sulle proprietà libere. */
@@ -358,8 +376,8 @@ button.casella:hover {
   padding-top: calc(var(--k) * 9);
 }
 
-.casella--angolo-20 .casella__corpo,
-.casella--angolo-30 .casella__corpo {
+.casella--angolo-2 .casella__corpo,
+.casella--angolo-3 .casella__corpo {
   justify-content: flex-end;
   padding-bottom: calc(var(--k) * 9);
 }
@@ -382,7 +400,7 @@ button.casella:hover {
 }
 
 /* La scritta sta in fondo alla cella, sotto le pedine dei prigionieri. */
-.casella--angolo-10 .casella__nome {
+.casella--angolo-1 .casella__nome {
   position: absolute;
   left: 0;
   bottom: 0;
@@ -407,8 +425,6 @@ button.casella:hover {
 .tabellone__centro {
   position: relative;
   z-index: 1;
-  grid-row: 2 / 11;
-  grid-column: 2 / 11;
   display: flex;
   flex-direction: column;
   align-items: center;

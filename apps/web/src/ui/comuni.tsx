@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import { euro } from '@poordown/engine';
-import { siglaRegione } from './caselle';
+import { euro, type Regione } from '@poordown/engine';
 import { Icona, type NomeIcona } from './icone';
 import { variabili } from './utili';
 
@@ -69,17 +68,19 @@ export function Pedina({
 }
 
 /** Scudo della regione con la sigla: forma diversa dalle pedine, così non si confondono. */
-export function Stemma({ gruppo, nome, className }: { gruppo: number; nome: string; className?: string }): ReactNode {
+export function Stemma({ regione, className }: { regione: Regione | undefined; className?: string }): ReactNode {
+  if (!regione) return null;
+  const tinta = regione.colore;
   return (
-    <svg className={className ? `stemma ${className}` : 'stemma'} viewBox="0 0 26 30" role="img" aria-label={nome}>
+    <svg className={className ? `stemma ${className}` : 'stemma'} viewBox="0 0 26 30" role="img" aria-label={regione.nome}>
       <path
         d="M3.5 2h19A1.5 1.5 0 0 1 24 3.5V13c0 7.4-5.2 12-11 14.8C7.2 25 2 20.4 2 13V3.5A1.5 1.5 0 0 1 3.5 2z"
-        style={{ fill: `var(--g${gruppo})` }}
+        style={{ fill: `var(--g${tinta})` }}
         stroke="#fff"
         strokeWidth="2"
       />
-      <text x="13" y="14.5" textAnchor="middle" dominantBaseline="middle" style={{ fill: `var(--su-g${gruppo}, #fff)` }}>
-        {siglaRegione(gruppo)}
+      <text x="13" y="14.5" textAnchor="middle" dominantBaseline="middle" style={{ fill: `var(--su-g${tinta}, #fff)` }}>
+        {regione.sigla}
       </text>
     </svg>
   );

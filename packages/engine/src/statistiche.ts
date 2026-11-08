@@ -3,7 +3,7 @@
  * (classifica dei turni sopravvissuti, grafico del patrimonio, riepilogo). docs/analisi/04-economia-fine-partita.md §10.
  */
 
-import { patrimonio, proprietabile } from './conti';
+import { haVinto, patrimonio, proprietabile } from './conti';
 import { tabellone } from './tabelloni';
 import type { IdGiocatore, IdMappa, Stato, Statistiche } from './tipi';
 
@@ -48,6 +48,7 @@ export interface Piazzamento {
   giocatore: IdGiocatore;
   /** Turni sopravvissuti: per chi è uscito, il turno in cui è uscito; per chi resta, tutti i turni della partita. */
   turni: number;
+  /** Ha vinto: a squadre, tutti i giocatori della squadra vincitrice. */
   vincitore: boolean;
 }
 
@@ -62,7 +63,7 @@ export function classifica(s: Stato): Piazzamento[] {
       if (!a.eliminato || !b.eliminato) return Number(a.eliminato !== null) - Number(b.eliminato !== null);
       return b.eliminato.turno - a.eliminato.turno || uscite.indexOf(b.id) - uscite.indexOf(a.id);
     })
-    .map((g) => ({ giocatore: g.id, turni: g.eliminato?.turno ?? s.turno.numero, vincitore: g.id === s.vincitore }));
+    .map((g) => ({ giocatore: g.id, turni: g.eliminato?.turno ?? s.turno.numero, vincitore: haVinto(s, g.id) }));
 }
 
 /** La proprietà su cui ci si è fermati più volte (a pari visite, la prima del tabellone); `null` se nessuna. */

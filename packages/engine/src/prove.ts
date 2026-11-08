@@ -24,6 +24,20 @@ export function partitaDiProva(n = 2, impostazioni: Partial<Impostazioni> = {}):
   return esito.stato;
 }
 
+/**
+ * Partita a squadre in ordine fisso, senza alternare: i giocatori sono `squadre[i]` (es. [0, 0, 1, 1]: a e b insieme,
+ * c e d insieme). L'ordine dei turni alterna le squadre: con [0, 0, 1, 1] è a, c, b, d.
+ */
+export function partitaASquadre(squadre: number[], impostazioni: Partial<Impostazioni> = {}): Stato {
+  const esito = creaPartita(
+    squadre.map((squadra, i) => ({ id: ID[i]!, nome: NOMI[i]!, colore: i + 1, squadra })),
+    { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, squadre: true, ...impostazioni },
+    casoDaSeme(1),
+  );
+  if (!esito.ok) throw new Error(esito.messaggio);
+  return esito.stato;
+}
+
 /** Caso che restituisce i tiri indicati, in ordine. Finiti i tiri, il test fallisce. */
 export function dadi(...tiri: [number, number][]): Caso {
   const valori = tiri.flat();
@@ -76,9 +90,16 @@ export function problemi(s: Stato): string[] {
     if (s.turno.fase === 'prigione' && c?.prigione === null) out.push('Fase prigione ma il giocatore è libero.');
   } else {
     const rimasti = s.giocatori.filter((x) => !x.eliminato);
-    if (rimasti.length > 1) out.push('Partita finita con più di un giocatore in gioco.');
+    if (s.impostazioni.squadre) {
+      if (new Set(rimasti.map((x) => x.squadra)).size > 1) out.push('Partita finita con più di una squadra in gioco.');
+      if (s.squadraVincitrice !== (rimasti[0]?.squadra ?? null)) out.push('Squadra vincitrice sbagliata.');
+    } else {
+      if (rimasti.length > 1) out.push('Partita finita con più di un giocatore in gioco.');
+      if (s.squadraVincitrice !== null) out.push('Squadra vincitrice senza squadre.');
+    }
     if (s.vincitore !== (rimasti[0]?.id ?? null)) out.push('Vincitore sbagliato.');
   }
+  if (s.impostazioni.squadre !== (s.squadre.length > 0)) out.push('Nomi delle squadre che non tornano con l’impostazione.');
 
   for (const x of s.giocatori) {
     if (x.posizione < 0 || x.posizione >= n) out.push(`${x.id}: posizione fuori dal tabellone.`);
@@ -98,6 +119,9 @@ export function problemi(s: Stato): string[] {
     }
     if (x.banca < 0 || x.banca > BANCA_MAX_MS) out.push(`${x.id}: banca di tempo fuori dai limiti (${x.banca}).`);
     if (x.automatici < 0) out.push(`${x.id}: turni automatici negativi.`);
+    if (s.impostazioni.squadre ? x.squadra === null || !s.squadre[x.squadra] : x.squadra !== null) {
+      out.push(`${x.id}: squadra sbagliata (${x.squadra}).`);
+    }
   }
 
   const t = s.turno;

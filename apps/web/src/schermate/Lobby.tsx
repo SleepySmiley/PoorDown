@@ -16,7 +16,9 @@ import { Dado, Pedina, Registro } from '../ui/comuni';
 import { Icona } from '../ui/icone';
 import { variabili, iniziale } from '../ui/utili';
 import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
+import { PannelloSquadre } from './Squadre';
 import { Tabellone } from './Tabellone';
+import { SceltaTabellone } from './Tabelloni';
 import { righeRegistro } from './testi';
 
 const TUTTI_I_COLORI = Array.from({ length: COLORI }, (_, i) => i + 1);
@@ -102,6 +104,9 @@ function motivoBlocco(stanza: VistaStanza): string | null {
   if (n > stanza.impostazioni.giocatoriMax) {
     return 'Ci sono più giocatori del massimo scelto: alza «Giocatori massimi» o espelli qualcuno.';
   }
+  if (stanza.impostazioni.squadre && new Set(stanza.partecipanti.map((p) => p.squadra)).size < 2) {
+    return 'Servono almeno due squadre con almeno un giocatore ciascuna.';
+  }
   return null;
 }
 
@@ -125,6 +130,7 @@ export function Lobby({
   const [daEspellere, setDaEspellere] = useState<Partecipante | null>(null);
   const [popoverColore, setPopoverColore] = useState(false);
   const [avvio, setAvvio] = useState(false);
+  const [tabelloni, setTabelloni] = useState(false);
   const nomeHost = stanza.partecipanti.find((p) => p.id === stanza.host)?.nome;
   const presiDaAltri = stanza.partecipanti.filter((p) => p.id !== io).map((p) => p.colore);
   const mioColore = stanza.partecipanti.find((p) => p.id === io)?.colore ?? null;
@@ -182,7 +188,8 @@ export function Lobby({
   );
 
   // Chi guarda una stanza piena vede il tabellone senza velo, con il registro.
-  const piena = stanza.partecipanti.length >= stanza.impostazioni.giocatoriMax;
+  // Se al tavolo ci sono bot non è piena: chi arriva prende il posto di un bot.
+  const piena = stanza.partecipanti.length >= stanza.impostazioni.giocatoriMax && !stanza.partecipanti.some((p) => p.bot);
 
   return (
     <>
@@ -208,12 +215,27 @@ export function Lobby({
             <section className="pannello pannello--scuro giocatori" aria-label="Giocatori">
               {stanza.partecipanti.length === 0 ? (
                 <p className="giocatori__vuoto">In attesa di giocatori…</p>
+              ) : stanza.impostazioni.squadre ? (
+                <PannelloSquadre
+                  stanza={stanza}
+                  io={io}
+                  onEspelli={setDaEspellere}
+                  onCambiaColore={() => setPopoverColore((x) => !x)}
+                />
               ) : (
                 <ul>
                   {stanza.partecipanti.map((p) => (
                     <RigaGiocatore
                       key={p.id}
-                      g={{ ...p, host: p.id === stanza.host, tu: p.id === io }}
+                      g={{
+                        id: p.id,
+                        nome: p.nome,
+                        colore: p.colore,
+                        connesso: p.connesso,
+                        bot: p.bot,
+                        host: p.id === stanza.host,
+                        tu: p.id === io,
+                      }}
                       puoEspellere={sonoHost}
                       onEspelli={() => setDaEspellere(p)}
                       onCambiaColore={() => setPopoverColore((x) => !x)}
@@ -248,12 +270,28 @@ export function Lobby({
                     {nomeHost ? `Solo ${nomeHost}, l’host della stanza, può cambiarle.` : 'Solo l’host della stanza può cambiarle.'}
                   </p>
                 )}
-                <ListaImpostazioni imp={stanza.impostazioni} modificabile={sonoHost} onCambia={cambiaImpostazioni} />
+                <ListaImpostazioni
+                  imp={stanza.impostazioni}
+                  modificabile={sonoHost}
+                  onCambia={cambiaImpostazioni}
+                  onTabelloni={() => setTabelloni(true)}
+                />
               </div>
             </section>
           </>
         }
       />
+      {tabelloni && (
+        <SceltaTabellone
+          attuale={stanza.impostazioni.mappa}
+          modificabile={sonoHost}
+          onScegli={(mappa) => {
+            cambiaImpostazioni({ mappa });
+            setTabelloni(false);
+          }}
+          onChiudi={() => setTabelloni(false)}
+        />
+      )}
       {daEspellere && (
         <Finestra titolo="Espelli giocatore" onChiudi={() => setDaEspellere(null)}>
           <div className="finestra__corpo">

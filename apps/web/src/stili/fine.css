@@ -657,3 +657,61 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ---------- A squadre ---------- */
+
+.fine-partita .binario.binario--vincitore {
+  min-width: 44px;
+  height: 44px;
+  font-size: 1.75rem;
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.9);
+}
+
+.fine-partita .fine-partita__squadra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  font: 600 1.0625rem/1.2 var(--stretto);
+}
+
+.fine-partita__squadra .fine-partita__compagno {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.classifica__nome .binario.binario--riga {
+  display: inline-grid;
+  max-width: none;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.classifica__nome .binario + .pedina + span {
+  max-width: calc(100% - 44px);
+}
+
+/* Grafico: Giocatori / Squadre */
+.grafico .grafico__vista {
+  display: inline-flex;
+  justify-self: start;
+  margin-bottom: 6px;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--palette);
+}
+
+.grafico__vista .grafico__scelta {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--testo-tenue);
+  font: 600 0.9375rem/1.2 var(--stretto);
+}
+
+.grafico__vista .grafico__scelta--attiva {
+  background: var(--segnale);
+  color: #fff;
+}

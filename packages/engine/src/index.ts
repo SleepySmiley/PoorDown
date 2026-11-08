@@ -4,15 +4,29 @@ export const VERSIONE = '0.1.0';
 export type * from './protocollo';
 export type * from './tipi';
 
+export {
+  durataScena,
+  guadagnoScambio,
+  mossaBot,
+  mosseDeiBot,
+  PENSIERO_BOT_MS,
+  riserva,
+  TURNI_TRA_PROPOSTE_BOT,
+  valoreCasella,
+  type OpzioniBot,
+} from './bot';
 export { casoDaSeme, mescola, tiraDadi } from './caso';
 export {
   affitto,
+  alleati,
   attivi,
+  compagni,
   caselleDellaRegione,
   costoProssimoEdificio,
   costoRiscatto,
   edifici,
   giocatore,
+  haVinto,
   LIVELLO_ALBERGO,
   patrimonio,
   possedute,
@@ -20,6 +34,7 @@ export {
   proprietabile,
   regioneConEdifici,
   rimborsoEdificio,
+  squadraDi,
   valoreIpoteca,
   valoreLiquidazione,
   valoreVendita,
@@ -27,7 +42,15 @@ export {
 } from './conti';
 export { acquistoInSospeso, ASTA_MS, RILANCI } from './economia';
 export { descrivi, descriviVoce, euro } from './descrivi';
-export { GIOCATORI_MAX, GIOCATORI_MIN, IMPOSTAZIONI_PREDEFINITE, SOLDI_INIZIALI_POSSIBILI } from './impostazioni';
+export {
+  GIOCATORI_MAX,
+  GIOCATORI_MIN,
+  IMPOSTAZIONI_PREDEFINITE,
+  NOME_SQUADRA_MAX,
+  NOMI_SQUADRE_PREDEFINITI,
+  SOLDI_INIZIALI_POSSIBILI,
+  SQUADRE_MAX,
+} from './impostazioni';
 export { nomeCasuale, pulisciNome } from './nomi';
 export { creaPartita, type NuovoGiocatore } from './partita';
 export {

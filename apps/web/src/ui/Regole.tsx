@@ -33,7 +33,7 @@ const PASSI: { testo: string; dettaglio?: string; figura: ReactNode }[] = [
       <span className="passo__citta">
         {VENETO.map((c) => (
           <span key={c.nome} className="mini-casella" style={variabili({ '--gruppo': 'var(--g5)' })}>
-            <Stemma gruppo={5} nome={TAB.regioni[4]?.nome ?? ''} className="mini-casella__stemma" />
+            <Stemma regione={TAB.regioni[4]} className="mini-casella__stemma" />
             <span className="mini-casella__nome">{c.nome}</span>
             <span className="mini-casella__prezzo">{euro(c.prezzo)}</span>
           </span>

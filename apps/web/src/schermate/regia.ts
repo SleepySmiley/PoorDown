@@ -204,6 +204,7 @@ export class Regia {
       case 'costruzione':
       case 'affitto':
       case 'tassa':
+      case 'premio':
       case 'partenza':
       case 'prigione_fallita':
       case 'vacanza':

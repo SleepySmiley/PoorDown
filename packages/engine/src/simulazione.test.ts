@@ -3,7 +3,7 @@
  * e il giocatore di turno deve avere sempre qualcosa da fare.
  * I giocatori comprano, costruiscono, ipotecano, fanno aste e scambi; ogni tanto qualcuno si scollega,
  * si distrae fino allo scadere del tempo, chiede o regala tempo, vota o viene espulso.
- * Le regole facoltative cambiano da una partita all'altra.
+ * Le regole facoltative, il tabellone e la modalità squadre cambiano da una partita all'altra.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -13,8 +13,9 @@ import { IMPOSTAZIONI_PREDEFINITE, SOLDI_INIZIALI_POSSIBILI } from './impostazio
 import { creaPartita } from './partita';
 import { ID, NOMI, problemi } from './prove';
 import { applica, applicaScadenze, azioniPossibili, espelli, prossimaScadenza, verifica } from './regole';
+import { TABELLONI } from './tabelloni';
 import { connessione, sposta } from './tempo';
-import type { Azione, Caso, Esito, Giocatore, Pacchetto, Stato, TipoEvento } from './tipi';
+import type { Azione, Caso, Esito, Giocatore, IdMappa, Pacchetto, Stato, TipoEvento } from './tipi';
 
 const PARTITE = 80;
 const AZIONI_MAX = 20_000;
@@ -156,10 +157,15 @@ function imprevisto(s: Stato, caso: Caso, adesso: number): { esito: Esito; adess
 function giocaPartita(seme: number) {
   const caso = casoDaSeme(seme);
   const n = 2 + caso.intero(7);
+  const mappe = Object.keys(TABELLONI) as IdMappa[];
+  // A squadre in un terzo delle partite (servono almeno 3 giocatori), con 2 o 3 squadre.
+  const squadre = n >= 3 && caso.intero(3) === 0 ? 2 + caso.intero(Math.min(2, n - 2)) : 0;
   const creata = creaPartita(
-    ID.slice(0, n).map((id, i) => ({ id, nome: NOMI[i]!, colore: i + 1 })),
+    ID.slice(0, n).map((id, i) => ({ id, nome: NOMI[i]!, colore: i + 1, squadra: squadre ? i % squadre : null })),
     {
       ...IMPOSTAZIONI_PREDEFINITE,
+      mappa: mappe[caso.intero(mappe.length)]!,
+      squadre: squadre > 0,
       soldiIniziali: scegli(SOLDI_INIZIALI_POSSIBILI, caso)!,
       cassaVacanza: caso.intero(2) === 1,
       affittoDoppioSetCompleto: caso.intero(2) === 1,
@@ -264,11 +270,11 @@ describe('simulazione di partite intere', () => {
     expect(finite).toBe(PARTITE);
     // Ogni regola è stata usata almeno una volta.
     const tutti: TipoEvento[] = [
-      'inizio', 'turno', 'turno_saltato', 'dadi', 'movimento', 'partenza', 'acquisto', 'affitto', 'tassa', 'carta',
+      'inizio', 'turno', 'turno_saltato', 'dadi', 'movimento', 'partenza', 'acquisto', 'affitto', 'tassa', 'premio', 'carta',
       'prigione', 'prigione_fallita', 'uscita_prigione', 'vacanza', 'vendita', 'debito', 'rimborso', 'bancarotta', 'fine',
       'costruzione', 'demolizione', 'ipoteca', 'riscatto', 'asta', 'asta_vinta', 'asta_deserta',
       'scambio_proposto', 'scambio_accettato', 'scambio_rifiutato', 'scambio_annullato',
-      'tempo_scaduto', 'tempo_chiesto', 'tempo_regalato', 'voto', 'rimozione',
+      'tempo_scaduto', 'tempo_chiesto', 'tempo_regalato', 'voto', 'rimozione', 'eredita',
     ];
     expect(tutti.filter((t) => !visti.has(t))).toEqual([]);
     // E ogni modo di uscire dalla partita.

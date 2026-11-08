@@ -27,8 +27,12 @@ export interface Partecipante {
   nome: string;
   /** 1–12. */
   colore: number;
-  /** Ha almeno una scheda del browser aperta sulla stanza. */
+  /** Ha almeno una scheda del browser aperta sulla stanza. I bot sono sempre collegati. */
   connesso: boolean;
+  /** Giocatore automatico, aggiunto dalla stanza per riempire i posti liberi. */
+  bot: boolean;
+  /** Nelle stanze a squadre, l'indice della sua squadra (0–3); altrimenti `null`. */
+  squadra: number | null;
 }
 
 export interface VistaStanza {
@@ -41,6 +45,8 @@ export interface VistaStanza {
   impostazioni: Impostazioni;
   /** In ordine di ingresso. */
   partecipanti: Partecipante[];
+  /** I nomi delle quattro squadre possibili (li cambia l'host). Contano solo con l'impostazione `squadre`. */
+  squadre: string[];
   /** Persone che guardano senza essere sedute. */
   spettatori: number;
   /** Stato della partita senza le informazioni nascoste (vedi `vistaPartita`). `null` in lobby. */
@@ -72,6 +78,8 @@ export interface MessaggioChat {
   nome: string;
   colore: number;
   testo: string;
+  /** Messaggio della chat di squadra: lo vedono solo i giocatori di quella squadra. */
+  squadra?: number;
 }
 
 /**
@@ -109,7 +117,7 @@ export interface Istantanea {
 export interface StanzaInElenco {
   codice: string;
   fase: FaseStanza;
-  giocatori: { nome: string; colore: number }[];
+  giocatori: { nome: string; colore: number; bot: boolean }[];
   giocatoriMax: number;
   mappa: IdMappa;
   impostazioni: Impostazioni;
@@ -140,6 +148,7 @@ export type CodiceErroreServer =
   | 'partita_non_finita'
   | 'pochi_giocatori'
   | 'troppi_giocatori'
+  | 'squadre_spente'
   | 'errore_interno'
   /** Solo lato browser: il server non ha risposto in tempo. */
   | 'senza_risposta';
@@ -165,8 +174,17 @@ export interface Comandi {
   cambia_colore: { dati: { colore: number }; risposta: null };
   /** Solo l'host e solo in lobby. */
   impostazioni: { dati: Partial<Impostazioni>; risposta: null };
-  /** Solo l'host e solo in lobby. */
+  /** In lobby l'host libera un posto (anche di un bot); in partita, nelle stanze private, toglie un giocatore. */
   espelli: { dati: { giocatore: IdGiocatore }; risposta: null };
+  /**
+   * In lobby, a squadre: entra nella squadra indicata (0–3). L'host può spostarci anche un altro giocatore,
+   * bot compresi, indicando `giocatore`.
+   */
+  squadra: { dati: { squadra: number; giocatore?: IdGiocatore }; risposta: null };
+  /** Solo l'host e solo in lobby: dà un nome a una squadra (vuoto: torna quello predefinito). */
+  nome_squadra: { dati: { squadra: number; nome: string }; risposta: null };
+  /** Solo l'host e solo in lobby: rifà le squadre a sorte, con lo stesso numero di squadre (almeno due). */
+  mescola_squadre: { dati: Vuoto; risposta: null };
   /** Solo l'host: servono almeno 2 giocatori e non più del massimo scelto. */
   avvia: { dati: Vuoto; risposta: null };
   /**
@@ -175,8 +193,8 @@ export interface Comandi {
    */
   nuova_partita: { dati: Vuoto; risposta: null };
   mossa: { dati: Mossa; risposta: null };
-  /** Solo chi è seduto al tavolo. */
-  scrivi: { dati: { testo: string }; risposta: null };
+  /** Solo chi è seduto al tavolo. Con `squadra` il messaggio va solo ai compagni di squadra. */
+  scrivi: { dati: { testo: string; squadra?: boolean }; risposta: null };
   sincronizza: { dati: Vuoto; risposta: Istantanea };
 }
 

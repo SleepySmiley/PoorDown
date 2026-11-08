@@ -9,11 +9,12 @@ import {
   type IdGiocatore,
   type IdMappa,
   type Proprieta,
+  type Regione,
   type Stato,
 } from '@poordown/engine';
 import { caselleVista, type CasellaVista } from '../ui/caselle';
 import { Pedina, Stemma } from '../ui/comuni';
-import { ANGOLO, UNITA, centroCasella, posto, righeAffitto } from '../ui/geometria';
+import { ANGOLO, geometria, righeAffitto, type Geometria } from '../ui/geometria';
 import { Icona, IconaCasella } from '../ui/icone';
 import { variabili } from '../ui/utili';
 
@@ -66,7 +67,7 @@ export function SchedaProprieta({
   return (
     <article
       className={className ? `scheda ${className}` : 'scheda'}
-      style={{ ...style, ...(c.gruppo ? variabili({ '--gruppo': `var(--g${c.gruppo})` }) : {}) }}
+      style={{ ...style, ...(c.tinta ? variabili({ '--gruppo': `var(--g${c.tinta})` }) : {}) }}
       aria-label={`Scheda di ${c.nome}`}
     >
       <header className={regione ? 'scheda__testa' : 'scheda__testa scheda__testa--senza-regione'}>
@@ -175,27 +176,37 @@ function Blocco({ p }: { p: Possesso }): ReactNode {
   );
 }
 
+/** Nomi lunghi: carattere più piccolo; con due parole possono andare su due righe. M e W contano una lettera e mezza. */
+function classeNome(nome: string): string {
+  if (/\s/.test(nome) && nome.length >= 11) return 'casella__nome casella__nome--due-righe';
+  const larghezza = nome.length + (nome.match(/[mwMW]/g)?.length ?? 0) / 2;
+  if (larghezza >= 10) return 'casella__nome casella__nome--lunga';
+  return 'casella__nome';
+}
+
 function CasellaTabellone({
   c,
-  nomeRegione,
+  geo,
+  regione,
   p,
   selezionata,
   onApri,
 }: {
   c: CasellaVista;
-  nomeRegione: string;
+  geo: Geometria;
+  regione: Regione | undefined;
   p?: Possesso;
   selezionata: boolean;
   onApri?: (n: number) => void;
 }): ReactNode {
-  const { riga, colonna, lato } = posto(c.n);
+  const { riga, colonna, lato } = geo.posto(c.n);
   const proprieta = c.tipo === 'citta' || c.tipo === 'stazione' || c.tipo === 'servizio';
   const nome = c.breve ?? c.nome;
   const classi = [
     'casella',
     `casella--${lato}`,
     `casella--${c.tipo}`,
-    c.tipo === 'angolo' ? `casella--angolo-${c.n}` : '',
+    c.tipo === 'angolo' ? `casella--angolo-${c.angolo}` : '',
     p ? 'casella--posseduta' : '',
     selezionata ? 'casella--selezionata' : '',
   ]
@@ -227,11 +238,10 @@ function CasellaTabellone({
       </span>
     ) : (
       <span className="casella__corpo">
-        {c.gruppo !== undefined && <Stemma gruppo={c.gruppo} nome={nomeRegione} className="casella__stemma" />}
+        {c.gruppo !== undefined && <Stemma regione={regione} className="casella__stemma" />}
         {c.icona && <IconaCasella nome={c.icona} className="casella__icona" />}
         {c.importo && <span className="casella__importo">{c.importo}</span>}
-        {/* Una sola parola lunga (es. Courmayeur): carattere più piccolo invece di spezzarla. */}
-        <span className={/^\S{10,}$/.test(nome) ? 'casella__nome casella__nome--lunga' : 'casella__nome'}>{nome}</span>
+        <span className={classeNome(nome)}>{nome}</span>
         {p ? <Blocco p={p} /> : c.prezzo !== undefined && <span className="casella__prezzo">{euro(c.prezzo)}</span>}
       </span>
     );
@@ -274,7 +284,7 @@ export interface Segnaposto {
   evidenziata?: boolean;
 }
 
-/** Una k (1 px a 820 px di lato) in percentuale del tabellone. */
+/** Una k (1 px a 820 px di lato, sul tabellone da 40 caselle) in percentuale del tabellone. */
 const K = 0.122;
 /** Diametro del disco della pedina, in k. */
 const DISCO = 30;
@@ -299,27 +309,29 @@ function coordinatePedine(
   pedine: Segnaposto[],
   caselle: CasellaVista[],
   prigione: number,
+  geo: Geometria,
 ): Map<IdGiocatore, { x: number; y: number; scala: number }> {
   const gruppi = new Map<string, Segnaposto[]>();
   for (const p of pedine) {
     const chiave = `${p.posizione}${p.prigione ? 'p' : ''}`;
     gruppi.set(chiave, [...(gruppi.get(chiave) ?? []), p]);
   }
-  const profondita = ANGOLO * UNITA;
+  const profondita = ANGOLO * geo.unita;
+  const k = K * geo.scala;
   const risultato = new Map<IdGiocatore, { x: number; y: number; scala: number }>();
   for (const lista of gruppi.values()) {
     const primo = lista[0];
     if (!primo) continue;
     const n = primo.posizione;
-    const lato = posto(n).lato;
+    const lato = geo.posto(n).lato;
     const tipo = caselle[n]?.tipo;
     const casellaPrigione = n === prigione;
     const angolo = lato === 'angolo' && !casellaPrigione;
     const inVisita = casellaPrigione && !primo.prigione;
     const { colonne, scala } = disposizione(lista.length, inVisita ? 'colonna' : angolo ? 'angolo' : 'lato');
     const righe = Math.ceil(lista.length / colonne);
-    const passo = (DISCO * scala + 3) * K;
-    let { x, y } = centroCasella(n);
+    const passo = (DISCO * scala + 3) * k;
+    let { x, y } = geo.centro(n);
 
     // Sui lati la pedina sta tra il nome e il bordo esterno; su carte e tasse il bordo
     // esterno ha solo il nome, quindi può scendere un po' di più.
@@ -351,8 +363,6 @@ function coordinatePedine(
 
 /* ---------------- Tabellone ---------------- */
 
-const TRACCE = `${ANGOLO}fr repeat(9, minmax(0, 1fr)) ${ANGOLO}fr`;
-
 export function Tabellone({
   mappa,
   partita,
@@ -377,24 +387,29 @@ export function Tabellone({
 }): ReactNode {
   const tab = tabellone(mappa);
   const caselle = caselleVista(mappa);
-  const coordinate = coordinatePedine(pedine, caselle, tab.prigione);
+  const geo = geometria(caselle.length);
+  const coordinate = coordinatePedine(pedine, caselle, tab.prigione, geo);
+  const interno = `2 / ${geo.lato + 1}`;
   return (
-    <div className="tabellone">
+    <div className="tabellone" style={variabili({ '--scala': String(geo.scala) })}>
       <div
         className={sfocato ? 'tabellone__griglia tabellone__griglia--sfocata' : 'tabellone__griglia'}
-        style={{ gridTemplateColumns: TRACCE, gridTemplateRows: TRACCE }}
+        style={{ gridTemplateColumns: geo.tracce, gridTemplateRows: geo.tracce }}
       >
         {caselle.map((c) => (
           <CasellaTabellone
             key={c.n}
             c={c}
-            nomeRegione={c.gruppo ? (tab.regioni[c.gruppo - 1]?.nome ?? '') : ''}
+            geo={geo}
+            regione={c.gruppo ? tab.regioni[c.gruppo - 1] : undefined}
             p={possesso(partita, c.n)}
             selezionata={selezionata === c.n}
             onApri={onApri}
           />
         ))}
-        <div className="tabellone__centro">{!sfocato && centro}</div>
+        <div className="tabellone__centro" style={{ gridRow: interno, gridColumn: interno }}>
+          {!sfocato && centro}
+        </div>
         <div className="tabellone__pedine" aria-hidden="true">
           {pedine.map((p) => {
             const xy = coordinate.get(p.id) ?? { x: 0, y: 0, scala: 1 };

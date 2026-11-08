@@ -5,6 +5,7 @@ import {
   costoProssimoEdificio,
   costoRiscatto,
   euro,
+  haVinto,
   LIVELLO_ALBERGO,
   possedute,
   proprietabile,
@@ -126,6 +127,26 @@ function cosaFa(attivita: Attivita | undefined, assente: boolean): string {
     default:
       return 'sta giocando…';
   }
+}
+
+/**
+ * A squadre, il compagno che raccoglie i beni di `g` se esce: il primo della sua squadra ancora in gioco
+ * dopo di lui nell'ordine dei turni (come nel motore).
+ */
+function erede(partita: Stato, g: Giocatore): Giocatore | undefined {
+  if (g.squadra === null) return undefined;
+  const i = partita.giocatori.findIndex((x) => x.id === g.id);
+  const ordine = [...partita.giocatori.slice(i + 1), ...partita.giocatori.slice(0, i)];
+  return ordine.find((x) => !x.eliminato && x.squadra === g.squadra);
+}
+
+/** Cosa succede ai beni di `g` se esce dalla partita, detto a lui (`tu`) o agli altri. */
+function destinoDeiBeni(partita: Stato, g: Giocatore, tu: boolean): string {
+  const compagno = erede(partita, g);
+  const suoi = tu ? 'le tue' : 'le sue';
+  if (!compagno) return `${tu ? 'Le tue' : 'Le sue'} proprietà tornano alla banca.`;
+  if (g.debiti.length === 0) return `Contanti, proprietà e Carte Grazia passano a ${compagno.nome}, ${tu ? 'tuo' : 'suo'} compagno di squadra.`;
+  return `I beni pagano i debiti, quello che avanza va in contanti a ${compagno.nome} e ${suoi} proprietà tornano alla banca.`;
 }
 
 /** Le finestre degli scambi: nuova proposta (o controproposta su `base`) oppure uno scambio da vedere. */
@@ -411,6 +432,7 @@ export function Gioco({
   /* ---------- Colonna destra ---------- */
 
   const connessi = new Map(stanza.partecipanti.map((p) => [p.id, p.connesso]));
+  const bot = new Set(stanza.partecipanti.filter((p) => p.bot).map((p) => p.id));
   // L'host di una stanza privata può togliere dalla partita chi non sta giocando il suo turno.
   const puoTogliere = inCorso && io !== null && stanza.host === io && stanza.impostazioni.stanzaPrivata;
   const mie = me ? possedute(partita, me.id) : [];
@@ -573,8 +595,8 @@ export function Gioco({
                     partita={partita}
                     n={popoverBordo}
                     onChiudi={() => setScheda(null)}
-                    className={stilePopover(popoverBordo).classe}
-                    style={stilePopover(popoverBordo).stile}
+                    className={stilePopover(popoverBordo, tab.caselle.length).classe}
+                    style={stilePopover(popoverBordo, tab.caselle.length).stile}
                   />
                 )}
                 {finestraSopra}
@@ -606,6 +628,8 @@ export function Gioco({
                         fuori: g.eliminato !== null,
                         esito: g.eliminato ? ESITO_USCITA[g.eliminato.motivo] : undefined,
                         assenteFino: inCorso && !g.eliminato && offlineDa !== null ? offlineDa + ASSENZA_MS : undefined,
+                        bot: bot.has(g.id),
+                        squadra: g.squadra === null ? undefined : { indice: g.squadra, nome: partita.squadre[g.squadra] ?? '' },
                       }}
                       puoEspellere={puoTogliere}
                       etichettaEspulsione={`Togli ${g.nome} dalla partita`}
@@ -685,7 +709,7 @@ export function Gioco({
                             }}
                           >
                             {c.gruppo ? (
-                              <Stemma gruppo={c.gruppo} nome={tab.regioni[c.gruppo - 1]?.nome ?? ''} className="stemma--lista" />
+                              <Stemma regione={tab.regioni[c.gruppo - 1]} className="stemma--lista" />
                             ) : (
                               c.icona && <Icona nome={c.icona} className="mie__icona" />
                             )}
@@ -751,8 +775,8 @@ export function Gioco({
         <Finestra titolo="Togli dalla partita" onChiudi={() => setDaTogliere(null)}>
           <div className="finestra__corpo">
             <p>
-              Vuoi togliere <b>{daTogliere.nome}</b> dalla partita? Le sue proprietà tornano alla banca e non potrà più giocare
-              né scrivere in chat. Non si può annullare.
+              Vuoi togliere <b>{daTogliere.nome}</b> dalla partita? {destinoDeiBeni(partita, daTogliere, false)} Non potrà più
+              giocare né scrivere in chat. Non si può annullare.
             </p>
           </div>
           <div className="finestra__azioni">
@@ -781,14 +805,14 @@ export function Gioco({
 
       {statistiche && !inCorso && <StatisticheComplete partita={partita} onChiudi={() => setStatistiche(false)} />}
 
-      {vistaInCorso && !inCorso && festa && io !== null && io === partita.vincitore && (
+      {vistaInCorso && !inCorso && festa && io !== null && haVinto(partita, io) && (
         <Coriandoli onFine={() => setFesta(false)} />
       )}
 
       {bancarotta && inCorso && (
         <Finestra titolo="Dichiara bancarotta" onChiudi={() => setBancarotta(false)}>
           <div className="finestra__corpo">
-            <p>Esci dalla partita e le tue proprietà tornano alla banca. Non si può annullare.</p>
+            <p>Esci dalla partita. {me ? destinoDeiBeni(partita, me, true) : ''} Non si può annullare.</p>
           </div>
           <div className="finestra__azioni">
             <button type="button" className="pulsante pulsante--fantasma" onClick={() => setBancarotta(false)}>

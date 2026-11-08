@@ -137,9 +137,12 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** a fine partita tutti vedono vincitore, classifica e statistiche, e possono giocarne un'altra nella stessa stanza. ✔ Fatto: test del motore per ogni statistica e per la classifica, controlli di coerenza nella simulazione di 80 partite, test della stanza per "Un'altra partita". Verificato con due browser Edge e un terzo giocatore da script: coriandoli solo per chi vince, "In attesa dell'host…" per gli altri, ritorno in lobby con gli stessi posti e una nuova partita avviata.
 
 ### Fase 8 — Bot, squadre, altri tabelloni · L
-- [ ] Bot che riempiono i posti liberi: comprano, costruiscono, offrono alle aste, rispondono agli scambi
-- [ ] Modalità squadre: set condivisi, chat di squadra, eredità dei beni in bancarotta
-- [ ] Tre tabelloni alternativi originali: lungo (48 caselle, 3 società), gruppi grandi, metà carte
+- [x] Bot che riempiono i posti liberi: comprano, costruiscono, offrono alle aste, rispondono agli scambi
+- [x] Modalità squadre: set condivisi, chat di squadra, eredità dei beni in bancarotta
+- [x] Tre tabelloni alternativi originali: lungo (48 caselle, 3 società), gruppi grandi, metà carte ([docs/identita/tabelloni-alternativi.md](docs/identita/tabelloni-alternativi.md))
+- [x] In più: i bot entrano a ondate come su richup, aspettano che finiscano le animazioni prima di muovere, seguono il voto, danno tempo a chi lo chiede e ogni tanto propongono di comprare l’ultima città di una loro regione; chi arriva in una stanza piena prende il posto di un bot. Squadre scelte da ognuno (l’host le rinomina, sposta i giocatori e le mescola), turni alternati tra le squadre, grafico del patrimonio anche per squadra. Scelta del tabellone in lobby con miniatura. Le stanze salvate prima della Fase 8 riprendono
+
+**Fatto quando:** i bot completano una partita da soli, a squadre i compagni condividono regioni, stazioni e servizi ed ereditano i beni, e i quattro tabelloni si giocano tutti. ✔ Fatto: test del motore per ogni regola delle squadre e per le decisioni dei bot, 24 partite di soli bot su tutti i tabelloni (nessun blocco, nessuna mossa rifiutata), simulazione di 80 partite con tabelloni e squadre a caso, test della stanza per arrivo dei bot, squadre e chat di squadra. Verificato in Edge: lobby con bot e squadre, scelta dei tabelloni, partita a squadre con bot fino alla vittoria della squadra, partita sul tabellone Europa.
 
 ### Fase 9 — Rifinitura · M
 - [ ] Suoni originali o liberi da diritti, con volume salvato
@@ -183,6 +186,19 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Grafico del patrimonio | Un punto alla fine di ogni turno; la linea di chi esce si ferma all'ultimo turno in cui era in gioco |
 | Classifica a pari turno | Chi esce più tardi, nello stesso turno, sta davanti |
 | Proprietà più visitata | Conta le soste (non i passaggi); a pari soste vince la prima del tabellone. In prigione, a pari merito, si mostrano tutti |
+| Arrivo dei bot | Uno ogni 2,5–6 secondi finché ci sono posti liberi, solo se al tavolo c’è almeno una persona; un bot espulso è rimpiazzato dopo un secondo. Abbassando il massimo dei giocatori escono prima i bot; se se ne vanno tutte le persone, escono anche i bot |
+| Stanza piena di bot | Chi arriva prende il posto dell’ultimo bot entrato (su richup trova la stanza piena) |
+| Ritmo dei bot | Muovono quando i browser hanno finito le animazioni, più circa un secondo; all’asta rilanciano dopo 1–2 s, agli scambi rispondono dopo 2–3,5 s. Se nessuna persona in gioco è collegata si fermano, come la partita |
+| Scambi dei bot | Rispondono a tutti valutando prezzi e regioni (non cedono a poco la città che completa la regione di un avversario). Propongono solo di comprare l’ultima città di una loro regione, fino a 3 volte il prezzo, al massimo una volta ogni 8 turni; ritirano le proposte che non si possono più fare |
+| Voto e tempo con i bot | I bot non cominciano mai un voto: votano solo dopo che l’ha fatto una persona, mai contro un compagno. Regalano «+1 min» a chi lo chiede |
+| Formazione delle squadre | Fino a 4 squadre; ognuno entra in quella che vuole, l’host sposta chiunque e può mescolarle. Accendendo le squadre i seduti si dividono in due; chi arriva va nella squadra più piccola. Nomi «Squadra 1–4», l’host li cambia (max 20 caratteri) |
+| Ordine dei turni a squadre | Alternato tra le squadre (un giocatore per squadra, a giro), così i compagni non giocano di seguito |
+| Squadre: regioni, stazioni, servizi | Si contano insieme a quelli dei compagni (costruzione, affitto doppio, affitti di stazioni e servizi); su una città costruisce solo chi la possiede |
+| Erede a squadre | Il primo compagno ancora in gioco dopo chi esce, nell’ordine dei turni. Vale per ogni uscita (bancarotta, tempo, assenza, voto, espulsione). Le proprietà passano così come sono, con edifici e ipoteche |
+| Bancarotta a squadre con debito | Il creditore è pagato dalla liquidazione, il resto va in contanti al compagno, le proprietà tornano alla banca. Se così una regione della squadra resta incompleta, gli edifici dei compagni lì tornano alla banca a metà prezzo |
+| Vittoria a squadre | Vince tutta la squadra rimasta, anche chi era già uscito: coriandoli e «vincitore» in classifica per tutti i suoi giocatori |
+| Chat di squadra | La leggono solo i giocatori di quella squadra (non gli spettatori); i messaggi contano nelle statistiche |
+| Affitti dei tabelloni alternativi | Ricavati dal prezzo con la scala del Classico, così l’economia resta la stessa |
 
 ---
 
@@ -192,3 +208,5 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 2. **Stile grafico:** "Partenze", il cartello di stazione (mockup in `apps/web/src/mockup/`).
 3. **Mazzi e testi:** Busta e Cartolina, tono sobrio.
 4. **Prezzi e affitti:** scala nostra, nella stessa tabella del tabellone.
+5. **Tabelloni alternativi:** Europa (città europee), Grandi aree (macroaree italiane), Colpo di fortuna (località turistiche italiane) ([docs/identita/tabelloni-alternativi.md](docs/identita/tabelloni-alternativi.md)).
+6. **Squadre:** le sceglie ognuno; l’host le rinomina, sposta i giocatori e le mescola.

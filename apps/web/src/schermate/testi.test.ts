@@ -24,7 +24,8 @@ const STANZA: VistaStanza = {
   versione: 3,
   host: 'a',
   impostazioni: { ...IMPOSTAZIONI_PREDEFINITE },
-  partecipanti: [{ id: 'a', nome: 'Anna', colore: 3, connesso: true }],
+  partecipanti: [{ id: 'a', nome: 'Anna', colore: 3, connesso: true, bot: false, squadra: null }],
+  squadre: [],
   spettatori: 0,
   partita: null,
 };

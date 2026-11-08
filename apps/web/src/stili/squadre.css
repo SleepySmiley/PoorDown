@@ -1,0 +1,264 @@
+/* Squadre, bot e scelta del tabellone.
+   Le regole hanno due classi: stanza.css si importa per ultimo e vincerebbe sulle regole con una classe sola. */
+
+/* ---------- Binario: il numero della squadra, come sui cartelli delle partenze ---------- */
+
+.binario {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--segnale);
+  color: #fff;
+  font: 700 1.0625rem/1 var(--stretto);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.85);
+}
+
+.binario.binario--riga {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  font-size: 0.875rem;
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.85);
+}
+
+/* ---------- Bot nella lista dei giocatori ---------- */
+
+.giocatore__nome .giocatore__bot {
+  display: inline-flex;
+  flex: none;
+  border-radius: 3px;
+}
+
+.giocatore__bot:focus-visible {
+  outline: 2px solid var(--ambra);
+  outline-offset: 2px;
+}
+
+/* ---------- Squadre in lobby ---------- */
+
+.giocatori .squadre {
+  display: grid;
+}
+
+.squadre .squadre__elenco {
+  display: grid;
+}
+
+.squadre .squadra + .squadra {
+  border-top: 2px solid var(--palette-bordo);
+}
+
+.squadra .squadra__testa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 12px 4px 14px;
+}
+
+.squadra .squadra__nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font: 700 1.1875rem/1.1 var(--stretto);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.squadra .squadra__rinomina {
+  flex: 1;
+  min-width: 0;
+}
+
+.squadra__rinomina input {
+  width: 100%;
+  padding: 3px 8px;
+  border: 2px solid var(--ambra);
+  border-radius: 4px;
+  background: var(--palette);
+  color: #fff;
+  font: 700 1.125rem/1.1 var(--stretto);
+}
+
+.squadra .squadra__entra {
+  flex: none;
+}
+
+.squadra .squadra__vuota {
+  padding: 2px 14px 14px 50px;
+  color: #9aa1ad;
+  font-size: 0.8125rem;
+}
+
+/* Pulsanti per spostare un giocatore: binari vuoti, si riempiono al passaggio del mouse. */
+.giocatore .squadra__sposta {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.binario.binario--azione {
+  border: 0;
+  background: transparent;
+  color: #c9d1db;
+  box-shadow: inset 0 0 0 1.5px #6b7383;
+  cursor: pointer;
+}
+
+.binario.binario--azione:hover,
+.binario.binario--azione:focus-visible {
+  background: var(--segnale);
+  color: #fff;
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.85);
+}
+
+.giocatore__nome .giocatore__bot .icona {
+  flex: none;
+}
+
+.squadre .squadre__mescola {
+  justify-self: center;
+  margin: 10px 0 6px;
+}
+
+/* ---------- Scelta del tabellone ---------- */
+
+.finestra__riquadro:has(.tabelloni) {
+  width: 640px;
+}
+
+.tabelloni .tabelloni__lista {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.tabelloni .tabelloni__voce {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px 12px 12px;
+  border-radius: 6px;
+  background: var(--smalto);
+  box-shadow: inset 0 0 0 1px var(--bordo);
+}
+
+.tabelloni .tabelloni__voce--scelta {
+  background: var(--segnale-chiaro);
+  box-shadow: inset 0 0 0 2px var(--segnale);
+}
+
+.tabelloni .miniatura {
+  width: 112px;
+  height: 112px;
+  padding: 5px;
+  border-radius: 6px;
+  background: var(--cemento);
+}
+
+.tabelloni .tabelloni__nome {
+  font: 700 1.375rem/1 var(--stretto);
+}
+
+.tabelloni .tabelloni__descrizione {
+  margin-top: 5px;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.tabelloni .tabelloni__numeri {
+  margin-top: 6px;
+  color: var(--accento);
+  font: 600 0.8125rem/1.2 var(--normale);
+}
+
+.tabelloni .tabelloni__regioni {
+  margin-top: 3px;
+  color: var(--testo-tenue);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.tabelloni .tabelloni__in-uso {
+  background: var(--segnale);
+  color: #fff;
+}
+
+.tabelloni .impostazioni__nota {
+  margin: 0;
+}
+
+/* ---------- Chat di squadra ---------- */
+
+.chat .chat__canali {
+  display: flex;
+  gap: 4px;
+  margin: 0 12px 6px;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--palette);
+}
+
+.chat__canali .chat__canale {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--testo-tenue);
+  font: 600 0.9375rem/1.2 var(--stretto);
+}
+
+.chat__canali .chat__canale--attivo {
+  background: var(--segnale-chiaro);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px var(--segnale);
+}
+
+.messaggio.messaggio--squadra .messaggio__testo {
+  box-shadow: inset 3px 0 0 var(--segnale);
+}
+
+.messaggio__testo .messaggio__canale {
+  margin-right: 6px;
+  color: var(--accento);
+  font: 700 0.6875rem/1 var(--normale);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Il nome non deve uscire dalla sua colonna (con binario, corona e robot i nomi lunghi finivano sotto il saldo). */
+.giocatore__dati .giocatore__nome {
+  max-width: 100%;
+}
+
+/* Numero della squadra sulla pedina, nella lista dei giocatori. */
+.giocatore .giocatore__pedina {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+}
+
+.giocatore__pedina .binario.binario--maglia {
+  position: absolute;
+  right: -7px;
+  bottom: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 2px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  box-shadow:
+    inset 0 0 0 1.5px rgb(255 255 255 / 0.9),
+    0 0 0 2px var(--palette);
+}

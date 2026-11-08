@@ -23,10 +23,22 @@ import { caselleVista } from '../ui/caselle';
 import { Dado, Pedina, Stemma } from '../ui/comuni';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { iniziale, variabili } from '../ui/utili';
+import { Binario } from './Colonne';
 import { GraficoPatrimonio } from './Grafico';
 import { durataInParole, volte } from './testi';
 
 /* ---------------- Sopra il tabellone ---------------- */
+
+/** A squadre: la squadra vincitrice, con nome e giocatori; altrimenti `null`. */
+function squadraVincitrice(partita: Stato): { indice: number; nome: string; membri: Stato['giocatori'] } | null {
+  const indice = partita.squadraVincitrice;
+  if (indice === null) return null;
+  return {
+    indice,
+    nome: partita.squadre[indice] ?? `Squadra ${indice + 1}`,
+    membri: partita.giocatori.filter((g) => g.squadra === indice),
+  };
+}
 
 /** Chi può riportare la stanza in lobby: l'host, o chiunque sia seduto se l'host non è collegato. */
 function puoRicominciare(stanza: VistaStanza, io: IdGiocatore | null): boolean {
@@ -49,6 +61,7 @@ export function FinePartita({
   const [attesa, setAttesa] = useState(false);
   const [inviando, setInviando] = useState(false);
   const vincitore = partita.giocatori.find((g) => g.id === partita.vincitore);
+  const squadra = squadraVincitrice(partita);
   const seduto = io !== null && stanza.partecipanti.some((p) => p.id === io);
   const comando = puoRicominciare(stanza, io);
 
@@ -74,7 +87,23 @@ export function FinePartita({
         <h2 id="titolo-fine" className="fine-partita__titolo">
           Partita finita!
         </h2>
-        {vincitore ? (
+        {squadra ? (
+          <>
+            <p className="fine-partita__annuncio">e la squadra vincitrice è…</p>
+            <p className="fine-partita__vincitore">
+              <Binario indice={squadra.indice} nome={squadra.nome} className="binario--vincitore" />
+              <span>{squadra.nome}</span>
+            </p>
+            <p className="fine-partita__squadra">
+              {squadra.membri.map((g) => (
+                <span key={g.id} className="fine-partita__compagno">
+                  <Pedina colore={g.colore} iniziale={iniziale(g.nome)} className="pedina--mini" />
+                  {g.nome}
+                </span>
+              ))}
+            </p>
+          </>
+        ) : vincitore ? (
           <>
             <p className="fine-partita__annuncio">e il vincitore è…</p>
             <p className="fine-partita__vincitore">
@@ -140,6 +169,9 @@ export function PannelloStatistiche({ partita, onApri }: { partita: Stato; onApr
                 <tr key={p.giocatore}>
                   <td className="classifica__posto">{i + 1}</td>
                   <th scope="row" className="classifica__nome">
+                    {g.squadra !== null && (
+                      <Binario indice={g.squadra} nome={partita.squadre[g.squadra] ?? ''} className="binario--riga" />
+                    )}
                     <Pedina colore={g.colore} className="pedina--mini" />
                     <span>{g.nome}</span>
                   </th>
@@ -196,6 +228,7 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
   const st = partita.statistiche;
   const tab = tabellone(partita.mappa);
   const vincitore = partita.giocatori.find((g) => g.id === partita.vincitore);
+  const squadra = squadraVincitrice(partita);
   const ms = durata(partita);
   const visitata = proprietaPiuVisitata(partita);
   const casella = visitata ? caselleVista(partita.mappa)[visitata.casella] : undefined;
@@ -221,8 +254,13 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
         <section className="scheda-stat scheda-stat--vincitore">
           <Icona nome="coppa" className="scheda-stat__coppa" />
           <div>
-            <h3 className="scheda-stat__etichetta">Vincitore</h3>
-            {vincitore ? (
+            <h3 className="scheda-stat__etichetta">{squadra ? 'Squadra vincitrice' : 'Vincitore'}</h3>
+            {squadra ? (
+              <p className="scheda-stat__chi scheda-stat__chi--grande">
+                <Binario indice={squadra.indice} nome={squadra.nome} />
+                {squadra.nome}
+              </p>
+            ) : vincitore ? (
               <p className="scheda-stat__chi scheda-stat__chi--grande">
                 <Pedina colore={vincitore.colore} iniziale={iniziale(vincitore.nome)} />
                 {vincitore.nome}
@@ -267,7 +305,7 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
             {visitata && casella ? (
               <p className="scheda-stat__chi">
                 {casella.gruppo ? (
-                  <Stemma gruppo={casella.gruppo} nome={tab.regioni[casella.gruppo - 1]?.nome ?? ''} className="stemma--lista" />
+                  <Stemma regione={tab.regioni[casella.gruppo - 1]} className="stemma--lista" />
                 ) : (
                   casella.icona && <Icona nome={casella.icona} className="scheda-stat__piccola" />
                 )}

@@ -6,7 +6,7 @@
 import { euro, tabellone, type Casella, type IdMappa, type Tabellone } from '@poordown/engine';
 import type { NomeIcona } from './icone';
 
-export type TipoVista = 'citta' | 'stazione' | 'servizio' | 'carta' | 'tassa' | 'angolo';
+export type TipoVista = 'citta' | 'stazione' | 'servizio' | 'carta' | 'tassa' | 'premio' | 'angolo';
 
 export interface CasellaVista {
   n: number;
@@ -17,45 +17,52 @@ export interface CasellaVista {
   /** Riga breve sotto il nome (solo la Prigione: «In visita»). */
   sotto?: string;
   prezzo?: number;
-  /** Testo al posto del prezzo (tasse). */
+  /** Testo al posto del prezzo (tasse e Rimborso). */
   importo?: string;
-  /** Regione 1–8 (l'indice del motore più uno), solo per le città. */
+  /** Regione 1–10 (l'indice del motore più uno), solo per le città: `tab.regioni[gruppo - 1]`. */
   gruppo?: number;
+  /** Colore dello stemma della regione (le variabili --g1…--g10), solo per le città. */
+  tinta?: number;
+  /** Angoli: 0 Partenza, 1 Prigione, 2 Vacanza, 3 Vai in prigione (per gli arrotondamenti e la disposizione). */
+  angolo?: number;
   icona?: NomeIcona;
 }
 
-/** Sigle delle regioni negli stemmi del tabellone, nell'ordine del tabellone Classico. */
-const SIGLE = ['VDA', 'SAR', 'TOS', 'SIC', 'VEN', 'CAM', 'LAZ', 'LOM'] as const;
+const ICONE_SERVIZI: NomeIcona[] = ['fulmine', 'fiamma', 'goccia'];
 
-export function siglaRegione(gruppo: number): string {
-  return SIGLE[gruppo - 1] ?? '';
+/** Le icone dei servizi seguono il nome: luce, gas, acqua. */
+function iconaServizio(nome: string): NomeIcona {
+  if (/gas/i.test(nome)) return 'fiamma';
+  if (/acqu/i.test(nome)) return 'goccia';
+  return ICONE_SERVIZI[0]!;
 }
 
-const ICONE_SERVIZI: NomeIcona[] = ['fulmine', 'goccia', 'fulmine'];
-
-function vista(tab: Tabellone, c: Casella, n: number, servizi: { visti: number }): CasellaVista {
+function vista(tab: Tabellone, c: Casella, n: number): CasellaVista {
   const base = { n, nome: c.nome, breve: c.breve };
+  const lato = tab.caselle.length / 4;
   switch (c.tipo) {
     case 'citta':
-      return { ...base, tipo: 'citta', prezzo: c.prezzo, gruppo: c.regione + 1 };
+      return { ...base, tipo: 'citta', prezzo: c.prezzo, gruppo: c.regione + 1, tinta: tab.regioni[c.regione]?.colore ?? c.regione + 1 };
     case 'stazione':
       return { ...base, tipo: 'stazione', prezzo: c.prezzo, icona: 'treno' };
     case 'servizio':
-      return { ...base, tipo: 'servizio', prezzo: c.prezzo, icona: ICONE_SERVIZI[servizi.visti++] ?? 'fulmine' };
+      return { ...base, tipo: 'servizio', prezzo: c.prezzo, icona: iconaServizio(c.nome) };
     case 'carta':
       return { ...base, tipo: 'carta', icona: c.mazzo === 'busta' ? 'busta' : 'cartolina' };
     case 'tassa':
       return c.tassa.tipo === 'percentuale'
         ? { ...base, tipo: 'tassa', importo: `${c.tassa.valore}%`, icona: 'percento' }
         : { ...base, tipo: 'tassa', importo: euro(c.tassa.valore), icona: 'euro' };
+    case 'premio':
+      return { ...base, tipo: 'premio', importo: `+${euro(c.importo)}`, icona: 'euro' };
     case 'partenza':
-      return { ...base, tipo: 'angolo', icona: 'avanti' };
+      return { ...base, tipo: 'angolo', angolo: n / lato, icona: 'avanti' };
     case 'prigione':
-      return { ...base, tipo: 'angolo', sotto: n === tab.prigione ? 'In visita' : undefined, icona: 'prigione' };
+      return { ...base, tipo: 'angolo', angolo: n / lato, sotto: n === tab.prigione ? 'In visita' : undefined, icona: 'prigione' };
     case 'vacanza':
-      return { ...base, tipo: 'angolo', icona: 'vacanza' };
+      return { ...base, tipo: 'angolo', angolo: n / lato, icona: 'vacanza' };
     case 'vai_in_prigione':
-      return { ...base, tipo: 'angolo', icona: 'vaiprigione' };
+      return { ...base, tipo: 'angolo', angolo: n / lato, icona: 'vaiprigione' };
   }
 }
 
@@ -65,8 +72,7 @@ export function caselleVista(mappa: IdMappa): CasellaVista[] {
   let caselle = CACHE.get(mappa);
   if (!caselle) {
     const tab = tabellone(mappa);
-    const servizi = { visti: 0 };
-    caselle = tab.caselle.map((c, n) => vista(tab, c, n, servizi));
+    caselle = tab.caselle.map((c, n) => vista(tab, c, n));
     CACHE.set(mappa, caselle);
   }
   return caselle;

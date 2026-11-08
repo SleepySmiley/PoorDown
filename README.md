@@ -44,6 +44,10 @@ $env:PORT=3001; npm start
 
 Le regole facoltative (aste, ipoteche, costruzione uniforme e le altre) si scelgono nelle impostazioni della stanza prima di iniziare. Gli scambi si propongono dal pannello **Scambi**, anche fuori dal proprio turno.
 
+- **Bot:** con l’impostazione **Bot** i posti liberi si riempiono di giocatori automatici (icona del robot), che comprano, costruiscono, offrono alle aste e rispondono agli scambi. Se arriva un amico e la stanza è piena, prende il posto di un bot.
+- **Squadre:** con l’impostazione **Squadre** ognuno preme **Entra** sulla squadra che vuole; l’host può rinominarle (matita), spostare i giocatori (i numeri accanto al nome) o **Mescolare le squadre**. I compagni non si pagano l’affitto, costruiscono sulle regioni della squadra, ereditano i beni di chi fa bancarotta e vincono insieme. In chat, **Squadra** scrive solo ai compagni.
+- **Tabelloni:** in **Tabellone** → **Cambia tabellone** si sceglie tra Classico, Europa (48 caselle), Grandi aree e Colpo di fortuna.
+
 A fine partita la colonna destra mostra la classifica e **Vedi tutte le statistiche** apre durata, turni, scambi e il grafico del patrimonio. **Un'altra partita** (la avvia l'host) riporta tutti in lobby nella stessa stanza, con gli stessi colori e le stesse impostazioni.
 
 Per provare una partita da solo con due schede dello stesso browser, aggiungi `?profilo=due` all'indirizzo della seconda: è un giocatore diverso.

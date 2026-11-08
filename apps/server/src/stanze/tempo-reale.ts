@@ -9,6 +9,7 @@ import type { Server, Socket } from 'socket.io';
 import {
   CHAT_MAX,
   NOME_MAX,
+  NOME_SQUADRA_MAX,
   type Comandi,
   type EventiClient,
   type EventiServer,
@@ -16,7 +17,7 @@ import {
   type Risposta,
 } from '@poordown/engine';
 import type { GestoreStanze } from './gestore';
-import { booleano, intero, leggiAttivita, leggiImpostazioni, leggiMossa, leggiToken, testo } from './lettura';
+import { booleano, intero, leggiAttivita, leggiImpostazioni, leggiMossa, leggiToken, oggetto, testo } from './lettura';
 import { no, si, type Stanza, type Token } from './stanza';
 
 export interface DatiSocket {
@@ -203,6 +204,22 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
       return id === null ? NON_VALIDA : stanza.espelli(token, id);
     });
 
+    comandoInStanza('squadra', (stanza, dati) => {
+      const squadra = intero(dati, 'squadra');
+      const giocatore = oggetto(dati)?.giocatore === undefined ? undefined : testo(dati, 'giocatore', 64);
+      if (squadra === null || giocatore === null) return NON_VALIDA;
+      return stanza.cambiaSquadra(token, squadra, giocatore);
+    });
+
+    comandoInStanza('nome_squadra', (stanza, dati) => {
+      const squadra = intero(dati, 'squadra');
+      const nome = testo(dati, 'nome', NOME_SQUADRA_MAX * 4);
+      if (squadra === null || nome === null) return NON_VALIDA;
+      return stanza.rinominaSquadra(token, squadra, nome);
+    });
+
+    comandoInStanza('mescola_squadre', (stanza) => stanza.mescolaSquadre(token));
+
     comandoInStanza('avvia', (stanza) => stanza.avvia(token));
 
     comandoInStanza('nuova_partita', (stanza) => stanza.nuovaPartita(token));
@@ -216,10 +233,15 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
       const stanza = corrente();
       if (!stanza) return FUORI_STANZA;
       const contenuto = testo(dati, 'testo', CHAT_MAX * 4);
-      if (contenuto === null) return NON_VALIDA;
-      const esito = stanza.scrivi(token, contenuto);
+      const squadra = oggetto(dati)?.squadra === undefined ? false : booleano(dati, 'squadra');
+      if (contenuto === null || squadra === null) return NON_VALIDA;
+      const esito = stanza.scrivi(token, contenuto, squadra);
       if (!esito.ok) return esito;
-      io.to(canale(stanza.codice)).emit('messaggio', esito.dati);
+      // I messaggi di squadra arrivano solo ai compagni.
+      for (const id of io.sockets.adapter.rooms.get(canale(stanza.codice)) ?? []) {
+        const s = io.sockets.sockets.get(id);
+        if (s && stanza.puoLeggere(s.data.token, esito.dati)) s.emit('messaggio', esito.dati);
+      }
       dopoModifica();
       return si(null);
     });

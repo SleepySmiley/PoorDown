@@ -6,7 +6,7 @@
  */
 
 import { accredita, errore, type Contesto } from './contesto';
-import { giocatore, patrimonio, proprietabile, regioneConEdifici, valoreLiquidazione, VALORE_GRAZIA } from './conti';
+import { compagni, giocatore, patrimonio, proprietabile, regioneConEdifici, valoreLiquidazione, VALORE_GRAZIA } from './conti';
 import { tabellone } from './tabelloni';
 import type { Azione, Errore, Giocatore, IdGiocatore, Pacchetto, Scambio, Stato } from './tipi';
 
@@ -95,7 +95,7 @@ function problemiParte(stato: Stato, chi: Giocatore | undefined, id: IdGiocatore
 
 /**
  * Perché lo scambio non si può fare, in frasi da mostrare. Elenco vuoto: si può fare.
- * Oltre alle regole di base valgono due regole di equità:
+ * Oltre alle regole di base valgono due regole di equità, che non contano tra compagni di squadra:
  * - chi è in debito non può ridurre quello che potrebbe restituire (salvo scambiando con un suo creditore);
  * - nelle stanze pubbliche nessuno può cedere, al netto, più del 90% di quello che ha.
  */
@@ -110,6 +110,7 @@ export function problemiScambio(stato: Stato, bozza: BozzaScambio): string[] {
   if (pacchettoVuoto(bozza.dare) && pacchettoVuoto(bozza.avere)) out.push('Lo scambio è vuoto.');
   if (out.length > 0 || !da || !a) return out;
 
+  if (compagni(stato, da.id, a.id)) return out;
   const dopo = simula(stato, bozza);
   for (const [chi, altro] of [
     [da, a],
