@@ -78,18 +78,18 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** da un telefono sulla stessa Wi-Fi si apre la pagina di PoorDown.
 
 ### Fase 1 — Identità visiva · M
-- [ ] Tema e nomi del tabellone, nome delle carte (al posto di Treasure/Surprise), testi delle carte
-- [ ] Palette, tipografia, forma delle pedine, stile delle caselle, icone
-- [ ] Mockup di home, lobby e schermata di gioco
+- [x] Tema e nomi del tabellone, nome delle carte (al posto di Treasure/Surprise), testi delle carte
+- [x] Palette, tipografia, forma delle pedine, stile delle caselle, icone
+- [x] Mockup di home, lobby e schermata di gioco
 
 **Fatto quando:** approvi i mockup. Si può fare in parallelo alla Fase 2.
 
 ### Fase 2 — Motore: regole di base · M
-- [ ] Modello dati: tabellone, caselle, gruppi, giocatori, impostazioni, mazzi
-- [ ] Tabellone "Classico" PoorDown: 40 caselle, 8 gruppi, 4 stazioni, 2 società, 2 tasse, 3+3 caselle carta
-- [ ] Turno completo secondo la macchina a stati in [03 §2](docs/analisi/03-regole-turno.md): dadi, doppi, movimento, Via, acquisto, affitti (città, stazioni, società), tasse, carte (9 tipi di effetto), prigione, vacanza
-- [ ] Debito di base, bancarotta, fine partita
-- [ ] Test unitari per ogni regola
+- [x] Modello dati: tabellone, caselle, gruppi, giocatori, impostazioni, mazzi
+- [x] Tabellone "Classico" PoorDown: 40 caselle, 8 gruppi, 4 stazioni, 2 società, 2 tasse, 3+3 caselle carta
+- [x] Turno completo secondo la macchina a stati in [03 §2](docs/analisi/03-regole-turno.md): dadi, doppi, movimento, Via, acquisto, affitti (città, stazioni, società), tasse, carte (9 tipi di effetto), prigione, vacanza
+- [x] Debito di base, bancarotta, fine partita, vendita delle proprietà alla banca
+- [x] Test unitari per ogni regola e simulazione di partite intere
 
 **Fatto quando:** i test simulano partite intere senza errori.
 
@@ -109,10 +109,10 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** tu e i tuoi amici fate una partita vera in rete locale. **Primo traguardo da provare insieme.**
 
 ### Fase 5 — Economia completa · L
-- [ ] Case e hotel con costruzione uniforme, vendita edifici e proprietà, ipoteche e riscatto
+- [ ] Case e hotel con costruzione uniforme, vendita edifici, ipoteche e riscatto (la vendita delle proprietà c'è dalla Fase 2)
 - [ ] Aste: finestra condivisa, rilanci, conto alla rovescia
 - [ ] Scambi: crea, vedi, contro-proposta, annulla, osservatori, tutte le regole di validità e i limiti ([04 §4](docs/analisi/04-economia-fine-partita.md))
-- [ ] Debito agganciato al creditore, regole "affitto x2", "niente affitto in prigione", "cassa vacanza"
+- [x] Debito agganciato al creditore, regole "affitto x2", "niente affitto in prigione", "cassa vacanza" (fatto nella Fase 2)
 
 **Fatto quando:** ogni impostazione di gioco cambia davvero la partita, con test per ciascuna.
 
@@ -152,11 +152,14 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Proprietà di chi fa bancarotta | Tornano alla banca libere, senza asta automatica |
 | Impostazioni dopo "Un'altra partita" | Restano quelle della partita precedente |
 | Cronologia della chat per chi entra dopo | Mostrati gli ultimi 50 messaggi |
+| Carte "Ogni giocatore ti dà" e "Paga a ogni giocatore" senza contante | Il debito si aggancia come per l'affitto (richup non lo aggancia) |
+| Tirare i dadi con il saldo negativo | Non si può, né prima né dopo il lancio: prima si vende o si dichiara bancarotta |
 
 ---
 
-## 5. Decisioni aperte
+## 5. Decisioni prese
 
-1. **Tema del tabellone:** città italiane, luoghi inventati, tema ironico sulla povertà (in linea con il nome), o altro.
-2. **Stile grafico** (Fase 1): si sceglie sui mockup.
-3. **Nomi dei due mazzi di carte** e tono dei testi.
+1. **Tema del tabellone:** città italiane, una regione per gruppo ([docs/identita/tabellone-e-carte.md](docs/identita/tabellone-e-carte.md)).
+2. **Stile grafico:** "Partenze", il cartello di stazione (mockup in `apps/web/src/mockup/`).
+3. **Mazzi e testi:** Busta e Cartolina, tono sobrio.
+4. **Prezzi e affitti:** scala nostra, nella stessa tabella del tabellone.

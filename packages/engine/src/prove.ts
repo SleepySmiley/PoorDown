@@ -1,0 +1,142 @@
+/* Aiuti per i test del motore. Non fanno parte del gioco. */
+
+import { casoDaSeme } from './caso';
+import { caselleDellaRegione, giocatore, possiedeRegione, proprietabile } from './conti';
+import { IMPOSTAZIONI_PREDEFINITE } from './impostazioni';
+import { creaPartita } from './partita';
+import { applica } from './regole';
+import { tabellone } from './tabelloni';
+import type { Azione, Caso, Evento, IdGiocatore, Impostazioni, NomeMazzo, Stato } from './tipi';
+
+export const NOMI = ['Anna', 'Bruno', 'Carla', 'Dario', 'Elena', 'Fabio', 'Gina', 'Ugo'];
+/** Id dei giocatori di prova: 'a', 'b', 'c'… */
+export const ID = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+/** Partita con `n` giocatori in ordine fisso (a, b, c…): tocca ad 'a'. */
+export function partitaDiProva(n = 2, impostazioni: Partial<Impostazioni> = {}): Stato {
+  const esito = creaPartita(
+    ID.slice(0, n).map((id, i) => ({ id, nome: NOMI[i]!, colore: i + 1 })),
+    { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, ...impostazioni },
+    casoDaSeme(1),
+  );
+  if (!esito.ok) throw new Error(esito.messaggio);
+  return esito.stato;
+}
+
+/** Caso che restituisce i tiri indicati, in ordine. Finiti i tiri, il test fallisce. */
+export function dadi(...tiri: [number, number][]): Caso {
+  const valori = tiri.flat();
+  return {
+    intero(n) {
+      const v = valori.shift();
+      if (v === undefined) throw new Error('Il test ha tirato più dadi di quelli previsti.');
+      if (n !== 6) throw new Error(`Atteso un tiro di dado, chiesto un intero su ${n}.`);
+      return v - 1;
+    },
+  };
+}
+
+/** Esegue l'azione e fallisce se il motore la rifiuta. */
+export function esegui(stato: Stato, azione: Azione, caso: Caso = dadi()): { stato: Stato; eventi: Evento[] } {
+  const esito = applica(stato, azione, caso);
+  if (!esito.ok) throw new Error(`Azione ${azione.tipo} rifiutata: ${esito.messaggio}`);
+  return esito;
+}
+
+export function g(stato: Stato, id: IdGiocatore) {
+  const trovato = giocatore(stato, id);
+  if (!trovato) throw new Error(`Giocatore ${id} inesistente.`);
+  return trovato;
+}
+
+/** Assegna le caselle al giocatore (modifica lo stato di prova). */
+export function assegna(stato: Stato, id: IdGiocatore, ...caselle: number[]): Stato {
+  for (const i of caselle) stato.proprieta[i]!.proprietario = id;
+  return stato;
+}
+
+/** La prossima carta pescata da quel mazzo sarà `carta`. */
+export function primaCarta(stato: Stato, mazzo: NomeMazzo, carta: number): Stato {
+  const m = stato.mazzi[mazzo];
+  m.ordine = [carta, ...m.ordine.filter((c) => c !== carta)];
+  m.prossima = 0;
+  return stato;
+}
+
+/** Controlla che lo stato sia coerente. Restituisce l'elenco dei problemi (vuoto se va tutto bene). */
+export function problemi(s: Stato): string[] {
+  const tab = tabellone(s.mappa);
+  const out: string[] = [];
+  const n = tab.caselle.length;
+
+  if (s.fase === 'in_corso') {
+    const c = giocatore(s, s.turno.giocatore);
+    if (!c || c.eliminato) out.push('Il turno è di un giocatore che non è in gioco.');
+    if (s.turno.fase === 'prigione' && c?.prigione === null) out.push('Fase prigione ma il giocatore è libero.');
+  } else {
+    const rimasti = s.giocatori.filter((x) => !x.eliminato);
+    if (rimasti.length > 1) out.push('Partita finita con più di un giocatore in gioco.');
+    if (s.vincitore !== (rimasti[0]?.id ?? null)) out.push('Vincitore sbagliato.');
+  }
+
+  for (const x of s.giocatori) {
+    if (x.posizione < 0 || x.posizione >= n) out.push(`${x.id}: posizione fuori dal tabellone.`);
+    if (x.prigione !== null && (x.prigione < 0 || x.prigione > 3)) out.push(`${x.id}: tentativi di prigione errati.`);
+    if (x.prigione !== null && x.posizione !== tab.prigione) out.push(`${x.id}: in prigione ma fuori dalla cella.`);
+    const totaleDebiti = x.debiti.reduce((t, d) => t + d.importo, 0);
+    if (totaleDebiti > Math.max(0, -x.saldo)) out.push(`${x.id}: debiti (${totaleDebiti}) oltre il rosso (${x.saldo}).`);
+    for (const d of x.debiti) {
+      if (d.importo <= 0) out.push(`${x.id}: debito non positivo.`);
+      const cred = giocatore(s, d.creditore);
+      if (!cred || cred.eliminato) out.push(`${x.id}: debito verso chi non è in gioco.`);
+      if (d.creditore === x.id) out.push(`${x.id}: debito verso sé stesso.`);
+    }
+    if (x.eliminato) {
+      if (x.saldo !== 0 || x.debiti.length || x.carteGrazia.length) out.push(`${x.id}: eliminato con beni o debiti.`);
+    }
+  }
+
+  s.proprieta.forEach((p, i) => {
+    const c = proprietabile(tab, i);
+    if (!c !== !p) out.push(`Casella ${i}: proprietà dove non serve o mancante.`);
+    if (!p || !c) return;
+    if (p.proprietario === null) {
+      if (p.livello !== 0 || p.ipotecata) out.push(`Casella ${i}: libera ma con edifici o ipoteca.`);
+      return;
+    }
+    const owner = giocatore(s, p.proprietario);
+    if (!owner || owner.eliminato) out.push(`Casella ${i}: proprietario non in gioco.`);
+    if (p.livello < 0 || p.livello > 5) out.push(`Casella ${i}: livello ${p.livello}.`);
+    if (p.livello > 0) {
+      if (c.tipo !== 'citta') out.push(`Casella ${i}: edifici su una casella che non è una città.`);
+      else if (!possiedeRegione(s, p.proprietario, c.regione)) out.push(`Casella ${i}: edifici senza la regione intera.`);
+    }
+  });
+
+  for (const nome of ['busta', 'cartolina'] as const) {
+    const m = s.mazzi[nome];
+    const atteso = [...tab.mazzi[nome].keys()];
+    if ([...m.ordine].sort((x, y) => x - y).join() !== atteso.join()) out.push(`Mazzo ${nome}: non è una permutazione.`);
+    if (m.prossima < 0 || m.prossima >= m.ordine.length) out.push(`Mazzo ${nome}: indice fuori dal mazzo.`);
+    const detentori = s.giocatori.reduce((t, x) => t + x.carteGrazia.filter((c) => c === nome).length, 0);
+    if (detentori > 1) out.push(`Mazzo ${nome}: Carta Grazia in più mani.`);
+  }
+
+  if (s.cassaVacanza < 0) out.push('Cassa della Vacanza negativa.');
+  if (!s.impostazioni.cassaVacanza && s.cassaVacanza !== 0) out.push('Cassa della Vacanza piena con la regola spenta.');
+  return out;
+}
+
+/** Costruisce un livello su tutte le città di una regione posseduta per intero (simula la Fase 5). */
+export function costruisciSuRegione(s: Stato, regione: number): boolean {
+  const tab = tabellone(s.mappa);
+  const caselle = caselleDellaRegione(tab, regione);
+  const owner = s.proprieta[caselle[0]!]!.proprietario;
+  if (!owner || !possiedeRegione(s, owner, regione)) return false;
+  const costo = tab.regioni[regione]!.costoCasa * caselle.length;
+  const chi = g(s, owner);
+  if (chi.saldo < costo || caselle.some((i) => s.proprieta[i]!.livello >= 5)) return false;
+  chi.saldo -= costo;
+  for (const i of caselle) s.proprieta[i]!.livello++;
+  return true;
+}
