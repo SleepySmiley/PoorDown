@@ -29,6 +29,11 @@
   box-shadow: 0 0 0 2px var(--cemento-scuro);
 }
 
+/* Le cifre del timer cambiano ogni secondo: se girassero come le altre palette resterebbero quasi sempre a metà giro. */
+.timer .paletta {
+  animation: none;
+}
+
 .timer__anello {
   width: 28px;
   height: 28px;

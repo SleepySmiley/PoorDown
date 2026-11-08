@@ -109,6 +109,32 @@ describe('lobby', () => {
     expect(stanza.vista().partecipanti[0]!.connesso).toBe(true);
     expect(stanza.vista().spettatori).toBe(0);
   });
+
+  it('con due schede aperte, uscire da una non fa perdere il posto; uscire dall’ultima sì', () => {
+    const { stanza } = stanzaDiProva();
+    const [anna, bruno] = siedi(stanza, 'anna', 'bruno');
+    stanza.collega('seconda-scheda', TOKEN.anna);
+    stanza.esci('seconda-scheda');
+    expect(stanza.io(TOKEN.anna)).toBe(anna);
+    expect(stanza.vista().host).toBe(anna);
+    stanza.esci('conn-anna');
+    expect(stanza.io(TOKEN.anna)).toBeNull();
+    expect(stanza.vista().host).toBe(bruno);
+  });
+
+  it('nomi, nomi di squadra e messaggi fatti solo di caratteri invisibili valgono come vuoti', () => {
+    const { stanza } = stanzaDiProva({ squadre: true });
+    stanza.collega('conn-anna', TOKEN.anna);
+    stanza.collega('conn-bruno', TOKEN.bruno);
+    expect(stanza.siediti(TOKEN.anna, '​​', 1).ok).toBe(true);
+    expect(stanza.siediti(TOKEN.bruno, 'ㅤ ⠀', 2).ok).toBe(true);
+    for (const p of stanza.vista().partecipanti) expect(p.nome).toMatch(/^\p{Lu}\p{Ll}+ \p{Lu}\p{Ll}+$/u);
+    stanza.rinominaSquadra(TOKEN.anna, 0, '﻿­');
+    expect(stanza.vista().squadre[0]).toBe('Squadra 1');
+    expect(stanza.scrivi(TOKEN.anna, '​')).toMatchObject({ ok: false, codice: 'richiesta_non_valida' });
+    expect(stanza.scrivi(TOKEN.anna, ' ⠀ㅤ ', true)).toMatchObject({ ok: false, codice: 'richiesta_non_valida' });
+    expect(stanza.chat).toEqual([]);
+  });
 });
 
 describe('avvio e partita', () => {
@@ -238,6 +264,29 @@ describe('salvataggio', () => {
     copia.scrivi(TOKEN.anna, 'di nuovo');
     expect(copia.chat.map((m) => m.n)).toEqual([1, 2]);
   });
+
+  it('dati che non hanno la forma di una stanza salvata vengono rifiutati subito', () => {
+    const amb = ambienteDiProva();
+    const { stanza } = stanzaDiProva({ ordineCasuale: false }, amb);
+    siedi(stanza, 'anna', 'bruno');
+    const buona = () => JSON.parse(JSON.stringify(stanza.esporta())) as Record<string, unknown>;
+    const rovinate: [string, (d: Record<string, unknown>) => void][] = [
+      ['senza registro', (d) => delete d.registro],
+      ['posti null', (d) => (d.posti = null)],
+      ['un posto null', (d) => (d.posti = [null])],
+      ['chat non lista', (d) => (d.chat = {})],
+      ['fase sconosciuta', (d) => (d.fase = 'pausa')],
+      ['codice numerico', (d) => (d.codice = 12345)],
+      ['fase partita senza partita', (d) => (d.fase = 'partita')],
+      ['senza contatori', (d) => delete d.prossimaVoce],
+    ];
+    for (const [nome, rovina] of rovinate) {
+      const dati = buona();
+      rovina(dati);
+      expect(() => Stanza.importa(dati as never, amb), nome).toThrow(/non valida/);
+    }
+    expect(Stanza.importa(buona() as never, amb).posti).toHaveLength(2);
+  });
 });
 
 describe('economia e tempo', () => {
@@ -274,6 +323,18 @@ describe('economia e tempo', () => {
     expect(stanza.registro.at(-1)!.evento).toEqual({ tipo: 'asta_vinta', giocatore: bruno, casella: 1, importo: 12 });
     // Durante l'asta il tempo del turno era fermo: riparte intero.
     expect(stanza.attesa()).toBe(PRIMO_TURNO_MS);
+  });
+
+  it('un’offerta arrivata dopo la fine dell’asta non la riapre: prima si chiude l’asta, anche senza sveglia', () => {
+    const { amb, stanza, bruno } = astaPronta();
+    stanza.mossa(TOKEN.anna, { tipo: 'asta' });
+    expect(stanza.mossa(TOKEN.bruno, { tipo: 'offri', importo: 10 }).ok).toBe(true);
+    amb.avanza(10_000);
+    // Nessuna manutenzione né sveglia: arriva prima il rilancio di Anna.
+    expect(stanza.mossa(TOKEN.anna, { tipo: 'offri', importo: 12 }).ok).toBe(false);
+    expect(stanza.partita!.asta).toBeNull();
+    expect(stanza.partita!.proprieta[1]!.proprietario).toBe(bruno);
+    expect(stanza.raccogli()!.map((v) => v.evento)).toContainEqual({ tipo: 'asta_vinta', giocatore: bruno, casella: 1, importo: 10 });
   });
 
   it('le attività sugli scambi arrivano a tutti e spariscono con lo scambio o con il giocatore', () => {
@@ -421,14 +482,48 @@ describe('tempo, assenze e moderazione', () => {
   });
 
   it('chi sta giocando il suo turno non si toglie; nelle stanze pubbliche l’host non toglie nessuno', () => {
-    const privata = partitaA(['anna', 'bruno', 'carla']);
-    privata.stanza.mossa(TOKEN.anna, { tipo: 'bancarotta' });
-    expect(privata.stanza.espelli(TOKEN.bruno, privata.id[1]!)).toMatchObject({ ok: false });
-    // Ora tocca a Bruno, e l'host (Anna) è fuori ma resta host.
-    expect(privata.stanza.espelli(TOKEN.anna, privata.id[1]!)).toMatchObject({ ok: false, codice: 'sta_giocando' });
+    const privata = partitaA(['anna', 'bruno', 'carla'], { timerTurno: false });
+    const [anna, bruno] = privata.id;
+    // Anna finisce il turno: ora tocca a Bruno, che non si può togliere.
+    privata.stanza.mossa(TOKEN.anna, { tipo: 'lancia' });
+    if (privata.stanza.partita!.turno.giocatore === anna) privata.stanza.mossa(TOKEN.anna, { tipo: 'fine_turno' });
+    expect(privata.stanza.partita!.turno.giocatore).toBe(bruno);
+    expect(privata.stanza.espelli(TOKEN.anna, bruno!)).toMatchObject({ ok: false, codice: 'sta_giocando' });
 
     const pubblica = partitaA(['anna', 'bruno', 'carla'], { stanzaPrivata: false });
     expect(pubblica.stanza.espelli(TOKEN.anna, pubblica.id[2]!)).toMatchObject({ ok: false, codice: 'solo_host' });
+  });
+
+  it('l’host uscito dalla partita resta host finché guarda, ma non toglie più nessuno; se se ne va il ruolo passa', () => {
+    const { stanza, id } = partitaA(['anna', 'bruno', 'carla']);
+    const [anna, bruno, carla] = id;
+    stanza.mossa(TOKEN.anna, { tipo: 'bancarotta' });
+    expect(stanza.vista().host).toBe(anna);
+    // Tocca a Bruno: Carla non sta giocando, ma Anna è fuori dalla partita e non può toglierla.
+    expect(stanza.espelli(TOKEN.anna, carla!)).toMatchObject({ ok: false, codice: 'solo_host' });
+    expect(stanza.partita!.giocatori.find((g) => g.id === carla)!.eliminato).toBeNull();
+    // Ricaricando la pagina in un'altra scheda resta host.
+    stanza.collega('conn-anna-2', TOKEN.anna);
+    stanza.scollega('conn-anna');
+    expect(stanza.vista().host).toBe(anna);
+    // Chiude anche l'ultima scheda: l'host diventa la prima persona collegata ancora in gioco.
+    stanza.raccogli();
+    stanza.scollega('conn-anna-2');
+    expect(stanza.vista().host).toBe(bruno);
+    expect(stanza.raccogli()!.map((v) => v.evento)).toEqual([{ tipo: 'nuovo_host', giocatore: bruno, nome: 'Bruno' }]);
+    expect(stanza.espelli(TOKEN.bruno, carla!).ok).toBe(true);
+  });
+
+  it('l’host fuori dalla partita e scollegato passa il ruolo al primo che torna, se nessuno in gioco è collegato', () => {
+    const { stanza, id } = partitaA(['anna', 'bruno', 'carla']);
+    stanza.scollega('conn-bruno');
+    stanza.scollega('conn-carla');
+    stanza.mossa(TOKEN.anna, { tipo: 'bancarotta' });
+    stanza.scollega('conn-anna');
+    // Nessuno in gioco è collegato: il ruolo resta ad Anna finché non torna qualcuno che gioca.
+    expect(stanza.vista().host).toBe(id[0]);
+    stanza.collega('conn-carla-2', TOKEN.carla);
+    expect(stanza.vista().host).toBe(id[2]);
   });
 
   it('se l’host esce per assenza il ruolo passa al primo giocatore ancora in gioco', () => {
@@ -442,6 +537,27 @@ describe('tempo, assenze e moderazione', () => {
     expect(motivoUscita(stanza)).toMatchObject({ giocatore: id[0], motivo: 'assenza' });
     expect(stanza.vista().host).toBe(id[1]);
     expect(stanza.registro.at(-1)!.evento).toMatchObject({ tipo: 'nuovo_host', giocatore: id[1] });
+  });
+
+  it('se l’ultimo giocatore collegato esce dalla partita, la partita va in pausa (con o senza ricaricare la pagina)', () => {
+    const esito = (ricarica: boolean) => {
+      const { amb, stanza } = partitaA(['anna', 'bruno', 'carla'], { timerTurno: false });
+      stanza.scollega('conn-bruno');
+      stanza.scollega('conn-carla');
+      expect(stanza.inPausa()).toBe(false);
+      stanza.mossa(TOKEN.anna, { tipo: 'bancarotta' });
+      if (ricarica) {
+        stanza.scollega('conn-anna');
+        stanza.collega('conn-anna-2', TOKEN.anna);
+      }
+      // Anna guarda, ma è fuori dalla partita: non conta.
+      expect(stanza.inPausa()).toBe(true);
+      amb.avanza(ASSENZA_MS + 1);
+      stanza.manutenzione();
+      return { fase: stanza.fase, usciti: stanza.partita!.giocatori.filter((g) => g.eliminato).length };
+    };
+    expect(esito(false)).toEqual({ fase: 'partita', usciti: 1 });
+    expect(esito(true)).toEqual({ fase: 'partita', usciti: 1 });
   });
 
   it('chiedi tempo, +1 min e voto passano dal motore come le altre mosse', () => {
@@ -495,6 +611,18 @@ describe('fine partita', () => {
     amb.avanza(1);
     stanza.manutenzione();
     expect(stanza.posti.map((p) => p.id)).toEqual(ids.slice(1));
+  });
+
+  it('se due premono «Un’altra partita» insieme, il secondo trova la stanza già in lobby e va bene così', () => {
+    const { stanza, ids } = finita();
+    stanza.scollega('conn-anna');
+    expect(stanza.nuovaPartita(TOKEN.bruno).ok).toBe(true);
+    stanza.raccogli();
+    expect(stanza.nuovaPartita(TOKEN.carla)).toEqual({ ok: true, dati: null });
+    expect(stanza.raccogli()).toBeNull();
+    expect(stanza.vista().host).toBe(ids[1]);
+    // Chi guarda soltanto riceve sempre il rifiuto.
+    expect(stanza.nuovaPartita(TOKEN.dario)).toMatchObject({ ok: false, codice: 'non_seduto' });
   });
 
   it('chi torna alla home a partita finita libera il posto, e l’host passa al successivo', () => {

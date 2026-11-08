@@ -4,8 +4,8 @@
  * una partita da due schede.
  */
 
-import { useEffect, useState } from 'react';
-import { COLORI, type InfoServer } from '@poordown/engine';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { ASSENZA_MS, COLORI, type InfoServer } from '@poordown/engine';
 import { apriCollegamento } from './collegamento';
 import { tokenDelBrowser } from './token';
 
@@ -73,6 +73,87 @@ export const ingressi = {
     }
   },
 };
+
+/*
+ * Il posto lasciato in una partita in corso. Uscendo dalla stanza il posto resta: i turni passano da soli e,
+ * dopo due minuti senza nessuna scheda aperta (ASSENZA_MS), si perde. Se intanto nessun'altra persona in gioco
+ * è collegata la partita si ferma e il posto aspetta. Intanto la home offre di rientrare.
+ * Vale per la scheda (sessionStorage), come gli ingressi.
+ */
+export interface PostoTenuto {
+  codice: string;
+  /** Fin quando resta il posto (orologio di questo browser); `null` se la partita si è fermata ad aspettare. */
+  fino: number | null;
+}
+
+const POSTO = chiave('posto');
+
+function leggiPosto(): PostoTenuto | null {
+  try {
+    const dati: unknown = JSON.parse(sessionStorage.getItem(POSTO) ?? 'null');
+    if (typeof dati !== 'object' || dati === null) return null;
+    const { codice, fino } = dati as Record<string, unknown>;
+    return typeof codice === 'string' && (fino === null || typeof fino === 'number') ? { codice, fino } : null;
+  } catch {
+    return null;
+  }
+}
+
+let posto = leggiPosto();
+const ascoltatoriPosto = new Set<() => void>();
+
+function cambiaPosto(nuovo: PostoTenuto | null): void {
+  posto = nuovo;
+  try {
+    if (nuovo) sessionStorage.setItem(POSTO, JSON.stringify(nuovo));
+    else sessionStorage.removeItem(POSTO);
+  } catch {
+    // niente: vale finché la pagina resta aperta
+  }
+  for (const fn of ascoltatoriPosto) fn();
+}
+
+/** Il mio posto nella stanza seguita, se uscendo adesso resterebbe tenuto. */
+function postoDaTenere(codice: string): PostoTenuto | null {
+  const { stanza, io } = collegamento.leggi();
+  const partita = stanza?.partita;
+  if (!stanza || stanza.codice !== codice || !io || stanza.fase !== 'partita' || partita?.fase !== 'in_corso') return null;
+  const me = partita.giocatori.find((g) => g.id === io);
+  if (!me || me.eliminato) return null;
+  const persone = new Set(stanza.partecipanti.filter((p) => !p.bot && p.connesso).map((p) => p.id));
+  const altri = partita.giocatori.some((g) => g.id !== io && !g.eliminato && persone.has(g.id));
+  if (!altri) return { codice, fino: null };
+  const adesso = collegamento.orologio();
+  return { codice, fino: Date.now() + (me.offlineDa ?? adesso) + ASSENZA_MS - adesso };
+}
+
+export const postoTenuto = {
+  /** Da chiamare uscendo dalla stanza `codice`, prima di smettere di seguirla. */
+  ricorda(codice: string): void {
+    const nuovo = postoDaTenere(codice);
+    if (nuovo) cambiaPosto(nuovo);
+    else if (posto?.codice === codice) cambiaPosto(null);
+  },
+  /** Rientrando nella stanza il ricordo non serve più. */
+  dimentica(codice: string): void {
+    if (posto?.codice === codice) cambiaPosto(null);
+  },
+  leggi(): PostoTenuto | null {
+    return posto;
+  },
+  ascolta(fn: () => void): () => void {
+    ascoltatoriPosto.add(fn);
+    return () => ascoltatoriPosto.delete(fn);
+  },
+};
+
+/** Il posto tenuto, per un componente React: si aggiorna quando cambia. */
+export function usePostoTenuto(): PostoTenuto | null {
+  return useSyncExternalStore(
+    (fn) => postoTenuto.ascolta(fn),
+    () => postoTenuto.leggi(),
+  );
+}
 
 let info: Promise<InfoServer | null> | null = null;
 

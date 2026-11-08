@@ -14,6 +14,9 @@ import {
   type Mossa,
   type Stato,
 } from '@poordown/engine';
+import { collegamento } from '../rete/sessione';
+import { useCollegamento } from '../rete/useCollegamento';
+import { destinoDeiMieiBeni } from '../ui/beni';
 import { Icona } from '../ui/icone';
 import { Finestra } from './Colonne';
 import { ContoAllaRovescia } from './Timer';
@@ -102,6 +105,8 @@ const USCITA: Partial<Record<MotivoUscita, { titolo: string; testo: string }>> =
     titolo: 'Fuori dalla partita',
     testo: 'La maggioranza dei giocatori ha votato per farti uscire.',
   },
+  // Niente per l'espulsione: chi è tolto dall'host perde anche il posto (non è più `io`) e torna alla home
+  // con un avviso, anche se è successo mentre era scollegato (vedi Stanza).
 };
 
 function chiave(codice: string, io: IdGiocatore): string {
@@ -110,7 +115,7 @@ function chiave(codice: string, io: IdGiocatore): string {
 
 /**
  * La finestra per chi è uscito per tempo, assenza o voto: può restare a guardare o tornare alla home.
- * Si mostra una volta sola per scheda.
+ * Dice anche dove sono finiti i suoi beni (a squadre, al compagno). Si mostra una volta sola per scheda.
  */
 export function FuoriDallaPartita({
   codice,
@@ -124,9 +129,10 @@ export function FuoriDallaPartita({
   onEsci: () => void;
 }): ReactNode {
   const [chiusa, setChiusa] = useState(false);
+  const { registro } = useCollegamento(collegamento);
   const me = partita.giocatori.find((g) => g.id === io);
   const testi = me?.eliminato ? USCITA[me.eliminato.motivo] : undefined;
-  if (!io || !testi || chiusa) return null;
+  if (!io || !me || !testi || chiusa) return null;
   try {
     if (sessionStorage.getItem(chiave(codice, io))) return null;
   } catch {
@@ -143,7 +149,9 @@ export function FuoriDallaPartita({
   return (
     <Finestra titolo={testi.titolo} onChiudi={guarda}>
       <div className="finestra__corpo">
-        <p>{testi.testo} Le tue proprietà sono tornate alla banca.</p>
+        <p>
+          {testi.testo} {destinoDeiMieiBeni(partita, me, registro)}
+        </p>
         <p>
           {partita.fase === 'finita'
             ? 'Intanto la partita è finita.'

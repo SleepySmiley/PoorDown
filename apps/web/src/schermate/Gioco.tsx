@@ -27,6 +27,7 @@ import {
 } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
 import { avvisa } from '../ui/avvisi';
+import { destinoDeiBeni } from '../ui/beni';
 import { caselleVista } from '../ui/caselle';
 import { Dado, Pedina, Registro, Stemma } from '../ui/comuni';
 import { iniziale } from '../ui/utili';
@@ -38,7 +39,7 @@ import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } f
 import { FuoriDallaPartita, NotaVoto, PulsanteVoto } from './Moderazione';
 import { useScena } from './regia';
 import { FinePartita, PannelloStatistiche, StatisticheComplete } from './FinePartita';
-import { EditorScambio, PannelloScambi, VediScambio } from './Scambi';
+import { EditorScambio, PannelloScambi, VediScambio, type BozzaProposta } from './Scambi';
 import { SchedaProprieta, Tabellone } from './Tabellone';
 import { ESITO_USCITA, righeRegistro } from './testi';
 import { TimerTurno } from './Timer';
@@ -129,28 +130,15 @@ function cosaFa(attivita: Attivita | undefined, assente: boolean): string {
   }
 }
 
-/**
- * A squadre, il compagno che raccoglie i beni di `g` se esce: il primo della sua squadra ancora in gioco
- * dopo di lui nell'ordine dei turni (come nel motore).
- */
-function erede(partita: Stato, g: Giocatore): Giocatore | undefined {
-  if (g.squadra === null) return undefined;
-  const i = partita.giocatori.findIndex((x) => x.id === g.id);
-  const ordine = [...partita.giocatori.slice(i + 1), ...partita.giocatori.slice(0, i)];
-  return ordine.find((x) => !x.eliminato && x.squadra === g.squadra);
-}
-
-/** Cosa succede ai beni di `g` se esce dalla partita, detto a lui (`tu`) o agli altri. */
-function destinoDeiBeni(partita: Stato, g: Giocatore, tu: boolean): string {
-  const compagno = erede(partita, g);
-  const suoi = tu ? 'le tue' : 'le sue';
-  if (!compagno) return `${tu ? 'Le tue' : 'Le sue'} proprietà tornano alla banca.`;
-  if (g.debiti.length === 0) return `Contanti, proprietà e Carte Grazia passano a ${compagno.nome}, ${tu ? 'tuo' : 'suo'} compagno di squadra.`;
-  return `I beni pagano i debiti, quello che avanza va in contanti a ${compagno.nome} e ${suoi} proprietà tornano alla banca.`;
-}
-
 /** Le finestre degli scambi: nuova proposta (o controproposta su `base`) oppure uno scambio da vedere. */
-type FinestraScambio = { tipo: 'crea'; base?: number } | { tipo: 'vedi'; id: number };
+type QualeFinestra = { tipo: 'crea'; base?: number } | { tipo: 'vedi'; id: number };
+/** Con il numero del turno in cui si è aperta. */
+type FinestraScambio = QualeFinestra & { turno: number };
+
+/** Dove sta la bozza di una finestra «crea»: una per la proposta nuova, una per ogni controproposta. */
+function chiaveBozza(base: number | undefined): string {
+  return base === undefined ? 'nuova' : `contro-${base}`;
+}
 
 function attivitaDi(f: FinestraScambio | null): Attivita | null {
   if (!f) return null;
@@ -287,7 +275,9 @@ export function Gioco({
   const [bancarotta, setBancarotta] = useState(false);
   const [daTogliere, setDaTogliere] = useState<Giocatore | null>(null);
   const [consiglio, setConsiglio] = useState(true);
-  const [finestraChiesta, setFinestraScambio] = useState<FinestraScambio | null>(null);
+  const [finestraChiesta, setFinestraChiesta] = useState<FinestraScambio | null>(null);
+  const [bozze, setBozze] = useState<Record<string, BozzaProposta>>({});
+  const [uscita, setUscita] = useState(false);
   const [statistiche, setStatistiche] = useState(false);
   // I coriandoli partono solo se la fine arriva mentre si guarda, non a chi ricarica la pagina dopo.
   const [vistaInCorso] = useState(inCorso);
@@ -308,6 +298,8 @@ export function Gioco({
 
   /* ---------- Scambi ---------- */
 
+  const apriScambio = (f: QualeFinestra | null) => setFinestraChiesta(f && { ...f, turno: vivo.turno.numero });
+
   // La finestra resta aperta finché ha senso: lo scambio esiste ancora, io sono ancora in gioco.
   const scambioVisto = finestraChiesta?.tipo === 'vedi' ? vivo.scambi.find((x) => x.id === finestraChiesta.id) : undefined;
   const baseTrattativa =
@@ -319,34 +311,50 @@ export function Gioco({
     (finestraChiesta?.tipo === 'vedi'
       ? scambioVisto !== undefined
       : finestraChiesta?.tipo === 'crea' && giocoIo !== null && (finestraChiesta.base === undefined || baseTrattativa !== undefined));
-  const finestraScambio = finestraValida ? finestraChiesta : null;
+  const finestraAperta = finestraValida ? finestraChiesta : null;
+  // Quando comincia il mio turno, la finestra aperta prima si mette da parte: i pulsanti del turno restano
+  // in vista. La bozza resta salva e la finestra torna quando il turno finisce.
+  const rimandata =
+    finestraAperta !== null && giocoIo !== null && vivo.turno.giocatore === giocoIo && finestraAperta.turno !== vivo.turno.numero;
+  const finestraScambio = rimandata ? null : finestraAperta;
+  const tipoRimandata = rimandata ? finestraAperta.tipo : null;
+  useEffect(() => {
+    if (tipoRimandata === 'crea') avvisa('Tocca a te: la bozza dello scambio è salva e si riapre a fine turno.');
+    else if (tipoRimandata === 'vedi') avvisa('Tocca a te: lo scambio si riapre a fine turno.');
+  }, [tipoRimandata]);
 
   // Gli altri vedono se sto creando, guardando o trattando uno scambio.
   useEffect(() => collegamento.segnalaAttivita(attivitaDi(finestraScambio)), [finestraScambio]);
   useEffect(() => () => collegamento.segnalaAttivita(null), []);
 
-  // Chi riceve una proposta la vede subito, a meno che non stia già preparando uno scambio.
-  const finestraAttuale = useRef(finestraScambio);
+  // Chi riceve una proposta la vede subito, a meno che non stia già preparando uno scambio (anche messo da parte).
+  const finestraAttuale = useRef(finestraAperta);
   useEffect(() => {
-    finestraAttuale.current = finestraScambio;
-  }, [finestraScambio]);
+    finestraAttuale.current = finestraAperta;
+  }, [finestraAperta]);
   useEffect(
     () =>
       collegamento.ascoltaVoci((voci) => {
         for (const v of voci) {
           const e = v.evento;
           if (e.tipo !== 'scambio_proposto' || e.a !== io) continue;
+          const partitaOra = collegamento.leggi().stanza?.partita;
           if (finestraAttuale.current?.tipo === 'crea') {
-            const da = collegamento.leggi().stanza?.partita?.giocatori.find((g) => g.id === e.da);
+            const da = partitaOra?.giocatori.find((g) => g.id === e.da);
             avvisa(`${da?.nome ?? 'Un giocatore'} ti ha proposto uno scambio: lo trovi in «Scambi».`);
           } else {
-            setFinestraScambio({ tipo: 'vedi', id: e.scambio });
+            setFinestraChiesta({ tipo: 'vedi', id: e.scambio, turno: partitaOra?.turno.numero ?? 0 });
           }
         }
       }),
     [io],
   );
 
+  /** Chiude l'editor e scarta la sua bozza: dopo l'invio, o se lo chiudo io. */
+  const chiudiEditor = (chiave: string) => {
+    setFinestraChiesta(null);
+    setBozze((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== chiave)));
+  };
 
 
   /* ---------- Schede aperte ---------- */
@@ -433,8 +441,8 @@ export function Gioco({
 
   const connessi = new Map(stanza.partecipanti.map((p) => [p.id, p.connesso]));
   const bot = new Set(stanza.partecipanti.filter((p) => p.bot).map((p) => p.id));
-  // L'host di una stanza privata può togliere dalla partita chi non sta giocando il suo turno.
-  const puoTogliere = inCorso && io !== null && stanza.host === io && stanza.impostazioni.stanzaPrivata;
+  // L'host di una stanza privata, finché è in gioco, può togliere dalla partita chi non sta giocando il suo turno.
+  const puoTogliere = inCorso && giocoIo !== null && stanza.host === giocoIo && stanza.impostazioni.stanzaPrivata;
   const mie = me ? possedute(partita, me.id) : [];
   const popoverBordo = scheda;
   const casellaMia = mia ? caselle[mia.n] : undefined;
@@ -530,21 +538,25 @@ export function Gioco({
         scambio={scambioVisto}
         attivita={attivita}
         inviando={inviando}
-        onMossa={(m) => mossa(m, () => setFinestraScambio(null))}
-        onTratta={() => setFinestraScambio({ tipo: 'crea', base: scambioVisto.id })}
-        onChiudi={() => setFinestraScambio(null)}
+        onMossa={(m) => mossa(m, () => apriScambio(null))}
+        onTratta={() => apriScambio({ tipo: 'crea', base: scambioVisto.id })}
+        onChiudi={() => apriScambio(null)}
       />
     );
   } else if (finestraScambio?.tipo === 'crea' && giocoIo) {
+    // La bozza vive qui, non nell'editor: un'asta o l'inizio del mio turno lo chiudono senza perderla.
+    const chiave = chiaveBozza(finestraScambio.base);
     finestraSopra = (
       <EditorScambio
-        key={finestraScambio.base ?? 'nuovo'}
+        key={chiave}
         partita={vivo}
         io={giocoIo}
         base={baseTrattativa}
+        bozza={bozze[chiave]}
         inviando={inviando}
-        onInvia={(proposta) => mossa(proposta, () => setFinestraScambio(null))}
-        onChiudi={() => setFinestraScambio(null)}
+        onBozza={(b) => setBozze((x) => ({ ...x, [chiave]: b }))}
+        onInvia={(proposta) => mossa(proposta, () => chiudiEditor(chiave))}
+        onChiudi={() => chiudiEditor(chiave)}
       />
     );
   }
@@ -558,7 +570,8 @@ export function Gioco({
             io={io}
             chat={chat}
             scrivono={scrivono}
-            onEsci={onEsci}
+            // Chi è ancora in gioco conferma prima di uscire: i suoi turni continuano senza di lui.
+            onEsci={giocoIo ? () => setUscita(true) : onEsci}
             onImpostazioni={() => setImpostazioni(true)}
           />
         }
@@ -662,8 +675,8 @@ export function Gioco({
                 partita={vivo}
                 io={giocoIo}
                 attivita={attivita}
-                onCrea={giocoIo ? () => setFinestraScambio({ tipo: 'crea' }) : undefined}
-                onApri={(id) => setFinestraScambio({ tipo: 'vedi', id })}
+                onCrea={giocoIo ? () => apriScambio({ tipo: 'crea' }) : undefined}
+                onApri={(id) => apriScambio({ tipo: 'vedi', id })}
               />
             )}
 
@@ -767,6 +780,33 @@ export function Gioco({
           <div className="finestra__scorri">
             <p className="impostazioni__nota">Durante la partita le impostazioni non si possono cambiare.</p>
             <ListaImpostazioni imp={partita.impostazioni} modificabile={false} />
+          </div>
+        </Finestra>
+      )}
+
+      {uscita && giocoIo && (
+        <Finestra titolo="Torna alla home" onChiudi={() => setUscita(false)}>
+          <div className="finestra__corpo">
+            <p>
+              Sei ancora in gioco: mentre sei via i tuoi turni passano da soli e, se non rientri entro due minuti, perdi il
+              posto nella partita.
+            </p>
+          </div>
+          <div className="finestra__azioni">
+            <button type="button" className="pulsante pulsante--fantasma" onClick={() => setUscita(false)}>
+              Resta
+            </button>
+            <button
+              type="button"
+              className="pulsante pulsante--rosso"
+              onClick={() => {
+                setUscita(false);
+                onEsci();
+              }}
+            >
+              <Icona nome="esci" />
+              Torna alla home
+            </button>
           </div>
         </Finestra>
       )}

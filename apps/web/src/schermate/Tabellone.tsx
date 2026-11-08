@@ -1,6 +1,8 @@
 import '../stili/tabellone.css';
 import type { CSSProperties, ReactNode } from 'react';
 import {
+  affitto,
+  alleati,
   euro,
   LIVELLO_ALBERGO,
   proprietabile,
@@ -32,6 +34,45 @@ function possesso(partita: Stato | null, n: number): Possesso | undefined {
   return proprietario ? { proprietario, livello: p.livello, ipotecata: p.ipotecata } : undefined;
 }
 
+/**
+ * Affitti della scheda calcolati dal motore, come se il proprietario non fosse in prigione e la casella
+ * non fosse ipotecata: così con «Affitto doppio» la riga senza case mostra il doppio.
+ * Per le città una riga per livello; per stazioni e servizi `undefined` (la tabella fissa va bene).
+ */
+function affittiCitta(partita: Stato, n: number): number[] | undefined {
+  const tab = tabellone(partita.mappa);
+  const p = partita.proprieta[n];
+  if (tab.caselle[n]?.tipo !== 'citta' || !p?.proprietario) return undefined;
+  return Array.from({ length: LIVELLO_ALBERGO + 1 }, (_, livello) =>
+    affitto(
+      {
+        ...partita,
+        impostazioni: { ...partita.impostazioni, nienteAffittoInPrigione: false },
+        proprieta: partita.proprieta.map((x, i) => (i === n && x ? { ...x, livello, ipotecata: false } : x)),
+      },
+      n,
+      0,
+    ),
+  );
+}
+
+/** La riga della tabella che vale adesso: livello della città, o quante stazioni/servizi ha il proprietario. -1 se nessuna. */
+function rigaAttuale(partita: Stato, n: number): number {
+  const tab = tabellone(partita.mappa);
+  const c = tab.caselle[n];
+  const p = partita.proprieta[n];
+  // Ipotecata non riscuote: nessuna riga evidenziata.
+  if (!c || !p?.proprietario || p.ipotecata) return -1;
+  if (c.tipo === 'citta') return p.livello;
+  if (c.tipo !== 'stazione' && c.tipo !== 'servizio') return -1;
+  // Come il motore: contano anche quelle dei compagni di squadra, non quelle ipotecate.
+  const proprietario = p.proprietario;
+  const quante = partita.proprieta.filter(
+    (x, i) => x?.proprietario != null && !x.ipotecata && tab.caselle[i]?.tipo === c.tipo && alleati(partita, x.proprietario, proprietario),
+  ).length;
+  return quante - 1;
+}
+
 /* ---------------- Scheda della proprietà ---------------- */
 
 export function SchedaProprieta({
@@ -60,10 +101,17 @@ export function SchedaProprieta({
   const prop = proprietabile(tab, n);
   if (!c || !prop) return null;
   const p = possesso(partita, n);
-  const righe = righeAffitto(tab, n);
+  const veri = partita ? affittiCitta(partita, n) : undefined;
+  // Con la regione completa e la regola «Affitto doppio» la riga senza case raddoppia.
+  const doppio = prop.tipo === 'citta' && (veri?.[0] ?? 0) > prop.affitti[0];
+  const righe = righeAffitto(tab, n).map(([voce, importo], i): [string, string] => {
+    const vero = veri?.[i];
+    return [i === 0 && doppio ? 'Affitto doppio' : voce, vero === undefined ? importo : euro(vero)];
+  });
   const regione = prop.tipo === 'citta' ? tab.regioni[prop.regione] : undefined;
-  // Ipotecata non riscuote: nessuna riga di affitto evidenziata.
-  const livello = prop.tipo === 'citta' && p && !p.ipotecata ? p.livello : -1;
+  // Con «Niente affitto dalla prigione» il proprietario in prigione non incassa: nessuna riga evidenziata.
+  const inPrigione = partita !== null && p !== undefined && partita.impostazioni.nienteAffittoInPrigione && p.proprietario.prigione !== null;
+  const livello = partita && !inPrigione ? rigaAttuale(partita, n) : -1;
   return (
     <article
       className={className ? `scheda ${className}` : 'scheda'}
@@ -84,6 +132,7 @@ export function SchedaProprieta({
         )}
       </header>
       {p?.ipotecata && <p className="scheda__ipoteca">Ipotecata: non riscuote affitti</p>}
+      {inPrigione && !p?.ipotecata && <p className="scheda__ipoteca">Il proprietario è in prigione: adesso l’affitto è 0 €</p>}
       {ipoteca && <div className="scheda__ipoteca-azione">{ipoteca}</div>}
       <table className="scheda__affitti">
         <thead>

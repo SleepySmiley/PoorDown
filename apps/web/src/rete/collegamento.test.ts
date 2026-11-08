@@ -157,6 +157,34 @@ describe('Collegamento', () => {
     expect(presa.inviati.at(-1)).toEqual({ nome: 'entra', dati: { codice: 'abcde' } });
   });
 
+  it('dopo una disconnessione passa a chi ascolta le voci nate intanto (non al primo ingresso)', async () => {
+    const { presa, collegamento } = prepara();
+    const voci: VoceRegistro[][] = [];
+    collegamento.ascoltaVoci((v) => voci.push(v));
+    await collegamento.entra('abcde');
+    expect(voci).toEqual([]);
+
+    presa.arriva('disconnect');
+    presa.server.entra = () => ({ ok: true, dati: istantanea(12, { io: null, registro: [voce(1), voce(2), voce(3)] }) });
+    presa.arriva('connect');
+    await vi.waitFor(() => expect(collegamento.leggi().stanza!.versione).toBe(12));
+    expect(voci).toEqual([[voce(2), voce(3)]]);
+    // Chi ascolta trova già lo stato nuovo (qui: il posto non c'è più).
+    expect(collegamento.leggi().io).toBeNull();
+  });
+
+  it('anche le voci recuperate con la risincronizzazione arrivano a chi ascolta, una volta sola', async () => {
+    const { presa, collegamento } = prepara();
+    const voci: VoceRegistro[][] = [];
+    collegamento.ascoltaVoci((v) => voci.push(v));
+    await collegamento.entra('abcde');
+    presa.server.sincronizza = () => ({ ok: true, dati: istantanea(9, { registro: [voce(1), voce(2), voce(3)] }) });
+    presa.arriva('aggiornamento', aggiornamento(8, voce(3)));
+    await vi.waitFor(() => expect(collegamento.leggi().stanza!.versione).toBe(9));
+    presa.arriva('aggiornamento', aggiornamento(10, voce(4)));
+    expect(voci).toEqual([[voce(2), voce(3)], [voce(4)]]);
+  });
+
   it('se la stanza non esiste più smette di seguirla e lo dice', async () => {
     const { presa, collegamento } = prepara();
     presa.server.entra = () => ({ ok: false, codice: 'stanza_inesistente', messaggio: 'Non trovo la stanza ABCDE.' });

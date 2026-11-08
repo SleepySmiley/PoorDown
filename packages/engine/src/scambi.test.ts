@@ -198,6 +198,23 @@ describe('regole di equità', () => {
     expect(codice(s, proposta('b', 'a', { soldi: 30 }, {}))).toBeUndefined();
   });
 
+  it('per la regola del debito conta solo quello che si deve agli altri giocatori, non il rosso verso la banca', () => {
+    // 'a' è a −1000: 10 € li deve a 'c', il resto alla banca. Vende Roma (liquidazione 165) a 'b' per 150 €:
+    // 'c' incassa subito tutto quello che gli spetta.
+    const s = assegna(partita(3), 'a', ROMA);
+    g(s, 'a').saldo = -1000;
+    g(s, 'a').debiti = [{ creditore: 'c', importo: 10 }];
+    const vendita = proposta('a', 'b', { caselle: [ROMA] }, { soldi: 150 });
+    expect(codice(s, vendita)).toBeUndefined();
+    // Solo rosso verso la banca: nessun creditore da proteggere.
+    g(s, 'a').debiti = [];
+    expect(codice(s, proposta('a', 'b', { caselle: [ROMA] }, {}))).toBeUndefined();
+    // Con 300 € dovuti a 'c' la stessa vendita gli toglie garanzia: prima poteva recuperare 235 € (Siena e Roma),
+    // dopo 150 subito più i 70 di Siena.
+    g(s, 'a').debiti = [{ creditore: 'c', importo: 300 }];
+    expect(messaggio(s, vendita)).toMatch(/Anna è in debito/);
+  });
+
   it('nelle stanze pubbliche non si regala quasi tutto; nelle private sì', () => {
     const pubblica = assegna(partita(2, { stanzaPrivata: false }), 'a', ROMA, STAZIONE_NORD);
     g(pubblica, 'a').saldo = 100;

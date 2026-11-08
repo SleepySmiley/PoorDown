@@ -403,7 +403,8 @@ export function RigaGiocatore({
         (g.tu || g.fuori ? (
           <span className="pulsante-icona giocatore__senza-x" aria-hidden="true" />
         ) : bloccoEspulsione ? (
-          <span className="con-suggerimento" data-testo={bloccoEspulsione}>
+          // La X sta sul bordo destro della colonna: il suggerimento si allinea a destra, dentro la pagina.
+          <span className="con-suggerimento con-suggerimento--destra" data-testo={bloccoEspulsione}>
             <button type="button" className="pulsante-icona" aria-label={etichetta} disabled>
               <Icona nome="chiudi" />
             </button>

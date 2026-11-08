@@ -89,9 +89,12 @@ export function Asta({
               <div className="asta__rilanci">
                 {RILANCI.map((r) => {
                   const importo = attuale + r;
+                  // Allo zero l'asta è finita anche se il server non l'ha ancora chiusa: niente più rilanci.
                   const blocco = inviando
                     ? 'Un attimo…'
-                    : (verifica(partita, { tipo: 'offri', giocatore: me.id, importo })?.messaggio ?? null);
+                    : restanti <= 0
+                      ? 'Tempo scaduto: l’asta si sta chiudendo.'
+                      : (verifica(partita, { tipo: 'offri', giocatore: me.id, importo })?.messaggio ?? null);
                   return (
                     <span key={r} className="con-suggerimento" data-testo={blocco ?? undefined}>
                       <button

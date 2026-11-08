@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { IdGiocatore } from '@poordown/engine';
 import { statoNavigazione, vai } from '../navigazione';
-import { collegamento, ingressi } from '../rete/sessione';
+import { collegamento, ingressi, postoTenuto } from '../rete/sessione';
 import { useCollegamento } from '../rete/useCollegamento';
 import { avvisa } from '../ui/avvisi';
 import { Dado } from '../ui/comuni';
@@ -43,9 +43,13 @@ function Caricamento({ rete }: { rete: 'in_corso' | 'attivo' | 'perso' }): React
   );
 }
 
-/** Esce dalla stanza e torna alla home. In lobby libera il posto; in partita il posto resta. */
-function esciDallaStanza(avviso?: string): void {
+/**
+ * Esce dalla stanza e torna alla home. In lobby libera il posto; in partita il posto resta per un po',
+ * e la home offre di rientrare.
+ */
+function esciDallaStanza(codice: string, avviso?: string): void {
   ingressi.dimentica();
+  postoTenuto.ricorda(codice);
   void collegamento.esci();
   if (avviso) avvisa(avviso);
   vai('/');
@@ -59,19 +63,21 @@ export function Stanza({ codice }: { codice: string }): ReactNode {
   useEffect(() => {
     if (!dentro) return;
     ingressi.segna(codice);
+    postoTenuto.dimentica(codice);
     if (collegamento.codiceSeguito() !== codice) void collegamento.entra(codice);
   }, [dentro, codice]);
 
   // Stanza inesistente, chiusa o scaduta: si torna alla home con il motivo.
   useEffect(() => {
-    if (dentro && stato.avviso) esciDallaStanza(stato.avviso);
-  }, [dentro, stato.avviso]);
+    if (dentro && stato.avviso) esciDallaStanza(codice, stato.avviso);
+  }, [dentro, codice, stato.avviso]);
 
   useEffect(() => {
     if (stato.io) ultimoIo.current = stato.io;
   }, [stato.io]);
 
   // Espulsione: il registro dice che il mio posto è stato tolto dall'host (in lobby o in partita).
+  // Vale anche se è successo mentre ero scollegato: al rientro il collegamento passa le voci perse.
   useEffect(
     () =>
       collegamento.ascoltaVoci((voci) => {
@@ -80,17 +86,17 @@ export function Stanza({ codice }: { codice: string }): ReactNode {
         for (const { evento: e } of voci) {
           if (e.tipo === 'uscita' && e.motivo === 'espulsione' && e.giocatore === io) {
             ultimoIo.current = null;
-            esciDallaStanza('Sei stato espulso dalla stanza.');
+            esciDallaStanza(codice, 'Sei stato espulso dalla stanza.');
             return;
           }
           if (e.tipo === 'rimozione' && e.motivo === 'espulsione' && e.giocatore === io) {
             ultimoIo.current = null;
-            esciDallaStanza('L’host ti ha tolto dalla partita.');
+            esciDallaStanza(codice, 'L’host ti ha tolto dalla partita.');
             return;
           }
         }
       }),
-    [],
+    [codice],
   );
 
   if (!dentro) return <Home invito={codice} onEntra={() => setDentro(true)} />;
@@ -104,7 +110,7 @@ export function Stanza({ codice }: { codice: string }): ReactNode {
     registro: stato.registro,
     chat: stato.chat,
     scrivono: stato.scrivono,
-    onEsci: () => esciDallaStanza(),
+    onEsci: () => esciDallaStanza(codice),
   };
   const inGioco =
     stanza.fase === 'partita' && stanza.partita?.giocatori.some((g) => g.id === stato.io && !g.eliminato) === true;

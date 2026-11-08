@@ -127,6 +127,7 @@ export function problemi(s: Stato): string[] {
   const t = s.turno;
   if (s.fase === 'in_corso') {
     if ((t.tempo.fermoDa !== null) !== (s.asta !== null)) out.push('Orologio del turno fermo senza asta, o che scorre durante l’asta.');
+    if (t.tempo.assenteDa != null && giocatore(s, t.giocatore)?.offlineDa === null) out.push('Grazia da scollegato per chi è collegato.');
     if (t.tempo.regalato !== t.tempo.regali.length * 60_000) out.push('Tempo regalato che non torna con i regali.');
     if (t.votazione.voti.includes(t.giocatore)) out.push('Voto di chi gioca contro sé stesso.');
     if (t.votazione.voti.some((id) => giocatore(s, id)?.eliminato !== null)) out.push('Voto di chi non è in gioco.');
@@ -163,9 +164,16 @@ export function problemi(s: Stato): string[] {
   }
 
   tab.regioni.forEach((_, r) => {
-    const livelli = caselleDellaRegione(tab, r).map((i) => s.proprieta[i]!.livello);
-    if (s.impostazioni.costruzioneUniforme && Math.max(...livelli) - Math.min(...livelli) > 1) {
-      out.push(`Regione ${r}: costruzione non uniforme (${livelli.join(', ')}).`);
+    const caselle = caselleDellaRegione(tab, r);
+    const livelli = caselle.map((i) => s.proprieta[i]!.livello);
+    // Uniforme tra le città di ciascun proprietario: a squadre ognuno vende le sue case senza guardare i compagni.
+    // Chi ha ereditato le città di un compagno uscito può averle a livelli diversi dalle sue.
+    for (const id of new Set(caselle.map((i) => s.proprieta[i]!.proprietario))) {
+      if (!s.impostazioni.costruzioneUniforme || id === null) continue;
+      const squadra = giocatore(s, id)?.squadra ?? null;
+      if (squadra !== null && s.giocatori.some((x) => x.squadra === squadra && x.eliminato)) continue;
+      const suoi = caselle.filter((i) => s.proprieta[i]!.proprietario === id).map((i) => s.proprieta[i]!.livello);
+      if (Math.max(...suoi) - Math.min(...suoi) > 1) out.push(`Regione ${r}: costruzione non uniforme per ${id} (${suoi.join(', ')}).`);
     }
     if (regioneIpotecata(s, r) && livelli.some((l) => l > 0)) out.push(`Regione ${r}: edifici con una città ipotecata.`);
   });

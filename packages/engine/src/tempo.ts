@@ -5,7 +5,8 @@
  *
  * Ogni turno ha una grazia di 20 s (60 s se chi gioca è in debito). Finita la grazia si consuma la banca
  * personale, che parte da 60 s e arriva al massimo a 3 minuti: a fine turno si ricarica di 6–20 s, di più
- * se il turno è stato veloce. Chi non è collegato ha solo la grazia, contata da quando è sparito.
+ * se il turno è stato veloce. Chi non è collegato ha solo la grazia, contata da quando è sparito
+ * (durante l'asta l'orologio è fermo, e la grazia con lui).
  * Tutti i tempi sono millisecondi dell'orologio del server.
  */
 
@@ -34,7 +35,10 @@ function corrente(s: Stato): Giocatore | undefined {
   return s.giocatori.find((g) => g.id === s.turno.giocatore);
 }
 
-/** Il tempo di un turno che comincia adesso. Se c'è un'asta aperta, l'orologio parte fermo. */
+/**
+ * Il tempo di un turno che comincia adesso. Se c'è un'asta aperta, l'orologio parte fermo.
+ * Chi comincia il turno già scollegato ha la grazia da adesso.
+ */
 export function tempoIniziale(s: Stato, g: Giocatore, adesso: number): TempoTurno {
   return {
     inizio: adesso,
@@ -44,6 +48,7 @@ export function tempoIniziale(s: Stato, g: Giocatore, adesso: number): TempoTurn
     richiesta: false,
     automatico: false,
     fermoDa: s.asta ? adesso : null,
+    assenteDa: g.offlineDa !== null ? adesso : null,
   };
 }
 
@@ -75,7 +80,7 @@ export function fineTurno(s: Stato): number | null {
   const t = s.turno.tempo;
   let fine = s.impostazioni.timerTurno ? t.inizio + t.grazia + t.regalato + g.banca : null;
   if (g.offlineDa !== null) {
-    const assente = Math.max(g.offlineDa, t.inizio) + GRAZIA_MS + t.regalato;
+    const assente = Math.max(t.assenteDa ?? g.offlineDa, t.inizio) + GRAZIA_MS + t.regalato;
     fine = fine === null ? assente : Math.min(fine, assente);
   }
   return fine;
@@ -132,6 +137,7 @@ export function sposta(stato: Stato, ms: number): Stato {
   const t = s.turno.tempo;
   t.inizio += ms;
   if (t.fermoDa !== null) t.fermoDa += ms;
+  if (t.assenteDa != null) t.assenteDa += ms;
   if (s.turno.votazione.scadenza !== null) s.turno.votazione.scadenza += ms;
   if (s.asta) s.asta.scadenza += ms;
   // Il tempo in pausa non conta nella durata della partita.
@@ -142,6 +148,7 @@ export function sposta(stato: Stato, ms: number): Stato {
 /**
  * Segna che il giocatore si è scollegato o è tornato. Restituisce lo stato com'è se non cambia niente.
  * Non produce eventi: il registro non ne parla, si vede nella lista dei giocatori.
+ * Se è chi gioca, la sua grazia parte da adesso; durante l'asta, da quando l'orologio ripartirà.
  */
 export function connessione(stato: Stato, id: IdGiocatore, collegato: boolean, adesso: number): Stato {
   const attuale = stato.giocatori.find((g) => g.id === id);
@@ -149,5 +156,7 @@ export function connessione(stato: Stato, id: IdGiocatore, collegato: boolean, a
   if (collegato === (attuale.offlineDa === null)) return stato;
   const s = JSON.parse(JSON.stringify(stato)) as Stato;
   s.giocatori.find((g) => g.id === id)!.offlineDa = collegato ? null : adesso;
+  const tempo = s.turno.tempo;
+  if (s.turno.giocatore === id) tempo.assenteDa = collegato ? null : (tempo.fermoDa ?? adesso);
   return s;
 }

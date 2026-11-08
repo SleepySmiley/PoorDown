@@ -29,7 +29,14 @@ const gestore = new GestoreStanze(AMBIENTE_REALE);
 const archivio = new Archivio(path.join(cartellaDati(), 'stanze.json'), gestore);
 const stanzeRiprese = archivio.carica();
 const tempoReale = collegaTempoReale(io, gestore, () => archivio.programma());
-setInterval(() => tempoReale.manutenzione(), MANUTENZIONE_MS).unref();
+setInterval(() => {
+  // Un errore imprevisto non deve spegnere il server (e tutte le partite): si annota e si riprova al giro dopo.
+  try {
+    tempoReale.manutenzione();
+  } catch (errore) {
+    console.error('  Errore nella manutenzione delle stanze:', errore);
+  }
+}, MANUTENZIONE_MS).unref();
 
 // Prima di spegnersi salva le stanze, così le partite riprendono al riavvio.
 for (const segnale of ['SIGINT', 'SIGTERM'] as const) {

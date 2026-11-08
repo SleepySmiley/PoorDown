@@ -4,7 +4,7 @@
  * su Windows in %LOCALAPPDATA%\PoorDown, altrove in ~/.poordown. Si può cambiare con POORDOWN_DATI.
  */
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import type { GestoreStanze } from './gestore';
@@ -36,7 +36,11 @@ export class Archivio {
     private readonly gestore: GestoreStanze,
   ) {}
 
-  /** Carica le stanze salvate. Restituisce quante sono. Un file mancante o illeggibile vale come vuoto. */
+  /**
+   * Carica le stanze salvate. Restituisce quante ne ha riprese. Un file mancante o illeggibile vale come vuoto.
+   * Se il file è rotto, di un altro formato o con stanze da scartare, prima ne mette da parte una copia
+   * (stanze.json.rotto-<data>): il primo salvataggio lo riscrive solo con le stanze riprese.
+   */
   carica(): number {
     let contenuto: string;
     try {
@@ -44,14 +48,31 @@ export class Archivio {
     } catch {
       return 0;
     }
+    let dati: FileStanze;
     try {
-      const dati = JSON.parse(contenuto) as FileStanze;
-      if (dati.formato !== FORMATO || !Array.isArray(dati.stanze)) return 0;
-      this.gestore.importa(dati.stanze);
-      return dati.stanze.length;
+      dati = JSON.parse(contenuto) as FileStanze;
     } catch (errore) {
       console.warn(`  Non riesco a leggere le stanze salvate (${this.file}): riparto senza.`, errore);
+      this.copiaDiRiserva();
       return 0;
+    }
+    if (dati === null || typeof dati !== 'object' || dati.formato !== FORMATO || !Array.isArray(dati.stanze)) {
+      this.copiaDiRiserva();
+      return 0;
+    }
+    const { riprese, scartate } = this.gestore.importa(dati.stanze);
+    if (scartate > 0) this.copiaDiRiserva();
+    return riprese;
+  }
+
+  /** Mette da parte il file com'è, accanto all'originale, e lo dice. */
+  private copiaDiRiserva(): void {
+    const copia = `${this.file}.rotto-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    try {
+      copyFileSync(this.file, copia);
+      console.warn(`  Ho messo da parte una copia del file delle stanze: ${copia}`);
+    } catch (errore) {
+      console.warn(`  Non riesco a fare una copia del file delle stanze (${copia}):`, errore);
     }
   }
 

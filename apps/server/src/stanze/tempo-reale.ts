@@ -31,6 +31,30 @@ type SocketGioco = Socket<EventiClient, EventiServer, Record<string, never>, Dat
 
 const NON_VALIDA = no('richiesta_non_valida', 'Richiesta non valida.');
 const FUORI_STANZA = no('fuori_stanza', 'Non sei in nessuna stanza.');
+const TROPPE_STANZE_CREATE = no('troppe_richieste', 'Hai aperto troppe stanze in poco tempo: aspetta un minuto e riprova.');
+const TROPPI_MESSAGGI = no('troppe_richieste', 'Stai scrivendo troppo in fretta: aspetta un attimo.');
+
+/**
+ * Limiti leggeri contro le raffiche (tra amici bastano): per ogni scheda, stanze create (anche con «Gioca»),
+ * messaggi in chat e avvisi «sta scrivendo», al più `volte` ogni `ms` millisecondi.
+ */
+export const LIMITI = {
+  stanze: { volte: 5, ms: 60_000 },
+  messaggi: { volte: 5, ms: 2_000 },
+  scrive: { volte: 1, ms: 1_000 },
+} as const;
+
+/** Un contatore a finestra mobile: la funzione restituita dice se si può ancora e, se sì, conta una volta in più. */
+function limite({ volte, ms }: { volte: number; ms: number }, adesso: () => number): () => boolean {
+  const tempi: number[] = [];
+  return () => {
+    const ora = adesso();
+    while (tempi.length > 0 && ora - tempi[0]! >= ms) tempi.shift();
+    if (tempi.length >= volte) return false;
+    tempi.push(ora);
+    return true;
+  };
+}
 
 const canale = (codice: string) => `stanza:${codice}`;
 
@@ -67,8 +91,15 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
     const sveglia = setTimeout(() => {
       sveglie.delete(stanza.codice);
       if (gestore.trova(stanza.codice) !== stanza) return;
-      stanza.scadenze();
-      diffondi(stanza);
+      try {
+        stanza.scadenze();
+        diffondi(stanza);
+        // Il timer può partire un attimo prima della scadenza: se non è cambiato niente e manca ancora qualche
+        // millisecondo, si riprova (altrimenti la scadenza aspetterebbe la manutenzione).
+        if (!sveglie.has(stanza.codice) && (stanza.attesa() ?? 0) > 0) programmaSveglia(stanza);
+      } catch (errore) {
+        console.error(`  Errore nelle scadenze della stanza ${stanza.codice}:`, errore);
+      }
     }, attesa);
     sveglia.unref();
     sveglie.set(stanza.codice, sveglia);
@@ -103,9 +134,24 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
     diffondi(stanza);
   }
 
+  /** Per gli eventi senza risposta: un errore finisce nel registro del server, non lo fa cadere. */
+  function senzaCadere<A extends unknown[]>(nome: string, gestisci: (...args: A) => void): (...args: A) => void {
+    return (...args) => {
+      try {
+        gestisci(...args);
+      } catch (errore) {
+        console.error(`  Errore nell'evento "${nome}":`, errore);
+      }
+    };
+  }
+
   io.on('connection', (socket) => {
     const token = socket.data.token;
     const corrente = () => (socket.data.stanza === null ? undefined : gestore.trova(socket.data.stanza));
+    const adesso = () => gestore.adesso();
+    const puoCreare = limite(LIMITI.stanze, adesso);
+    const puoScrivere = limite(LIMITI.messaggi, adesso);
+    const puoAvvisare = limite(LIMITI.scrive, adesso);
 
     /** Registra un comando: legge i dati, risponde sempre, non lascia mai cadere il server. */
     function comando<K extends NomeComando>(nome: K, esegui: (dati: unknown) => Risposta<Comandi[K]['risposta']>): void {
@@ -142,6 +188,7 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
     comando('crea_stanza', (dati) => {
       const privata = booleano(dati, 'privata');
       if (privata === null) return NON_VALIDA;
+      if (!puoCreare()) return TROPPE_STANZE_CREATE;
       const stanza = gestore.crea(privata);
       if (!stanza) return no('troppe_stanze', 'Il server ha troppe stanze aperte. Riprova più tardi.');
       dopoModifica();
@@ -149,6 +196,7 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
     });
 
     comando('gioca', () => {
+      if (!puoCreare()) return TROPPE_STANZE_CREATE;
       const stanza = gestore.gioca();
       if (!stanza) return no('troppe_stanze', 'Il server ha troppe stanze aperte. Riprova più tardi.');
       dopoModifica();
@@ -235,6 +283,7 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
       const contenuto = testo(dati, 'testo', CHAT_MAX * 4);
       const squadra = oggetto(dati)?.squadra === undefined ? false : booleano(dati, 'squadra');
       if (contenuto === null || squadra === null) return NON_VALIDA;
+      if (!puoScrivere()) return TROPPI_MESSAGGI;
       const esito = stanza.scrivi(token, contenuto, squadra);
       if (!esito.ok) return esito;
       // I messaggi di squadra arrivano solo ai compagni.
@@ -246,27 +295,50 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
       return si(null);
     });
 
-    socket.on('sta_scrivendo', () => {
-      const stanza = corrente();
-      const id = stanza?.io(token);
-      if (stanza && id) socket.to(canale(stanza.codice)).emit('scrive', id);
-    });
+    // Con `squadra` si scrive nella chat di squadra: l'avviso arriva solo ai compagni, non agli avversari né a chi guarda.
+    socket.on(
+      'sta_scrivendo',
+      senzaCadere('sta_scrivendo', (squadra?: unknown) => {
+        const stanza = corrente();
+        const id = stanza?.io(token);
+        if (!stanza || !id || !puoAvvisare()) return;
+        if (squadra !== true) {
+          socket.to(canale(stanza.codice)).emit('scrive', id);
+          return;
+        }
+        const mia = stanza.squadraPerChat(token);
+        if (mia === null) return;
+        for (const altro of io.sockets.adapter.rooms.get(canale(stanza.codice)) ?? []) {
+          const s = io.sockets.sockets.get(altro);
+          if (s && s !== socket && stanza.squadraPerChat(s.data.token) === mia) s.emit('scrive', id);
+        }
+      }),
+    );
 
-    socket.on('attivita', (dati: unknown) => {
-      const stanza = corrente();
-      const attivita = leggiAttivita(dati);
-      if (!stanza || attivita === undefined) return;
-      stanza.cambiaAttivita(token, attivita);
-      diffondi(stanza);
-    });
+    socket.on(
+      'attivita',
+      senzaCadere('attivita', (dati: unknown) => {
+        const stanza = corrente();
+        const attivita = leggiAttivita(dati);
+        if (!stanza || attivita === undefined) return;
+        stanza.cambiaAttivita(token, attivita);
+        diffondi(stanza);
+      }),
+    );
 
-    socket.on('disconnect', () => lascia(socket, false));
+    socket.on('disconnect', senzaCadere('disconnect', () => lascia(socket, false)));
   });
 
   return {
     manutenzione() {
       const { aperte, chiuse } = gestore.manutenzione();
-      for (const stanza of aperte) diffondi(stanza);
+      for (const stanza of aperte) {
+        try {
+          diffondi(stanza);
+        } catch (errore) {
+          console.error(`  Errore nell'aggiornamento della stanza ${stanza.codice}:`, errore);
+        }
+      }
       for (const stanza of chiuse) {
         for (const id of io.sockets.adapter.rooms.get(canale(stanza.codice)) ?? []) {
           const socket = io.sockets.sockets.get(id);

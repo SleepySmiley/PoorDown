@@ -3,10 +3,10 @@
  * Li usano le regole del turno, il gioco automatico e la moderazione.
  */
 
-import { accredita, type Contesto } from './contesto';
+import { accredita, rossoVersoBanca, type Contesto } from './contesto';
 import { attivi, caselleDellaRegione, costoEdifici, giocatore, possedute, possiedeRegione, proprietabile, valoreLiquidazione } from './conti';
 import { segnaPatrimonio } from './statistiche';
-import { chiudiOrologio, tempoIniziale } from './tempo';
+import { chiudiOrologio, tempoIniziale, votiNecessari } from './tempo';
 import type { Debito, Evento, Giocatore, MotivoUscita, Stato } from './tipi';
 
 /** Tiri falliti dopo i quali si esce di prigione gratis, al turno successivo. */
@@ -105,19 +105,43 @@ function vendiEdificiRimasti(ctx: Contesto, liberate: readonly number[]): void {
 }
 
 /**
+ * I crediti verso chi esce: con un erede passano a lui (sommati a quanto il debitore gli deve già), altrimenti
+ * spariscono dall'elenco dei debiti e il debitore resta in rosso verso la banca.
+ */
+function passaCrediti(s: Stato, g: Giocatore, erede: Giocatore | undefined): void {
+  for (const altro of s.giocatori) {
+    const debito = altro.debiti.find((d) => d.creditore === g.id);
+    if (!debito) continue;
+    const nuovo = altro === erede ? undefined : erede;
+    const giaDovuto = nuovo && altro.debiti.find((d) => d.creditore === nuovo.id);
+    if (nuovo && !giaDovuto) {
+      // Resta al suo posto nella fila dei rimborsi.
+      debito.creditore = nuovo.id;
+      continue;
+    }
+    if (giaDovuto) giaDovuto.importo += debito.importo;
+    altro.debiti = altro.debiti.filter((d) => d !== debito);
+  }
+}
+
+/**
  * Il giocatore esce dalla partita. La banca liquida i suoi beni e paga i creditori fino al debito.
  * Le proprietà tornano libere, senza edifici né ipoteca; le Carte Grazia tornano nei mazzi.
  * A squadre, se resta un compagno in gioco:
- * - senza debiti verso altri giocatori, il compagno eredita il contante, le proprietà (così come sono) e le Carte Grazia;
- * - con debiti, i creditori sono pagati dalla liquidazione e quello che avanza va in contanti al compagno;
- *   se così una regione dei compagni resta incompleta, i loro edifici lì tornano alla banca a metà prezzo.
+ * - chi esce senza rosso lascia al compagno il contante, le proprietà (così come sono) e le Carte Grazia;
+ * - chi esce in rosso passa dalla liquidazione: si pagano prima i creditori, poi il rosso verso la banca,
+ *   e quello che avanza va in contanti al compagno; se così una regione dei compagni resta incompleta,
+ *   i loro edifici lì tornano alla banca a metà prezzo;
+ * - in tutti e due i casi, quello che gli altri gli devono lo dovranno al compagno.
  * I suoi scambi aperti spariscono e, se all'asta era il migliore offerente, torna buona l'offerta precedente.
  * Se resta un solo giocatore (a squadre: una sola squadra), la partita finisce; se toccava a lui, il turno passa.
+ * Se invece giocava un altro e i voti contro di lui bastano ormai a toglierlo, esce anche lui.
  * @param automatica bancarotta decisa dal gioco perché il tempo è scaduto in debito.
  */
 export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, automatica = false): void {
   const { s } = ctx;
   const erede = eredeDi(s, g);
+  const rossoBanca = rossoVersoBanca(g);
   let disponibile = valoreLiquidazione(s, g.id);
   const recuperi: Debito[] = [];
   for (const d of g.debiti) {
@@ -128,15 +152,16 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
     recuperi.push({ creditore: d.creditore, importo });
     disponibile -= importo;
   }
-  // Senza debiti verso altri giocatori il compagno prende tutto così com'è; altrimenti solo il contante avanzato.
-  const passaTutto = erede !== undefined && g.debiti.length === 0;
+  // Senza rosso (quindi senza debiti) il compagno prende tutto così com'è; altrimenti solo il contante avanzato
+  // dopo aver pagato i creditori e la banca.
+  const passaTutto = erede !== undefined && g.saldo >= 0;
   const caselle = possedute(s, g.id);
   const eredita: Extract<Evento, { tipo: 'eredita' }> | null = erede
     ? {
         tipo: 'eredita',
         da: g.id,
         a: erede.id,
-        soldi: passaTutto ? Math.max(0, g.saldo) : disponibile,
+        soldi: passaTutto ? g.saldo : Math.max(0, disponibile - rossoBanca),
         caselle: passaTutto ? caselle : [],
         grazie: passaTutto ? g.carteGrazia.length : 0,
       }
@@ -154,7 +179,7 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
   g.offlineDa = null;
   g.eliminato = { turno: s.turno.numero, motivo };
   s.statistiche.uscite.push(g.id);
-  for (const altro of s.giocatori) altro.debiti = altro.debiti.filter((d) => d.creditore !== g.id);
+  passaCrediti(s, g, erede);
   s.scambi = s.scambi.filter((x) => x.da !== g.id && x.a !== g.id);
   if (s.asta) {
     s.asta.offerte = s.asta.offerte.filter((o) => o.giocatore !== g.id);
@@ -193,5 +218,11 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
     );
     return;
   }
-  if (s.turno.giocatore === g.id) passaTurno(ctx);
+  if (s.turno.giocatore === g.id) {
+    passaTurno(ctx);
+    return;
+  }
+  // Con un giocatore in meno ne servono meno: i voti già dati possono bastare.
+  const voti = s.turno.votazione.voti.length;
+  if (voti > 0 && voti >= votiNecessari(s)) elimina(ctx, giocatore(s, s.turno.giocatore)!, 'voto');
 }

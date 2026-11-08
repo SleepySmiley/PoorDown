@@ -55,15 +55,18 @@ export interface Piazzamento {
 /**
  * La classifica per turni sopravvissuti: prima chi è ancora in gioco (il vincitore, a fine partita),
  * poi chi è uscito, dal più tardi al più presto. Chi esce nello stesso turno è dietro a chi esce dopo di lui.
+ * A squadre i giocatori della squadra vincitrice stanno davanti a tutti, anche quelli usciti presto.
  */
 export function classifica(s: Stato): Piazzamento[] {
   const uscite = s.statistiche.uscite;
-  return [...s.giocatori]
-    .sort((a, b) => {
+  return s.giocatori
+    .map((g) => ({ g, vincitore: haVinto(s, g.id) }))
+    .sort(({ g: a, vincitore: va }, { g: b, vincitore: vb }) => {
+      if (va !== vb) return Number(vb) - Number(va);
       if (!a.eliminato || !b.eliminato) return Number(a.eliminato !== null) - Number(b.eliminato !== null);
       return b.eliminato.turno - a.eliminato.turno || uscite.indexOf(b.id) - uscite.indexOf(a.id);
     })
-    .map((g) => ({ giocatore: g.id, turni: g.eliminato?.turno ?? s.turno.numero, vincitore: haVinto(s, g.id) }));
+    .map(({ g, vincitore }) => ({ giocatore: g.id, turni: g.eliminato?.turno ?? s.turno.numero, vincitore }));
 }
 
 /** La proprietà su cui ci si è fermati più volte (a pari visite, la prima del tabellone); `null` se nessuna. */

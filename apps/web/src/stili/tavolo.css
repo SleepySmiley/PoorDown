@@ -9,6 +9,8 @@
   height: 100vh;
   min-height: 640px;
   padding: 40px 16px;
+  /* Suggerimenti e schede vicino ai bordi non devono mai far scorrere la pagina di lato. */
+  overflow-x: clip;
 }
 
 /* Finestra stretta: come richup, tabellone sopra e le due colonne sotto, senza scorrere in orizzontale. */

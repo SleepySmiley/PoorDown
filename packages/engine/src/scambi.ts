@@ -40,11 +40,12 @@ function valore(stato: Stato, p: Pacchetto): number {
   return totale;
 }
 
+/** Quanto il giocatore deve agli altri giocatori. Il rosso verso la banca non conta: non lo incassa nessuno. */
 function debito(stato: Stato, id: IdGiocatore): number {
-  return Math.max(0, -giocatore(stato, id)!.saldo);
+  return giocatore(stato, id)!.debiti.reduce((t, d) => t + d.importo, 0);
 }
 
-/** Quello che il giocatore potrebbe restituire se fallisse: il debito, fino al valore dei suoi beni. */
+/** Quello che il giocatore potrebbe restituire ai creditori se fallisse: il debito, fino al valore dei suoi beni. */
 function restituibile(stato: Stato, id: IdGiocatore): number {
   return Math.min(debito(stato, id), valoreLiquidazione(stato, id));
 }
@@ -96,7 +97,8 @@ function problemiParte(stato: Stato, chi: Giocatore | undefined, id: IdGiocatore
 /**
  * Perché lo scambio non si può fare, in frasi da mostrare. Elenco vuoto: si può fare.
  * Oltre alle regole di base valgono due regole di equità, che non contano tra compagni di squadra:
- * - chi è in debito non può ridurre quello che potrebbe restituire (salvo scambiando con un suo creditore);
+ * - chi è in debito verso altri giocatori non può ridurre quello che potrebbe restituire loro (salvo scambiando
+ *   con un suo creditore); il rosso verso la banca da solo non blocca niente;
  * - nelle stanze pubbliche nessuno può cedere, al netto, più del 90% di quello che ha.
  */
 export function problemiScambio(stato: Stato, bozza: BozzaScambio): string[] {
@@ -116,7 +118,7 @@ export function problemiScambio(stato: Stato, bozza: BozzaScambio): string[] {
     [da, a],
     [a, da],
   ] as const) {
-    if (chi.saldo >= 0 || chi.debiti.some((d) => d.creditore === altro.id)) continue;
+    if (chi.debiti.length === 0 || chi.debiti.some((d) => d.creditore === altro.id)) continue;
     if (riduceRestituibile(stato, dopo, chi.id)) {
       out.push(`${chi.nome} è in debito: uno scambio non può ridurre quello che potrà restituire.`);
     }

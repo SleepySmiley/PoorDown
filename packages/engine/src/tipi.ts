@@ -238,6 +238,12 @@ export interface TempoTurno {
   automatico: boolean;
   /** Da quando l'asta tiene fermo l'orologio (ms del server); `null` se scorre. */
   fermoDa: number | null;
+  /**
+   * Chi gioca non è collegato: da qui parte la sua grazia (ms del server). Come `inizio`, le pause dell'asta lo
+   * spostano avanti, così la grazia non si consuma mentre l'orologio è fermo. `null` se chi gioca è collegato.
+   * Manca nelle partite salvate prima che ci fosse: allora vale `offlineDa` del giocatore.
+   */
+  assenteDa?: number | null;
 }
 
 /** Il voto per togliere dalla partita chi sta giocando il turno. Si azzera a ogni turno. */
@@ -466,7 +472,7 @@ export type Evento =
     }
   /**
    * A squadre, un compagno raccoglie i beni di chi è appena uscito: il contante che gli restava (o quello che avanza
-   * dopo aver pagato i creditori), le proprietà e le Carte Grazia (queste solo se non aveva debiti verso altri giocatori).
+   * dopo aver pagato i creditori), le proprietà e le Carte Grazia (queste solo se è uscito senza rosso).
    */
   | { tipo: 'eredita'; da: IdGiocatore; a: IdGiocatore; soldi: number; caselle: number[]; grazie: number }
   /**
@@ -515,6 +521,7 @@ export type CodiceErrore =
   | 'aste_disattivate'
   | 'asta_in_corso'
   | 'niente_asta'
+  | 'asta_finita'
   | 'offerta_bassa'
   | 'offerta_tua'
   | 'scambio_inesistente'

@@ -249,6 +249,57 @@ describe('chat di squadra', () => {
     expect(stanza.istantanea(TOKEN.bruno).chat.map((m) => m.testo)).toEqual(['Compra Roma', 'Ciao a tutti']);
   });
 
+  it('chi entra nella squadra dopo non legge i messaggi scritti prima, nemmeno dopo «Un’altra partita»', () => {
+    const { stanza } = stanzaDiProva({ squadre: true, ordineCasuale: false });
+    const [, bruno, carla] = siedi(stanza, 'anna', 'bruno', 'carla', 'dario');
+    stanza.cambiaSquadra(TOKEN.bruno, 0);
+    stanza.cambiaSquadra(TOKEN.carla, 1);
+    stanza.cambiaSquadra(TOKEN.dario, 1);
+    const r = stanza.scrivi(TOKEN.anna, 'Il piano', true);
+    if (!r.ok) throw new Error(r.messaggio);
+    // Carla passa nella squadra di Anna, Bruno in quella avversaria.
+    stanza.cambiaSquadra(TOKEN.anna, 0, carla);
+    stanza.cambiaSquadra(TOKEN.anna, 1, bruno);
+    const legge = (token: string) => stanza.istantanea(token).chat.some((m) => m.testo === 'Il piano');
+    expect(stanza.puoLeggere(TOKEN.carla, r.dati)).toBe(false);
+    expect(legge(TOKEN.carla)).toBe(false);
+    // Chi era nella squadra quando è stato scritto lo legge ancora.
+    expect(legge(TOKEN.bruno)).toBe(true);
+    expect(legge(TOKEN.dario)).toBe(false);
+
+    // Lo stesso in una partita, poi rimescolando le squadre per la successiva.
+    stanza.avvia(TOKEN.anna);
+    stanza.scrivi(TOKEN.carla, 'Partita 1', true);
+    for (const t of [TOKEN.bruno, TOKEN.dario]) stanza.mossa(t, { tipo: 'bancarotta' });
+    expect(stanza.fase).toBe('finita');
+    stanza.nuovaPartita(TOKEN.anna);
+    stanza.cambiaSquadra(TOKEN.anna, 0, bruno);
+    stanza.cambiaSquadra(TOKEN.dario, 0);
+    expect(stanza.istantanea(TOKEN.dario).chat.map((m) => m.testo)).toEqual([]);
+    expect(stanza.istantanea(TOKEN.anna).chat.map((m) => m.testo)).toEqual(['Il piano', 'Partita 1']);
+  });
+
+  it('chi può leggere si salva su file, ma non arriva ai browser; i salvataggi vecchi lo ricavano dalle squadre di adesso', () => {
+    const { stanza, amb } = stanzaDiProva({ squadre: true });
+    const [anna, bruno] = siedi(stanza, 'anna', 'bruno', 'carla');
+    stanza.cambiaSquadra(TOKEN.bruno, 0);
+    stanza.cambiaSquadra(TOKEN.carla, 1);
+    stanza.scrivi(TOKEN.anna, 'Compra Roma', true);
+    stanza.scrivi(TOKEN.anna, 'Ciao a tutti');
+    expect(JSON.stringify(stanza.istantanea(TOKEN.anna))).not.toContain('lettori');
+    const dati = JSON.parse(JSON.stringify(stanza.esporta())) as DatiStanza;
+    expect(dati.chat[0]!.lettori).toEqual([anna, bruno]);
+    expect(dati.chat[1]!.lettori).toBeUndefined();
+
+    stanza.cambiaSquadra(TOKEN.carla, 0);
+    expect(Stanza.importa(JSON.parse(JSON.stringify(stanza.esporta())), amb).istantanea(TOKEN.carla).chat).toHaveLength(1);
+    // Salvataggio di prima: il messaggio di squadra non dice chi può leggerlo.
+    delete dati.chat[0]!.lettori;
+    const vecchia = Stanza.importa(dati, amb);
+    expect(vecchia.istantanea(TOKEN.bruno).chat).toHaveLength(2);
+    expect(vecchia.istantanea(TOKEN.carla).chat).toHaveLength(1);
+  });
+
   it('senza squadre la chat di squadra non c’è', () => {
     const { stanza } = stanzaDiProva();
     siedi(stanza, 'anna');

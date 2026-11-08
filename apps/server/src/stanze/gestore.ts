@@ -14,6 +14,8 @@ const ALFABETO = 'abcdefghjkmnpqrstuvwxyz23456789';
 export const STANZE_MAX = 200;
 /** Una stanza senza nessuno collegato per questo tempo viene chiusa. */
 export const SCADENZA_STANZA_MS = 30 * 60_000;
+/** Prima, se non c'è nemmeno una persona seduta (stanze create e mai usate, lobby abbandonate). */
+export const SCADENZA_STANZA_VUOTA_MS = 5 * 60_000;
 
 /** "K7Q2M " → "k7q2m". `null` se non ha la forma di un codice. */
 export function normalizzaCodice(testo: string): string | null {
@@ -34,6 +36,11 @@ export class GestoreStanze {
     return [...this.stanze.values()];
   }
 
+  /** L'orologio delle stanze (quello vero sul server, finto nei test). */
+  adesso(): number {
+    return this.amb.adesso();
+  }
+
   /** `null` se il server ha già troppe stanze. */
   crea(privata: boolean): Stanza | null {
     if (this.stanze.size >= STANZE_MAX) return null;
@@ -47,10 +54,10 @@ export class GestoreStanze {
     return normale ? this.stanze.get(normale) : undefined;
   }
 
-  /** Stanze pubbliche non finite: prima quelle in attesa, e tra queste le più piene. */
+  /** Stanze pubbliche non finite con almeno una persona seduta: prima quelle in attesa, e tra queste le più piene. */
   elenco(): StanzaInElenco[] {
     return this.tutte()
-      .filter((s) => !s.impostazioni.stanzaPrivata && s.fase !== 'finita')
+      .filter((s) => !s.impostazioni.stanzaPrivata && s.fase !== 'finita' && !s.senzaPersone())
       .sort((a, b) => Number(a.fase !== 'lobby') - Number(b.fase !== 'lobby') || b.posti.length - a.posti.length)
       .map((s) => ({
         codice: s.codice,
@@ -62,30 +69,45 @@ export class GestoreStanze {
       }));
   }
 
-  /** "Gioca": la stanza pubblica in attesa più piena con un posto libero, oppure una nuova stanza pubblica. */
+  /**
+   * "Gioca": una stanza pubblica in attesa con un posto libero, o con un bot che lascia il posto a chi arriva;
+   * prima quelle con più persone, poi le più piene. Se non ce ne sono, una nuova stanza pubblica.
+   */
   gioca(): Stanza | null {
+    const persone = (s: Stanza) => s.posti.filter((p) => !p.bot).length;
     const libera = this.tutte()
-      .filter((s) => !s.impostazioni.stanzaPrivata && s.fase === 'lobby' && s.posti.length < s.impostazioni.giocatoriMax)
-      .sort((a, b) => b.posti.length - a.posti.length)[0];
+      .filter(
+        (s) =>
+          !s.impostazioni.stanzaPrivata &&
+          s.fase === 'lobby' &&
+          (s.posti.length < s.impostazioni.giocatoriMax || s.posti.some((p) => p.bot)),
+      )
+      .sort((a, b) => persone(b) - persone(a) || b.posti.length - a.posti.length)[0];
     return libera ?? this.crea(false);
   }
 
   /**
-   * Toglie dalle lobby chi è sparito e chiude le stanze abbandonate.
-   * Restituisce le stanze ancora aperte (da aggiornare se sono cambiate) e quelle chiuse.
+   * Toglie dalle lobby chi è sparito e chiude le stanze abbandonate: senza nessuno collegato da 30 minuti, o da
+   * 5 minuti se non c'è nemmeno una persona seduta. Restituisce le stanze ancora aperte (da aggiornare se sono
+   * cambiate) e quelle chiuse. Un errore in una stanza non ferma le altre.
    */
   manutenzione(): { aperte: Stanza[]; chiuse: Stanza[] } {
     const adesso = this.amb.adesso();
     const aperte: Stanza[] = [];
     const chiuse: Stanza[] = [];
     for (const stanza of this.stanze.values()) {
-      if (stanza.nessunoCollegato() && adesso - stanza.ultimaPresenza >= SCADENZA_STANZA_MS) {
+      const scadenza = stanza.senzaPersone() ? SCADENZA_STANZA_VUOTA_MS : SCADENZA_STANZA_MS;
+      if (stanza.nessunoCollegato() && adesso - stanza.ultimaPresenza >= scadenza) {
         this.stanze.delete(stanza.codice);
         chiuse.push(stanza);
-      } else {
-        stanza.manutenzione();
-        aperte.push(stanza);
+        continue;
       }
+      try {
+        stanza.manutenzione();
+      } catch (errore) {
+        console.error(`  Errore nella manutenzione della stanza ${stanza.codice}:`, errore);
+      }
+      aperte.push(stanza);
     }
     return { aperte, chiuse };
   }
@@ -94,8 +116,25 @@ export class GestoreStanze {
     return this.tutte().map((s) => s.esporta());
   }
 
-  importa(dati: readonly DatiStanza[]): void {
-    for (const d of dati) this.stanze.set(d.codice, Stanza.importa(d, this.amb));
+  /**
+   * Riprende le stanze salvate. Quelle rovinate (dati che non hanno la forma di una stanza) si saltano con un avviso,
+   * senza fermare le altre. Restituisce quante stanze sono state riprese e quante scartate.
+   */
+  importa(dati: readonly DatiStanza[]): { riprese: number; scartate: number } {
+    let riprese = 0;
+    let scartate = 0;
+    for (const d of dati) {
+      try {
+        const stanza = Stanza.importa(d, this.amb);
+        this.stanze.set(stanza.codice, stanza);
+        riprese++;
+      } catch (errore) {
+        scartate++;
+        const codice = typeof d === 'object' && d !== null && typeof d.codice === 'string' ? d.codice : '?';
+        console.warn(`  Salto la stanza salvata ${codice}: ${errore instanceof Error ? errore.message : String(errore)}`);
+      }
+    }
+    return { riprese, scartate };
   }
 
   private codiceLibero(): string {

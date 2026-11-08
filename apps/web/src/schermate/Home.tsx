@@ -1,4 +1,5 @@
 import '../stili/home.css';
+import '../stili/sincronia.css';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   IMPOSTAZIONI_PREDEFINITE,
@@ -10,12 +11,12 @@ import {
   type StanzaInElenco,
 } from '@poordown/engine';
 import { vai, vaiAllaStanza } from '../navigazione';
-import { collegamento, preferenze } from '../rete/sessione';
+import { collegamento, preferenze, usePostoTenuto, type PostoTenuto } from '../rete/sessione';
 import { avvisa } from '../ui/avvisi';
 import { Dado, Palette, Pedina } from '../ui/comuni';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { PassiDelGioco } from '../ui/Regole';
-import { variabili } from '../ui/utili';
+import { minutiSecondi, variabili } from '../ui/utili';
 
 const CASO = { intero: (n: number) => Math.floor(Math.random() * n) };
 
@@ -126,6 +127,36 @@ function SchedaStanza({ s, onEntra }: { s: StanzaInElenco; onEntra: () => void }
   );
 }
 
+/** Per chi ha lasciato una partita in corso: il suo posto resta ancora per un po', si può rientrare. */
+function Rientro({ posto }: { posto: PostoTenuto }): ReactNode {
+  const [adesso, setAdesso] = useState(() => Date.now());
+  useEffect(() => {
+    if (posto.fino === null) return;
+    const t = setInterval(() => setAdesso(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [posto.fino]);
+  const resta = posto.fino === null ? null : posto.fino - adesso;
+  if (resta !== null && resta <= 0) return null;
+  return (
+    <div className="rientro">
+      <button
+        type="button"
+        className="pulsante pulsante--ambra rientro__pulsante"
+        onClick={() => vaiAllaStanza(posto.codice, { dallaHome: true })}
+      >
+        <Icona nome="avanti" />
+        Rientra nella stanza
+        <Palette testo={posto.codice.toUpperCase()} />
+      </button>
+      <p className="rientro__nota">
+        {resta === null
+          ? 'Il tuo posto ti aspetta: la partita resta ferma finché qualcuno non torna.'
+          : `Il tuo posto ti aspetta ancora per ${minutiSecondi(resta)}. Intanto i tuoi turni passano da soli.`}
+      </p>
+    </div>
+  );
+}
+
 /** Esegue un comando che porta in una stanza (Gioca, Crea) e ci entra. */
 function useVaiInStanza() {
   const [occupato, setOccupato] = useState<string | null>(null);
@@ -219,6 +250,7 @@ export function Home({ invito, onEntra }: { invito?: string; onEntra?: () => voi
   const [giro, setGiro] = useState(0);
   const [stanze, setStanze] = useState(false);
   const { occupato, esegui } = useVaiInStanza();
+  const posto = usePostoTenuto();
 
   const cambiaNome = (valore: string) => {
     setNome(valore);
@@ -290,6 +322,7 @@ export function Home({ invito, onEntra }: { invito?: string; onEntra?: () => voi
                 Sei stato invitato nella stanza <Palette testo={invito.toUpperCase()} />
               </p>
             )}
+            {!invito && posto && <Rientro key={posto.codice} posto={posto} />}
             <div className="campo-nome">
               <label className="solo-lettori" htmlFor="nome">
                 Il tuo nome

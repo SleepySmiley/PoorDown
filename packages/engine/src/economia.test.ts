@@ -1,8 +1,8 @@
 /* Case e alberghi, ipoteche e aste: docs/analisi/04-economia-fine-partita.md §3, §5, §6. */
 
 import { describe, expect, it } from 'vitest';
-import { ASTA_MS } from './economia';
-import { assegna, dadi, esegui, g, partitaDiProva, problemi } from './prove';
+import { ASTA_MS, verificaOffertaInTempo } from './economia';
+import { assegna, dadi, esegui, g, partitaASquadre, partitaDiProva, problemi } from './prove';
 import { applica, applicaScadenze, verifica } from './regole';
 import type { Azione, Impostazioni, Stato } from './tipi';
 
@@ -106,6 +106,27 @@ describe('case e alberghi', () => {
     const { stato } = esegui(s, azione('demolisci', SIENA));
     expect(g(stato, 'a')).toMatchObject({ saldo: 30, debiti: [] });
     expect(g(stato, 'b').saldo).toBe(1520);
+  });
+
+  it('a squadre ognuno vende le sue case senza guardare quelle dei compagni; per costruire la regione sale insieme', () => {
+    // a e b compagni (turni a, c, b, d): la Valle d'Aosta è della squadra, Courmayeur di a con una casa, Aosta di b con due.
+    const COURMAYEUR = 1;
+    const AOSTA = 3;
+    const s = assegna(assegna(partitaASquadre([0, 0, 1, 1]), 'a', COURMAYEUR), 'b', AOSTA);
+    s.proprieta[COURMAYEUR]!.livello = 1;
+    s.proprieta[AOSTA]!.livello = 2;
+    s.turno.fase = 'dopo_lancio';
+    g(s, 'a').saldo = -40;
+    g(s, 'a').debiti = [{ creditore: 'c', importo: 40 }];
+    const { stato } = esegui(s, azione('demolisci', COURMAYEUR));
+    expect(g(stato, 'a')).toMatchObject({ saldo: -15, debiti: [{ creditore: 'c', importo: 15 }] });
+    expect(problemi(stato)).toEqual([]);
+    // La città vuota in una regione dove il compagno ha case non si vende né si ipoteca (scelta voluta).
+    expect(codice(stato, azione('vendi', COURMAYEUR))).toBe('edifici_nella_regione');
+    // Per costruire contano anche le città dei compagni: Aosta non sale finché Courmayeur resta indietro.
+    stato.turno.giocatore = 'b';
+    expect(codice(stato, azione('costruisci', AOSTA, 'b'))).toBe('costruzione_uniforme');
+    expect(codice(stato, azione('demolisci', AOSTA, 'b'))).toBeUndefined();
   });
 });
 
@@ -253,6 +274,21 @@ describe('aste', () => {
     s = esegui(s, { tipo: 'bancarotta', giocatore: 'b' }).stato;
     expect(s.asta!.migliore).toEqual({ giocatore: 'c', importo: 10 });
     expect(codice(s, { tipo: 'offri', giocatore: 'b', importo: 30 })).toBe('eliminato');
+  });
+
+  it('un’offerta arrivata quando l’asta è già scaduta non vale', () => {
+    let s = esegui(suSiena(), { tipo: 'asta', giocatore: 'a' }, dadi(), T0).stato;
+    s = esegui(s, { tipo: 'offri', giocatore: 'b', importo: 50 }, dadi(), T0 + 1_000).stato;
+    const scadenza = T0 + 1_000 + ASTA_MS;
+    expect(verificaOffertaInTempo(s, scadenza - 1)).toBeNull();
+    expect(verificaOffertaInTempo(s, scadenza)?.codice).toBe('asta_finita');
+    // `applica` la rifiuta e l'asta non riparte.
+    expect(applica(s, { tipo: 'offri', giocatore: 'c', importo: 60 }, dadi(), scadenza)).toMatchObject({
+      ok: false,
+      codice: 'asta_finita',
+    });
+    // Senza asta ci pensa `verificaOfferta` (niente_asta).
+    expect(verificaOffertaInTempo(suSiena(), scadenza)).toBeNull();
   });
 
   it('chi non è in gioco non offre e senza asta non si offre', () => {

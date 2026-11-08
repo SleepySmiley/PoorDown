@@ -90,9 +90,9 @@ function scambioCasuale(s: Stato, caso: Caso): Azione | null {
   return verifica(s, azione) === null ? azione : null;
 }
 
-/** All'asta offre un giocatore a caso, oppure si aspetta la fine. */
+/** All'asta offre un giocatore a caso, oppure si aspetta la fine. Dopo la scadenza non si offre più. */
 function mossaAsta(s: Stato, caso: Caso, adesso: number): { azione: Azione } | { scadenza: number } {
-  if (probabile(caso, 6)) {
+  if (adesso < s.asta!.scadenza && probabile(caso, 6)) {
     const g = scegli(
       s.giocatori.filter((x) => !x.eliminato),
       caso,

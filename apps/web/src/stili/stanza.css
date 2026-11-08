@@ -40,6 +40,18 @@
   transform: translate(-50%, 0);
 }
 
+/* Vicino al bordo destro della pagina: allineato a destra del pulsante, non centrato. */
+.con-suggerimento.con-suggerimento--destra[data-testo]::after {
+  left: auto;
+  right: 0;
+  transform: translateY(4px);
+}
+
+.con-suggerimento.con-suggerimento--destra[data-testo]:hover::after,
+.con-suggerimento.con-suggerimento--destra[data-testo]:focus-within::after {
+  transform: none;
+}
+
 /* ---------- Avvisi a comparsa ---------- */
 
 .avvisi {

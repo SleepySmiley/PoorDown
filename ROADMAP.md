@@ -144,6 +144,11 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 
 **Fatto quando:** i bot completano una partita da soli, a squadre i compagni condividono regioni, stazioni e servizi ed ereditano i beni, e i quattro tabelloni si giocano tutti. ✔ Fatto: test del motore per ogni regola delle squadre e per le decisioni dei bot, 24 partite di soli bot su tutti i tabelloni (nessun blocco, nessuna mossa rifiutata), simulazione di 80 partite con tabelloni e squadre a caso, test della stanza per arrivo dei bot, squadre e chat di squadra. Verificato in Edge: lobby con bot e squadre, scelta dei tabelloni, partita a squadre con bot fino alla vittoria della squadra, partita sul tabellone Europa.
 
+### Revisione dopo la Fase 8
+- [x] Giro di 10 agenti: 5 a caccia di bug (motore del turno, economia e bot, server, sincronizzazione del browser, partita vera) e 5 sulla qualità (chiarezza del turno, tabellone, animazioni, scambi e aste, direzione artistica)
+- [x] Corretti i bug trovati, ognuno con il suo test: il server non crolla più con un file delle stanze rovinato, soldi giusti a squadre e nella cassa della Vacanza, case vendibili a squadre, bot che valutano gli scambi in blocco e partite di soli bot che finiscono, offerte tardive all'asta rifiutate, riconnessione senza animazioni vecchie, espulsione e proposte viste anche dopo uno stacco, bozza dello scambio salva durante l'asta e a inizio turno, affitto giusto nella scheda della città, timer che non sfarfalla, rientro dalla home. Le regole cambiate sono nel §4
+- [ ] Migliorie di qualità approvate: turno chiaro, soldi visibili, nuova disposizione, fondamenta (sistema di colori, caratteri e componenti, animazioni con Motion), tabellone premium, pedine e dadi, carte ed eventi, scambi chiari, home/lobby/fine partita
+
 ### Fase 9 — Rifinitura · M
 - [ ] Suoni originali o liberi da diritti, con volume salvato
 - [ ] Layout per telefono e tablet, accessibilità di base
@@ -171,33 +176,43 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Migliore offerente che fa bancarotta durante l'asta | Torna valida l'offerta precedente, invece di lasciare la proprietà invenduta |
 | Turno durante l'asta | Fermo: il giocatore di turno aspetta la fine dell'asta. Scambi e bancarotta restano possibili |
 | Costruire prima di tirare i dadi | Si può, sempre e solo nel proprio turno (anche in prigione) |
-| Regola sul debito negli scambi | Lo scambio non deve togliere niente ai creditori: conta quello che incassano subito più quello che potrebbero recuperare dopo |
+| Regola sul debito negli scambi | Lo scambio non deve togliere niente ai creditori: conta quello che incassano subito più quello che potrebbero recuperare dopo. Conta solo quello che si deve ad altri giocatori: il rosso verso la banca da solo non blocca gli scambi |
+| Offerte all'asta dopo la scadenza | Non valgono e non riaprono il conto alla rovescia: prima di ogni mossa (anche dei bot) il server applica le scadenze già passate. Allo zero il browser spegne i rilanci |
+| Cassa della Vacanza | Entra solo quanto è pagato davvero; la parte non pagata entra quando il rosso si rimborsa, e se il giocatore fallisce prima non entra |
 | Chi può regalare tempo, e quanto | Ogni altro giocatore in gioco, un "+1 min" a testa per turno, al massimo 2 minuti a turno; mai durante l'asta |
 | Ricarica della banca di tempo | Da 20 s (turno finito subito) a 6 s (grazia usata tutta), in proporzione; nessuna ricarica dopo un tempo scaduto |
-| Turno di chi è scollegato | Ha solo la grazia di 20 s da quando sparisce (anche senza timer), poi il gioco tira e finisce il turno per lui; gli altri possono dargli "+1 min" |
-| Nessun giocatore collegato | La partita si ferma: niente turni automatici né rimozioni. Quando torna qualcuno, gli orologi ripartono da dove erano |
+| Turno di chi è scollegato | Ha solo la grazia di 20 s da quando sparisce (anche senza timer), poi il gioco tira e finisce il turno per lui; gli altri possono dargli "+1 min". La grazia non si consuma durante un'asta |
+| Nessun giocatore collegato | La partita si ferma: niente turni automatici né rimozioni. Quando torna qualcuno, gli orologi ripartono da dove erano. Chi è già uscito dalla partita e guarda non conta; con solo bot in gioco la partita va avanti finché qualcuno guarda |
 | Voto senza timer di turno | Si può votare sempre contro chi gioca; il primo voto fa partire 5 minuti, scaduti i quali esce comunque se non ha finito il turno |
-| Kick dell'host in partita | Solo nelle stanze private e non durante il turno del giocatore; chi è espulso perde anche il posto (non scrive più in chat) e torna alla home |
+| Voto dopo un'uscita | Se dopo l'uscita di un altro giocatore i voti già dati raggiungono la nuova maggioranza, chi gioca esce subito |
+| Kick dell'host in partita | Solo nelle stanze private, non durante il turno del giocatore e solo da un host ancora in gioco; chi è espulso perde anche il posto (non scrive più in chat) e torna alla home, anche se era scollegato quando è successo |
+| Host in partita | Resta host finché è in gioco, o finché guarda dopo essere uscito. Se è fuori e non è collegato, il ruolo passa alla prima persona collegata ancora in gioco; se esce per tempo, assenza o voto passa subito, preferendo chi è collegato |
+| «Esci» con due schede | Chi esce da una scheda non libera il posto se lo stesso browser ne ha un'altra aperta sulla stanza |
+| Rientro dalla home | Chi lascia una partita in corso (logo, tasto Indietro) trova in home «Rientra nella stanza» finché il posto è tenuto; in partita il logo chiede conferma a chi è ancora in gioco |
 | Muto della chat | Per singolo giocatore, salvato in questo browser: i suoi messaggi spariscono e si riattivano dal riquadro della chat |
 | Posti dopo "Un'altra partita" | Restano seduti tutti i giocatori della stanza con lo stesso colore (su richup devono rientrare tutti); chi non è collegato ha 2 minuti per tornare, come in lobby. Chi preme "Torna alla home" a partita finita lascia il posto |
 | Chi avvia "Un'altra partita" | L'host; gli altri vedono "In attesa dell'host…". Se l'host non è collegato può farlo qualunque giocatore seduto, che diventa host |
 | Coriandoli | Solo per chi vince, e solo se vede la fine dal vivo (non ricaricando la pagina dopo) |
 | Durata della partita | Non conta il tempo in cui la partita è rimasta ferma perché nessun giocatore era collegato |
 | Grafico del patrimonio | Un punto alla fine di ogni turno; la linea di chi esce si ferma all'ultimo turno in cui era in gioco |
-| Classifica a pari turno | Chi esce più tardi, nello stesso turno, sta davanti |
+| Classifica a pari turno | Chi esce più tardi, nello stesso turno, sta davanti. A squadre tutta la squadra vincitrice sta in testa, anche chi è uscito presto |
 | Proprietà più visitata | Conta le soste (non i passaggi); a pari soste vince la prima del tabellone. In prigione, a pari merito, si mostrano tutti |
 | Arrivo dei bot | Uno ogni 2,5–6 secondi finché ci sono posti liberi, solo se al tavolo c’è almeno una persona; un bot espulso è rimpiazzato dopo un secondo. Abbassando il massimo dei giocatori escono prima i bot; se se ne vanno tutte le persone, escono anche i bot |
-| Stanza piena di bot | Chi arriva prende il posto dell’ultimo bot entrato (su richup trova la stanza piena) |
+| Stanza piena di bot | Chi arriva prende il posto dell’ultimo bot entrato (su richup trova la stanza piena). Anche «Gioca» porta nelle stanze piene di bot, prima in quelle con più persone |
+| Elenco e pulizia delle stanze | L'elenco pubblico non mostra le stanze senza persone sedute. Le stanze senza persone sedute e senza nessuno collegato si chiudono dopo 5 minuti, le altre dopo 30 |
+| Limiti per scheda | 5 stanze al minuto (creazione e «Gioca»), 5 messaggi ogni 2 s, «sta scrivendo» al più 1 al secondo |
+| Testi invisibili | Un nome fatto solo di caratteri invisibili diventa casuale, un nome di squadra torna quello predefinito, un messaggio così è rifiutato |
+| File delle stanze rovinato | Le stanze rovinate si saltano con un avviso, le altre si caricano; del file resta una copia `stanze.json.rotto-<data>` |
 | Ritmo dei bot | Muovono quando i browser hanno finito le animazioni, più circa un secondo; all’asta rilanciano dopo 1–2 s, agli scambi rispondono dopo 2–3,5 s. Se nessuna persona in gioco è collegata si fermano, come la partita |
-| Scambi dei bot | Rispondono a tutti valutando prezzi e regioni (non cedono a poco la città che completa la regione di un avversario). Propongono solo di comprare l’ultima città di una loro regione, fino a 3 volte il prezzo, al massimo una volta ogni 8 turni; ritirano le proposte che non si possono più fare |
-| Voto e tempo con i bot | I bot non cominciano mai un voto: votano solo dopo che l’ha fatto una persona, mai contro un compagno. Regalano «+1 min» a chi lo chiede |
+| Scambi dei bot | Rispondono a tutti valutando prezzi e regioni sulla partita come sarebbe dopo lo scambio (non cedono a poco le città che completano la regione di un avversario, neanche in blocco). Propongono di comprare l’ultima o le ultime due città di una regione se sono dello stesso avversario, fino a 3 volte il prezzo; senza soldi offrono in cambio una loro proprietà. Nelle regioni grandi già tutte comprate comprano una città alla volta da chi ne ha di meno, al massimo al doppio del prezzo. Al massimo una proposta ogni 8 turni; ritirano le proposte che non si possono più fare |
+| Voto e tempo con i bot | I bot non cominciano mai un voto: votano solo dopo che l’ha fatto una persona, solo contro chi è assente (scollegato, o con l’ultimo turno giocato in automatico perché ha finito il tempo) e mai contro un compagno. Regalano «+1 min» a chi lo chiede |
 | Formazione delle squadre | Fino a 4 squadre; ognuno entra in quella che vuole, l’host sposta chiunque e può mescolarle. Accendendo le squadre i seduti si dividono in due; chi arriva va nella squadra più piccola. Nomi «Squadra 1–4», l’host li cambia (max 20 caratteri) |
 | Ordine dei turni a squadre | Alternato tra le squadre (un giocatore per squadra, a giro), così i compagni non giocano di seguito |
-| Squadre: regioni, stazioni, servizi | Si contano insieme a quelli dei compagni (costruzione, affitto doppio, affitti di stazioni e servizi); su una città costruisce solo chi la possiede |
-| Erede a squadre | Il primo compagno ancora in gioco dopo chi esce, nell’ordine dei turni. Vale per ogni uscita (bancarotta, tempo, assenza, voto, espulsione). Le proprietà passano così come sono, con edifici e ipoteche |
-| Bancarotta a squadre con debito | Il creditore è pagato dalla liquidazione, il resto va in contanti al compagno, le proprietà tornano alla banca. Se così una regione della squadra resta incompleta, gli edifici dei compagni lì tornano alla banca a metà prezzo |
+| Squadre: regioni, stazioni, servizi | Si contano insieme a quelli dei compagni (costruzione, affitto doppio, affitti di stazioni e servizi); su una città costruisce solo chi la possiede. Con la costruzione uniforme la regione sale insieme a quella dei compagni, ma per vendere case contano solo le proprie città |
+| Erede a squadre | Il primo compagno ancora in gioco dopo chi esce, nell’ordine dei turni. Vale per ogni uscita (bancarotta, tempo, assenza, voto, espulsione). Se chi esce ha saldo ≥ 0 le proprietà passano così come sono, con edifici e ipoteche. L’erede prende anche i crediti: chi doveva soldi a chi esce li deve al compagno (senza erede il debito si cancella e il debitore resta in rosso verso la banca) |
+| Bancarotta a squadre con debito | Vale per chi esce con il saldo negativo, anche se il rosso è solo verso la banca: si pagano i creditori, poi il rosso verso la banca, il resto va in contanti al compagno, le proprietà tornano alla banca. Se così una regione della squadra resta incompleta, gli edifici dei compagni lì tornano alla banca a metà prezzo |
 | Vittoria a squadre | Vince tutta la squadra rimasta, anche chi era già uscito: coriandoli e «vincitore» in classifica per tutti i suoi giocatori |
-| Chat di squadra | La leggono solo i giocatori di quella squadra (non gli spettatori); i messaggi contano nelle statistiche |
+| Chat di squadra | La leggono solo i giocatori seduti che erano nella squadra quando il messaggio è stato scritto (non gli spettatori, non chi entra nella squadra dopo); «sta scrivendo» arriva solo ai compagni; i messaggi contano nelle statistiche |
 | Affitti dei tabelloni alternativi | Ricavati dal prezzo con la scala del Classico, così l’economia resta la stessa |
 
 ---

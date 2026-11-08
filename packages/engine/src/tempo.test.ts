@@ -207,6 +207,29 @@ describe('assenze', () => {
     expect(g(stato, 'a').banca).toBe(BANCA_INIZIALE_MS - 5_000);
   });
 
+  it('l’asta non consuma la grazia di chi è scollegato: dopo l’asta ha ancora quella che gli restava', () => {
+    // 'a' tira a 2 s e apre l'asta a 10 s; si scollega a metà asta, che si chiude a 20 s.
+    let s = partitaDiProva(3, { aste: true });
+    s = esegui(s, { tipo: 'lancia', giocatore: 'a' }, dadi([1, 2]), 2_000).stato;
+    s = esegui(s, { tipo: 'asta', giocatore: 'a' }, dadi(), 10_000).stato;
+    s = connessione(s, 'a', false, 15_000);
+    expect(tempoTurno(s, 15_000)).toMatchObject({ rimasto: GRAZIA_MS, fermo: true });
+    const chiusa = scade(s, 10_000 + ASTA_MS).stato;
+    expect(prossimaScadenza(chiusa)).toBe(10_000 + ASTA_MS + GRAZIA_MS);
+    expect(problemi(chiusa)).toEqual([]);
+
+    // Scollegato prima dell'asta: i secondi già passati contano, quelli dell'asta no.
+    let prima = partitaDiProva(3, { aste: true });
+    prima = connessione(prima, 'a', false, 1_000);
+    prima = esegui(prima, { tipo: 'lancia', giocatore: 'a' }, dadi([1, 2]), 2_000).stato;
+    prima = esegui(prima, { tipo: 'asta', giocatore: 'a' }, dadi(), 10_000).stato;
+    // Una pausa senza nessuno collegato sposta tutto, grazia compresa.
+    prima = sposta(prima, 5_000);
+    const dopo = scade(prima, 15_000 + ASTA_MS).stato;
+    expect(prossimaScadenza(dopo)).toBe(15_000 + ASTA_MS + GRAZIA_MS - 9_000);
+    expect(problemi(dopo)).toEqual([]);
+  });
+
   it('chi torna in tempo riprende il turno con il suo tempo intero', () => {
     const via = connessione(partitaDiProva(2), 'a', false, 5_000);
     const tornato = connessione(via, 'a', true, 10_000);

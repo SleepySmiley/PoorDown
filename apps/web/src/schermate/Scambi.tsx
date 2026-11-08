@@ -326,11 +326,35 @@ function Problemi({ elenco, titolo }: { elenco: string[]; titolo?: string }): Re
 
 /* ---------------- Proporre ---------------- */
 
+/**
+ * Lo scambio che si sta preparando. Lo tiene la schermata di gioco, così non si perde quando la finestra
+ * si chiude da sola (un'asta, l'inizio del proprio turno).
+ */
+export interface BozzaProposta {
+  con: IdGiocatore | null;
+  dare: Pacchetto;
+  avere: Pacchetto;
+  /** `null` finché non si aggiunge una nota. */
+  nota: string | null;
+}
+
+/** La bozza di partenza: vuota, oppure lo scambio a cui si risponde visto dalla mia parte. */
+function bozzaIniziale(partita: Stato, io: IdGiocatore, base?: Scambio): BozzaProposta {
+  if (base) {
+    const mio = base.da === io;
+    return { con: mio ? base.a : base.da, dare: mio ? base.dare : base.avere, avere: mio ? base.avere : base.dare, nota: null };
+  }
+  const altri = partita.giocatori.filter((g) => !g.eliminato && g.id !== io);
+  return { con: altri.length === 1 ? altri[0]!.id : null, dare: PACCHETTO_VUOTO, avere: PACCHETTO_VUOTO, nota: null };
+}
+
 export function EditorScambio({
   partita,
   io,
   base,
+  bozza,
   inviando,
+  onBozza,
   onInvia,
   onChiudi,
 }: {
@@ -338,23 +362,24 @@ export function EditorScambio({
   io: IdGiocatore;
   /** Lo scambio a cui si risponde con una controproposta. */
   base?: Scambio;
+  /** La bozza salvata; senza, si parte da capo. */
+  bozza?: BozzaProposta;
   inviando: boolean;
+  onBozza: (bozza: BozzaProposta) => void;
   onInvia: (proposta: Proposta) => void;
   onChiudi: () => void;
 }): ReactNode {
   const altri = partita.giocatori.filter((g) => !g.eliminato && g.id !== io);
-  const mio = base?.da === io;
-  const [con, setCon] = useState<IdGiocatore | null>(() => {
-    if (base) return mio ? base.a : base.da;
-    return altri.length === 1 ? altri[0]!.id : null;
-  });
-  const [dare, setDare] = useState<Pacchetto>(() => (base ? (mio ? base.dare : base.avere) : PACCHETTO_VUOTO));
-  const [avere, setAvere] = useState<Pacchetto>(() => (base ? (mio ? base.avere : base.dare) : PACCHETTO_VUOTO));
-  const [nota, setNota] = useState<string | null>(null);
+  const attuale = bozza ?? bozzaIniziale(partita, io, base);
+  const { con, dare, avere, nota } = attuale;
+  const cambia = (modifiche: Partial<BozzaProposta>) => onBozza({ ...attuale, ...modifiche });
   const titolo = base ? 'Controproposta' : 'Crea uno scambio';
+  // Il fuoco va sulla nota solo quando la si aggiunge, non quando la finestra si riapre con la bozza.
+  const [notaNuova, setNotaNuova] = useState(false);
 
   const me = trova(partita, io);
-  const lui = con ? trova(partita, con) : undefined;
+  // Chi nel frattempo è uscito dalla partita non si può più scegliere.
+  const lui = con ? altri.find((g) => g.id === con) : undefined;
 
   if (!me || !lui) {
     return (
@@ -364,7 +389,11 @@ export function EditorScambio({
           <ul>
             {altri.map((g) => (
               <li key={g.id}>
-                <button type="button" className="scambio-finestra__giocatore" onClick={() => setCon(g.id)}>
+                <button
+                  type="button"
+                  className="scambio-finestra__giocatore"
+                  onClick={() => cambia(g.id === con ? { con: g.id } : { con: g.id, avere: PACCHETTO_VUOTO })}
+                >
                   <Pedina colore={g.colore} iniziale={iniziale(g.nome)} className="pedina--media" />
                   <b>{g.nome}</b>
                   <Soldi valore={g.saldo} />
@@ -389,14 +418,7 @@ export function EditorScambio({
   const problemi = problemiScambio(partita, { da: io, a: lui.id, dare, avere }).filter((x) => x !== VUOTO);
   const cambiaGiocatore =
     !base && altri.length > 1 ? (
-      <button
-        type="button"
-        className="parte__cambia"
-        onClick={() => {
-          setCon(null);
-          setAvere(PACCHETTO_VUOTO);
-        }}
-      >
+      <button type="button" className="parte__cambia" onClick={() => cambia({ con: null, avere: PACCHETTO_VUOTO })}>
         Cambia
       </button>
     ) : undefined;
@@ -404,16 +426,31 @@ export function EditorScambio({
   return (
     <RiquadroTabellone titolo={titolo} onChiudi={onChiudi} className="scambio-finestra">
       <div className="scambio-finestra__parti">
-        <Parte partita={partita} g={me} io={io} p={dare} verbo="dai" onCambia={setDare} />
+        <Parte partita={partita} g={me} io={io} p={dare} verbo="dai" onCambia={(p) => cambia({ dare: p })} />
         <div className="scambio-finestra__freccia" aria-hidden="true">
           <Icona nome="scambio" />
         </div>
-        <Parte partita={partita} g={lui} io={io} p={avere} verbo="chiedi" onCambia={setAvere} extra={cambiaGiocatore} />
+        <Parte
+          partita={partita}
+          g={lui}
+          io={io}
+          p={avere}
+          verbo="chiedi"
+          onCambia={(p) => cambia({ avere: p })}
+          extra={cambiaGiocatore}
+        />
       </div>
 
       <div className="scambio-finestra__nota-campo">
         {nota === null ? (
-          <button type="button" className="pulsante pulsante--fantasma pulsante--piccolo" onClick={() => setNota('')}>
+          <button
+            type="button"
+            className="pulsante pulsante--fantasma pulsante--piccolo"
+            onClick={() => {
+              setNotaNuova(true);
+              cambia({ nota: '' });
+            }}
+          >
             <Icona nome="nota" />
             Aggiungi una nota
           </button>
@@ -426,14 +463,14 @@ export function EditorScambio({
               placeholder="Scrivi qualcosa…"
               aria-label="Nota per lo scambio"
               value={nota}
-              autoFocus
-              onChange={(e) => setNota(e.target.value)}
+              autoFocus={notaNuova}
+              onChange={(e) => cambia({ nota: e.target.value })}
             />
             <div className="scambio-finestra__nota-piede">
               <span>
                 {Array.from(nota).length}/{NOTA_MAX}
               </span>
-              <button type="button" className="parte__cambia" onClick={() => setNota(null)}>
+              <button type="button" className="parte__cambia" onClick={() => cambia({ nota: null })}>
                 Togli la nota
               </button>
             </div>

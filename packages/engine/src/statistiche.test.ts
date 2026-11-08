@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { casoDaSeme } from './caso';
 import { IMPOSTAZIONI_PREDEFINITE } from './impostazioni';
 import { creaPartita } from './partita';
-import { assegna, dadi, esegui, g, ID, NOMI, partitaDiProva } from './prove';
+import { assegna, dadi, esegui, g, ID, NOMI, partitaASquadre, partitaDiProva } from './prove';
 import { applica, applicaScadenze } from './regole';
 import { classifica, contaMessaggio, durata, piuVolteInPrigione, proprietaPiuVisitata } from './statistiche';
 import { connessione, sposta } from './tempo';
@@ -148,6 +148,23 @@ describe('classifica e riepilogo', () => {
       { giocatore: 'b', turni: 7, vincitore: false },
       { giocatore: 'd', turni: 7, vincitore: false },
       { giocatore: 'c', turni: 1, vincitore: false },
+    ]);
+  });
+
+  it('a squadre tutta la squadra vincitrice sta davanti, anche chi è uscito per primo', () => {
+    // a e b nella squadra 0, c e d nella squadra 1; turni a, c, b, d.
+    let s = partitaASquadre([0, 0, 1, 1]);
+    s = esegui(s, bancarotta('b')).stato;
+    s.turno.numero = 10;
+    s = esegui(s, bancarotta('d')).stato;
+    s.turno.numero = 20;
+    s = esegui(s, bancarotta('c')).stato;
+    expect(s.squadraVincitrice).toBe(0);
+    expect(classifica(s)).toEqual([
+      { giocatore: 'a', turni: 20, vincitore: true },
+      { giocatore: 'b', turni: 1, vincitore: true },
+      { giocatore: 'c', turni: 20, vincitore: false },
+      { giocatore: 'd', turni: 10, vincitore: false },
     ]);
   });
 

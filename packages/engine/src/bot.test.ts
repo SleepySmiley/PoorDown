@@ -3,7 +3,7 @@ import { durataScena, guadagnoScambio, mossaBot, mosseDeiBot, riserva, TURNI_TRA
 import { casoDaSeme } from './caso';
 import { IMPOSTAZIONI_PREDEFINITE, SOLDI_INIZIALI_POSSIBILI } from './impostazioni';
 import { creaPartita } from './partita';
-import { assegna, esegui, g, ID, NOMI, partitaDiProva, problemi } from './prove';
+import { assegna, esegui, g, ID, NOMI, partitaASquadre, partitaDiProva, problemi } from './prove';
 import { applica, applicaScadenze, prossimaScadenza } from './regole';
 import { TABELLONI } from './tabelloni';
 import type { IdMappa, Stato, TipoEvento } from './tipi';
@@ -42,7 +42,8 @@ function partitaDiBot(seme: number) {
   let adesso = 0;
   let azioni = 0;
   for (; azioni < AZIONI_MAX && s.fase === 'in_corso'; azioni++) {
-    const mosse = mosseDeiBot(s, bot, proporre);
+    // Come la stanza: un'asta già scaduta si chiude prima della prossima mossa (dopo la scadenza non si offre).
+    const mosse = s.asta && adesso >= s.asta.scadenza ? [] : mosseDeiBot(s, bot, proporre);
     let descrizione: string;
     if (mosse.length > 0) {
       const { azione } = mosse[caso.intero(mosse.length)]!;
@@ -83,7 +84,8 @@ describe('partite di soli bot', () => {
       expect(p.visti.has('tempo_scaduto')).toBe(false);
     }
     expect(mappe.size).toBe(Object.keys(TABELLONI).length);
-    expect(finite).toBeGreaterThanOrEqual(PARTITE * 0.8);
+    // Finiscono tutte, anche sui tabelloni con regioni grandi: i bot si scambiano le città per completarle.
+    expect(finite).toBe(PARTITE);
     const attesi: TipoEvento[] = [
       'acquisto', 'costruzione', 'affitto', 'bancarotta', 'fine', 'asta_vinta', 'premio', 'eredita', 'scambio_accettato',
     ];
@@ -134,6 +136,17 @@ describe('decisioni dei bot', () => {
     expect(mossaBot(povero, 'a')).toEqual({ tipo: 'bancarotta', giocatore: 'a' });
   });
 
+  it('a squadre, in rosso, vende le sue case anche se il compagno ne ha di più', () => {
+    // a e b compagni: Courmayeur (1) di a con una casa, Aosta (3) di b con due.
+    const s = assegna(assegna(partitaASquadre([0, 0, 1, 1]), 'a', 1), 'b', 3);
+    s.proprieta[1]!.livello = 1;
+    s.proprieta[3]!.livello = 2;
+    s.turno.fase = 'dopo_lancio';
+    g(s, 'a').saldo = -40;
+    g(s, 'a').debiti = [{ creditore: 'c', importo: 40 }];
+    expect(mossaBot(s, 'a')).toEqual({ tipo: 'demolisci', giocatore: 'a', casella: 1 });
+  });
+
   it('all’asta rilancia fino al valore della proprietà, mai su sé stesso', () => {
     let s = partitaDiProva(2, { aste: true });
     s.turno.fase = 'dopo_lancio';
@@ -176,6 +189,72 @@ describe('decisioni dei bot', () => {
     expect(mossaBot(s, 'a', { proporre: true })).toEqual({ tipo: 'lancia', giocatore: 'a' });
   });
 
+  it('propone di comprare anche le due città che gli mancano, se sono dello stesso avversario', () => {
+    // 'a' ha Siena; Pisa (150) e Firenze (160) sono di 'b'. Offre tre volte il prezzo, e a un bot conviene accettare.
+    const s = assegna(assegna(partitaDiProva(3), 'a', 11), 'b', 13, 14);
+    const proposta = mossaBot(s, 'a', { proporre: true });
+    expect(proposta).toEqual({
+      tipo: 'proponi',
+      giocatore: 'a',
+      a: 'b',
+      dare: { soldi: 930, caselle: [], grazie: [] },
+      avere: { soldi: 0, caselle: [13, 14], grazie: [] },
+      nota: '',
+    });
+    expect(mossaBot(esegui(s, proposta!).stato, 'b')).toMatchObject({ tipo: 'accetta' });
+    // Se le due città sono di avversari diversi, niente.
+    assegna(s, 'c', 14);
+    expect(mossaBot(s, 'a', { proporre: true })).toEqual({ tipo: 'lancia', giocatore: 'a' });
+  });
+
+  it('senza i soldi per comprarla, offre in cambio una sua città: tutte e due le parti completano una regione', () => {
+    // 'a' ha Olbia e Sassari (Sardegna) e Siena; 'b' ha Cagliari, Pisa e Firenze. 'a' ha pochi soldi.
+    const s = assegna(assegna(partitaDiProva(2), 'a', 6, 7, 11), 'b', 9, 13, 14);
+    g(s, 'a').saldo = 150;
+    const proposta = mossaBot(s, 'a', { proporre: true });
+    expect(proposta).toEqual({
+      tipo: 'proponi',
+      giocatore: 'a',
+      a: 'b',
+      dare: { soldi: 0, caselle: [11], grazie: [] },
+      avere: { soldi: 0, caselle: [9], grazie: [] },
+      nota: '',
+    });
+    expect(mossaBot(esegui(s, proposta!).stato, 'b')).toMatchObject({ tipo: 'accetta' });
+  });
+
+  it('nelle regioni grandi e divise compra una città alla volta da chi ne ha di meno', () => {
+    // Grandi aree, Nord: Udine 31, Trento 32, Genova 34, Bologna 37, Torino 39 (400 €).
+    const nord = (c: number[], d: number[]) => assegna(assegna(assegna(assegna(partitaDiProva(4, { mappa: 'grandi_aree' }), 'a', 31, 32), 'b', 34), 'c', ...c), 'd', ...d);
+    // 'a' ne ha due, gli altri una a testa: chiede la più cara, pagandola quanto basta perché un bot accetti.
+    const s = nord([37], [39]);
+    const proposta = mossaBot(s, 'a', { proporre: true });
+    expect(proposta).toEqual({
+      tipo: 'proponi',
+      giocatore: 'a',
+      a: 'd',
+      dare: { soldi: 440, caselle: [], grazie: [] },
+      avere: { soldi: 0, caselle: [39], grazie: [] },
+      nota: '',
+    });
+    expect(mossaBot(esegui(s, proposta!).stato, 'd')).toMatchObject({ tipo: 'accetta' });
+    // Prima a chi ne ha di meno.
+    expect(mossaBot(nord([37, 39], []), 'a', { proporre: true })).toMatchObject({ a: 'b', avere: { caselle: [34] } });
+    // Se un altro ne ha di più, o la regione non è ancora tutta comprata, niente.
+    expect(mossaBot(nord([34, 37, 39], []), 'a', { proporre: true })).toEqual({ tipo: 'lancia', giocatore: 'a' });
+    expect(mossaBot(nord([37], []), 'a', { proporre: true })).toEqual({ tipo: 'lancia', giocatore: 'a' });
+
+    // Centro diviso a metà tra due: chi propone per primo compra, e dopo l'altro non può più chiedere indietro.
+    let pari = assegna(assegna(partitaDiProva(2, { mappa: 'grandi_aree' }), 'a', 21, 23, 24), 'b', 26, 28, 29);
+    const prima = mossaBot(pari, 'a', { proporre: true });
+    expect(prima).toMatchObject({ a: 'b', dare: { soldi: 308 }, avere: { caselle: [29] } });
+    pari = esegui(pari, prima!).stato;
+    pari = esegui(pari, mossaBot(pari, 'b')!).stato;
+    expect(pari.proprieta[29]!.proprietario).toBe('a');
+    pari.turno.giocatore = 'b';
+    expect(mossaBot(pari, 'b', { proporre: true })).toEqual({ tipo: 'lancia', giocatore: 'b' });
+  });
+
   it('ritira la sua proposta quando non si può più fare', () => {
     const vuoto = { soldi: 0, caselle: [], grazie: [] };
     let s = assegna(assegna(partitaDiProva(2), 'a', 37), 'b', 39);
@@ -186,6 +265,29 @@ describe('decisioni dei bot', () => {
     expect(mossaBot(s, 'a')).toEqual({ tipo: 'annulla', giocatore: 'a', scambio: 1 });
   });
 
+  it('valuta insieme le città dello scambio, sulla partita come sarà dopo', () => {
+    const vuoto = { soldi: 0, caselle: [], grazie: [] };
+    const risposta = (s: Stato, dare: number[], soldiDare: number, avere: number[], soldiAvere: number) => {
+      const r = esegui(s, {
+        tipo: 'proponi',
+        giocatore: 'a',
+        a: 'b',
+        dare: { ...vuoto, soldi: soldiDare, caselle: dare },
+        avere: { ...vuoto, soldi: soldiAvere, caselle: avere },
+        nota: '',
+      }).stato;
+      return mossaBot(r, 'b')?.tipo;
+    };
+    // Toscana: Siena 11 (140), Pisa 13 (150), Firenze 14 (160). 'a' ha Siena e chiede Pisa e Firenze insieme:
+    // nessuna delle due da sola gli completa la regione, ma insieme sì.
+    expect(risposta(assegna(assegna(partitaDiProva(2), 'a', 11), 'b', 13, 14), [], 345, [13, 14], 0)).toBe('rifiuta');
+    // Grandi aree, Nord: 'a' ha Udine e Trento e chiede le altre tre città per poco più del loro prezzo (1090).
+    const nord = assegna(assegna(partitaDiProva(2, { mappa: 'grandi_aree' }), 'a', 31, 32), 'b', 34, 37, 39);
+    expect(risposta(nord, [], 1200, [34, 37, 39], 0)).toBe('rifiuta');
+    // Al contrario: il bot ha Siena, e Pisa con Firenze gli completano la Toscana. Le paga volentieri più del prezzo.
+    expect(risposta(assegna(assegna(partitaDiProva(2), 'b', 11), 'a', 13, 14), [13, 14], 0, [], 560)).toBe('accetta');
+  });
+
   it('non cede per poco la città che completa la regione dell’avversario', () => {
     const vuoto = { soldi: 0, caselle: [], grazie: [] };
     let s = assegna(assegna(partitaDiProva(2), 'a', 37), 'b', 39);
@@ -194,9 +296,17 @@ describe('decisioni dei bot', () => {
     expect(mossaBot(s, 'b')).toEqual({ tipo: 'rifiuta', giocatore: 'b', scambio: 1 });
   });
 
-  it('segue il voto di un altro e dà tempo a chi lo chiede', () => {
+  it('segue il voto solo contro chi è assente, e dà tempo a chi lo chiede', () => {
     let s: Stato = partitaDiProva(3, { timerTurno: false });
     s = esegui(s, { tipo: 'vota', giocatore: 'b', favorevole: true }).stato;
+    // Chi gioca è collegato e non ha mai finito il tempo: il bot non lo vota.
+    expect(mossaBot(s, 'c')).toBeNull();
+    // Scollegato: il bot si unisce al voto.
+    s.giocatori[0]!.offlineDa = 0;
+    expect(mossaBot(s, 'c')).toEqual({ tipo: 'vota', giocatore: 'c', favorevole: true });
+    // Collegato ma con l'ultimo turno giocato in automatico perché ha finito il tempo: anche.
+    s.giocatori[0]!.offlineDa = null;
+    s.giocatori[0]!.automatici = 1;
     expect(mossaBot(s, 'c')).toEqual({ tipo: 'vota', giocatore: 'c', favorevole: true });
     s = partitaDiProva(3);
     s = esegui(s, { tipo: 'chiedi_tempo', giocatore: 'a' }).stato;

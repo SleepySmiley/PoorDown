@@ -17,6 +17,8 @@ import {
   costoProssimoEdificio,
   costoRiscatto,
   giocatore,
+  possedute,
+  possiedeRegione,
   proprietabile,
   rimborsoEdificio,
   valoreIpoteca,
@@ -24,7 +26,7 @@ import {
 } from './conti';
 import { RILANCI } from './economia';
 import { azioniPossibili, verifica } from './regole';
-import { problemiScambio } from './scambi';
+import { problemiScambio, type BozzaScambio } from './scambi';
 import { tabellone } from './tabelloni';
 import type { Azione, Citta, Evento, Giocatore, IdGiocatore, Pacchetto, Scambio, Stato } from './tipi';
 
@@ -87,26 +89,36 @@ export function valoreCasella(s: Stato, id: IdGiocatore, casella: number): numbe
   }
 }
 
-/** Le caselle di un avversario (`altro`) a cui il bot regalerebbe una regione completa cedendo `casella`. */
-function completaAvversario(s: Stato, altro: IdGiocatore, casella: number): boolean {
-  const c = proprietabile(tabellone(s.mappa), casella);
-  if (c?.tipo !== 'citta') return false;
-  return caselleDellaRegione(tabellone(s.mappa), c.regione).every(
-    (i) => i === casella || (s.proprieta[i]?.proprietario != null && alleati(s, s.proprieta[i]!.proprietario!, altro)),
-  );
+/** La partita come sarebbe dopo lo scambio, per le valutazioni: cambiano solo i proprietari delle caselle. */
+function dopoLoScambio(s: Stato, sc: BozzaScambio): Stato {
+  const proprieta = s.proprieta.map((p, i) => {
+    if (!p) return p;
+    if (sc.dare.caselle.includes(i)) return { ...p, proprietario: sc.a };
+    if (sc.avere.caselle.includes(i)) return { ...p, proprietario: sc.da };
+    return p;
+  });
+  return { ...s, proprieta };
+}
+
+/** Lo stesso scambio visto dall'altra parte: serve al bot per valutare le sue proposte con il proprio metro. */
+function rovescia(sc: BozzaScambio): BozzaScambio {
+  return { da: sc.a, a: sc.da, dare: sc.avere, avere: sc.dare };
 }
 
 /**
- * Quanto guadagna il bot da uno scambio che gli è stato proposto: quello che riceve meno quello che dà,
- * contando che cedere una città che completa la regione dell'avversario costa molto di più del suo prezzo.
+ * Quanto guadagna il bot `id` (chi riceve la proposta, `sc.a`) da uno scambio: quello che riceve meno quello che dà.
+ * Le caselle si valutano sulla partita come sarà dopo lo scambio, tutte insieme: due città che gli completano
+ * una regione valgono come tali, e cedere città che completano la regione dell'avversario costa molto di più
+ * del loro prezzo, anche se nessuna da sola basterebbe.
  */
-export function guadagnoScambio(s: Stato, id: IdGiocatore, sc: Scambio): { guadagno: number; dato: number } {
+export function guadagnoScambio(s: Stato, id: IdGiocatore, sc: BozzaScambio): { guadagno: number; dato: number } {
   const ricevo: Pacchetto = sc.dare;
   const cedo: Pacchetto = sc.avere;
   const tab = tabellone(s.mappa);
+  const dopo = dopoLoScambio(s, sc);
   let ricevuto = ricevo.soldi + ricevo.grazie.length * VALORE_GRAZIA;
   for (const i of ricevo.caselle) {
-    const valore = valoreCasella(s, id, i);
+    const valore = valoreCasella(dopo, id, i);
     ricevuto += s.proprieta[i]?.ipotecata ? valore - costoRiscatto(tab, i) : valore;
   }
   let dato = cedo.soldi + cedo.grazie.length * VALORE_GRAZIA;
@@ -115,9 +127,9 @@ export function guadagnoScambio(s: Stato, id: IdGiocatore, sc: Scambio): { guada
     if (!c) continue;
     const ipotecata = s.proprieta[i]?.ipotecata === true;
     const base = ipotecata ? c.prezzo / 2 : c.prezzo;
-    const mia = c.tipo === 'citta' && contaRegione(s, id, c).mie === caselleDellaRegione(tab, c.regione).length;
+    const mia = c.tipo === 'citta' && possiedeRegione(s, id, c.regione);
     dato += mia ? base * 2.5 : base;
-    if (!compagni(s, id, sc.da) && completaAvversario(s, sc.da, i)) dato += c.prezzo * 1.2;
+    if (c.tipo === 'citta' && !compagni(s, id, sc.da) && possiedeRegione(dopo, sc.da, c.regione)) dato += c.prezzo * 1.2;
   }
   return { guadagno: Math.round(ricevuto - dato), dato: Math.round(dato) };
 }
@@ -172,14 +184,30 @@ function rientra(s: Stato, g: Giocatore, possibili: Azione[]): Azione {
   return { tipo: 'bancarotta', giocatore: g.id };
 }
 
-/** Quanto offre un bot per l'ultima città che gli manca in una regione, rispetto al suo prezzo. */
+/** Quanto vale per un bot completare una regione, rispetto al prezzo delle città che gli mancano. */
 const OFFERTA_REGIONE = 3;
+/** Città che possono mancare a una regione perché il bot chieda di comprarle, tutte allo stesso avversario. */
+const MANCANTI_MAX = 2;
+/** Quanto offre al massimo un bot, rispetto al prezzo, per una città che lo avvicina a una regione senza completarla. */
+const OFFERTA_AVVICINA = 2;
+
+/** I soldi da aggiungere a uno scambio perché il bot che lo riceve lo accetti (lo stesso metro di `rispostaScambio`). */
+function soldiPerAccettare(s: Stato, bozza: BozzaScambio): number {
+  const { guadagno, dato } = guadagnoScambio(s, bozza.a, bozza);
+  return Math.max(0, Math.ceil(Math.max(20, dato * 0.1) - guadagno));
+}
+
+function proposta(b: BozzaScambio): Azione {
+  return { tipo: 'proponi', giocatore: b.da, a: b.a, dare: b.dare, avere: b.avere, nota: '' };
+}
 
 /**
- * Proposta per completare una regione: il bot ha tutte le città tranne una, che è di un avversario,
- * e gliela chiede in cambio di soldi (fino a tre volte il prezzo, senza intaccare la scorta).
+ * Proposta per completare una regione: al bot mancano una o due città, tutte dello stesso avversario.
+ * Le chiede in cambio di soldi (fino a tre volte il loro prezzo, senza intaccare la scorta); se non bastano
+ * a farle valere quanto l'avversario le stima, offre una sua proprietà più i soldi che servono (scegliendo quella
+ * che gli costa meno, spesso una città che completa una regione all'altro: così si costruisce da tutte e due le parti).
  */
-function propostaBot(s: Stato, g: Giocatore, scorta: number): Azione | null {
+function propostaCompleta(s: Stato, g: Giocatore, disponibili: number): Azione | null {
   const tab = tabellone(s.mappa);
   const regioni = tab.regioni.map((_, r) => r).reverse();
   for (const r of regioni) {
@@ -187,24 +215,82 @@ function propostaBot(s: Stato, g: Giocatore, scorta: number): Azione | null {
       const proprietario = s.proprieta[i]?.proprietario;
       return !proprietario || !alleati(s, proprietario, g.id);
     });
-    if (mancanti.length !== 1) continue;
-    const casella = mancanti[0]!;
-    const proprietario = s.proprieta[casella]?.proprietario;
-    if (!proprietario) continue;
-    const prezzo = proprietabile(tab, casella)!.prezzo;
-    const offerta = Math.min(prezzo * OFFERTA_REGIONE, g.saldo - scorta);
-    if (offerta < prezzo * 2) continue;
-    const azione: Azione = {
-      tipo: 'proponi',
-      giocatore: g.id,
-      a: proprietario,
-      dare: { soldi: offerta, caselle: [], grazie: [] },
-      avere: { soldi: 0, caselle: [casella], grazie: [] },
-      nota: '',
-    };
+    const altro = mancanti.length > 0 ? s.proprieta[mancanti[0]!]?.proprietario : null;
+    if (!altro || mancanti.length > MANCANTI_MAX || mancanti.some((i) => s.proprieta[i]?.proprietario !== altro)) continue;
+    const valore = OFFERTA_REGIONE * mancanti.reduce((t, i) => t + proprietabile(tab, i)!.prezzo, 0);
+    const bozza = (soldi: number, caselle: number[]): BozzaScambio => ({
+      da: g.id,
+      a: altro,
+      dare: { soldi, caselle, grazie: [] },
+      avere: { soldi: 0, caselle: mancanti, grazie: [] },
+    });
+
+    const offerta = Math.min(valore, disponibili);
+    if (offerta > 0 && offerta >= soldiPerAccettare(s, bozza(0, [])) && ok(s, proposta(bozza(offerta, [])))) {
+      return proposta(bozza(offerta, []));
+    }
+    let migliore: Azione | null = null;
+    let costoMinimo = valore;
+    for (const casella of possedute(s, g.id)) {
+      const c = proprietabile(tab, casella);
+      if (c?.tipo === 'citta' && c.regione === r) continue;
+      const soldi = soldiPerAccettare(s, bozza(0, [casella]));
+      if (soldi > Math.max(0, disponibili)) continue;
+      const cambio = bozza(soldi, [casella]);
+      // Quanto costa al bot, con il suo metro: soldi più la proprietà ceduta (molto di più se completa la regione all'altro).
+      const costo = guadagnoScambio(s, g.id, rovescia(cambio)).dato;
+      if (costo > costoMinimo || !ok(s, proposta(cambio))) continue;
+      migliore = proposta(cambio);
+      costoMinimo = costo;
+    }
+    if (migliore) return migliore;
+  }
+  return null;
+}
+
+/**
+ * Proposta per avvicinarsi a una regione che nessuno può completare da solo (succede sui tabelloni con regioni
+ * grandi, divise tra tanti giocatori): la regione è tutta comprata, il bot ne ha almeno due città e nessuno
+ * ne ha più di lui. Chiede una delle città che gli mancano, prima a chi lì ne ha di meno, pagandola quanto basta
+ * perché un bot accetti, al massimo il doppio del prezzo. Dopo lo scambio il bot ne ha più di tutti, e nessun
+ * altro gli chiederà le sue con una proposta come questa: niente botta e risposta.
+ */
+function propostaAvvicina(s: Stato, g: Giocatore, disponibili: number): Azione | null {
+  const tab = tabellone(s.mappa);
+  const di = (i: number) => s.proprieta[i]?.proprietario ?? null;
+  const candidati: { casella: number; altro: IdGiocatore; mancanti: number; suoi: number; prezzo: number }[] = [];
+  tab.regioni.forEach((_, r) => {
+    const caselle = caselleDellaRegione(tab, r);
+    if (caselle.some((i) => di(i) === null)) return;
+    const conta = (id: IdGiocatore) => caselle.filter((i) => alleati(s, di(i)!, id)).length;
+    const mie = conta(g.id);
+    const altre = caselle.filter((i) => !alleati(s, di(i)!, g.id));
+    if (mie < 2 || altre.length < 2 || altre.some((i) => conta(di(i)!) > mie)) return;
+    for (const i of altre) {
+      candidati.push({ casella: i, altro: di(i)!, mancanti: altre.length, suoi: conta(di(i)!), prezzo: proprietabile(tab, i)!.prezzo });
+    }
+  });
+  // Prima la regione più vicina, poi chi ne ha di meno, poi la città più cara.
+  candidati.sort((x, y) => x.mancanti - y.mancanti || x.suoi - y.suoi || y.prezzo - x.prezzo);
+  for (const k of candidati) {
+    const bozza = (soldi: number): BozzaScambio => ({
+      da: g.id,
+      a: k.altro,
+      dare: { soldi, caselle: [], grazie: [] },
+      avere: { soldi: 0, caselle: [k.casella], grazie: [] },
+    });
+    const soldi = soldiPerAccettare(s, bozza(0));
+    if (soldi > Math.min(disponibili, OFFERTA_AVVICINA * k.prezzo)) continue;
+    const azione = proposta(bozza(soldi));
     if (ok(s, azione)) return azione;
   }
   return null;
+}
+
+/** La proposta di scambio del bot, se ne ha una: prima per completare una regione, poi per avvicinarsi. */
+function propostaBot(s: Stato, g: Giocatore, scorta: number): Azione | null {
+  const disponibili = g.saldo - scorta;
+  return propostaCompleta(s, g, disponibili) ?? propostaAvvicina(s, g, disponibili);
 }
 
 /** Cosa la stanza permette al bot in questo momento. */
@@ -287,9 +373,12 @@ export function mossaBot(s: Stato, id: IdGiocatore, opzioni: OpzioniBot = {}): A
 
   const t = s.turno;
   if (t.giocatore !== id) {
-    // Il voto lo comincia una persona; i bot la seguono, ma mai contro un compagno.
+    // Il voto lo comincia una persona; i bot la seguono solo contro chi è assente (scollegato, o con l'ultimo turno
+    // giocato in automatico perché ha finito il tempo), mai contro chi sta giocando né contro un compagno.
     const voto: Azione = { tipo: 'vota', giocatore: id, favorevole: true };
-    if (t.votazione.voti.length > 0 && !compagni(s, id, t.giocatore) && ok(s, voto)) return voto;
+    const bersaglio = giocatore(s, t.giocatore);
+    const assente = bersaglio !== undefined && (bersaglio.offlineDa !== null || bersaglio.automatici > 0);
+    if (t.votazione.voti.length > 0 && assente && !compagni(s, id, t.giocatore) && ok(s, voto)) return voto;
     const regalo: Azione = { tipo: 'regala_tempo', giocatore: id };
     if (t.tempo.richiesta && ok(s, regalo)) return regalo;
     return null;

@@ -78,7 +78,7 @@ export interface MessaggioChat {
   nome: string;
   colore: number;
   testo: string;
-  /** Messaggio della chat di squadra: lo vedono solo i giocatori di quella squadra. */
+  /** Messaggio della chat di squadra: lo vedono solo i giocatori che erano in quella squadra quando è stato scritto. */
   squadra?: number;
 }
 
@@ -149,6 +149,8 @@ export type CodiceErroreServer =
   | 'pochi_giocatori'
   | 'troppi_giocatori'
   | 'squadre_spente'
+  /** Troppi comandi uguali in poco tempo (stanze create, messaggi): si riprova tra poco. */
+  | 'troppe_richieste'
   | 'errore_interno'
   /** Solo lato browser: il server non ha risposto in tempo. */
   | 'senza_risposta';
@@ -159,15 +161,15 @@ type Vuoto = Record<string, never>;
 
 /** Comandi del browser: cosa manda (`dati`) e cosa riceve se va bene (`risposta`). */
 export interface Comandi {
-  /** Stanze pubbliche aperte sul server. */
+  /** Stanze pubbliche aperte sul server, con almeno una persona seduta. */
   elenco_stanze: { dati: Vuoto; risposta: StanzaInElenco[] };
-  /** Crea una stanza vuota: chi la crea ci deve poi entrare e sedersi come gli altri. */
+  /** Crea una stanza vuota: chi la crea ci deve poi entrare e sedersi come gli altri. Al più 5 al minuto. */
   crea_stanza: { dati: { privata: boolean }; risposta: { codice: string } };
-  /** La prima stanza pubblica in attesa con un posto libero, o una nuova. */
+  /** La prima stanza pubblica in attesa con un posto libero (o occupato da un bot), o una nuova. */
   gioca: { dati: Vuoto; risposta: { codice: string } };
   /** Segue la stanza e ne riceve gli aggiornamenti. Chi aveva un posto lo ritrova. */
   entra: { dati: { codice: string }; risposta: Istantanea };
-  /** Smette di seguire la stanza. In lobby libera anche il posto. */
+  /** Smette di seguire la stanza. In lobby libera anche il posto, se non resta aperta un'altra scheda dello stesso browser. */
   esci: { dati: Vuoto; risposta: null };
   /** Prende un posto al tavolo (solo in lobby). Il primo che si siede diventa host. */
   siediti: { dati: { nome: string; colore: number }; risposta: { io: IdGiocatore } };
@@ -189,11 +191,15 @@ export interface Comandi {
   avvia: { dati: Vuoto; risposta: null };
   /**
    * A partita finita, riporta la stanza in lobby con le stesse impostazioni e gli stessi posti.
-   * Solo l'host, oppure qualunque giocatore seduto se l'host non è collegato.
+   * Solo l'host, oppure qualunque giocatore seduto se l'host non è collegato. Se qualcuno l'ha appena fatto
+   * (la stanza è già in lobby), a chi è seduto risponde comunque "ok".
    */
   nuova_partita: { dati: Vuoto; risposta: null };
   mossa: { dati: Mossa; risposta: null };
-  /** Solo chi è seduto al tavolo. Con `squadra` il messaggio va solo ai compagni di squadra. */
+  /**
+   * Solo chi è seduto al tavolo, al più 5 messaggi ogni 2 secondi. Con `squadra` il messaggio va solo a chi è
+   * nella squadra al momento dell'invio.
+   */
   scrivi: { dati: { testo: string; squadra?: boolean }; risposta: null };
   sincronizza: { dati: Vuoto; risposta: Istantanea };
 }
@@ -204,8 +210,11 @@ export type NomeComando = keyof Comandi;
 export type EventiClient = {
   [K in NomeComando]: (dati: Comandi[K]['dati'], risposta: (r: Risposta<Comandi[K]['risposta']>) => void) => void;
 } & {
-  /** Senza risposta: avvisa gli altri che si sta scrivendo in chat. */
-  sta_scrivendo: () => void;
+  /**
+   * Senza risposta: avvisa gli altri che si sta scrivendo in chat (con `squadra`, nella chat di squadra:
+   * l'avviso arriva solo ai compagni). Il server ne inoltra al più uno al secondo.
+   */
+  sta_scrivendo: (squadra?: boolean) => void;
   /** Senza risposta: cosa si sta facendo con gli scambi (`null`: niente). */
   attivita: (a: Attivita | null) => void;
 };

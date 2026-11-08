@@ -165,9 +165,12 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       return evento.favorevole
         ? `${nome(evento.da)} vota per far uscire ${nome(evento.contro)} dalla partita (${evento.voti} di ${evento.servono}).`
         : `${nome(evento.da)} ritira il voto contro ${nome(evento.contro)}.`;
-    case 'fine':
-      if (evento.squadra !== undefined) return `Partita finita. Vince la squadra ${stato.squadre[evento.squadra] ?? ''}.`;
-      return evento.vincitore ? `Partita finita. Vince ${nome(evento.vincitore)}.` : 'Partita finita.';
+    case 'fine': {
+      if (evento.squadra === undefined) return evento.vincitore ? `Partita finita. Vince ${nome(evento.vincitore)}.` : 'Partita finita.';
+      // «Vince Squadra 1», ma «Vince la squadra Volpi».
+      const squadra = stato.squadre[evento.squadra] ?? `Squadra ${evento.squadra + 1}`;
+      return `Partita finita. Vince ${/^squadra\b/i.test(squadra) ? squadra : `la squadra ${squadra}`}.`;
+    }
   }
 }
 

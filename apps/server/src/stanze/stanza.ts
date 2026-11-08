@@ -19,6 +19,7 @@ import {
   GIOCATORI_MIN,
   GRAZIA_MS,
   IMPOSTAZIONI_PREDEFINITE,
+  LUNGHEZZA_CODICE,
   mescola,
   mosseDeiBot,
   NOME_SQUADRA_MAX,
@@ -76,6 +77,14 @@ export interface Posto {
   squadra: number | null;
 }
 
+/**
+ * Un messaggio della chat come lo tiene il server. Per quelli di squadra, `lettori` sono i giocatori che erano
+ * nella squadra quando è stato scritto: solo loro lo leggono, anche se poi le squadre cambiano. Non va ai browser.
+ */
+export interface MessaggioInStanza extends MessaggioChat {
+  lettori?: IdGiocatore[];
+}
+
 /** La stanza come si salva su file. */
 export interface DatiStanza {
   codice: string;
@@ -88,7 +97,8 @@ export interface DatiStanza {
   nomiSquadre?: string[];
   partita: Stato | null;
   registro: VoceRegistro[];
-  chat: MessaggioChat[];
+  /** Nei messaggi di squadra salvati prima delle correzioni della Fase 8 manca `lettori`. */
+  chat: MessaggioInStanza[];
   prossimaVoce: number;
   prossimoMessaggio: number;
   /**
@@ -119,7 +129,7 @@ export class Stanza {
   nomiSquadre: string[] = [...NOMI_SQUADRE_PREDEFINITI];
   partita: Stato | null = null;
   registro: VoceRegistro[] = [];
-  chat: MessaggioChat[] = [];
+  chat: MessaggioInStanza[] = [];
   /** L'ultima volta che qualcuno ha aperto o chiuso la stanza: serve alla pulizia delle stanze abbandonate. */
   ultimaPresenza: number;
 
@@ -165,7 +175,7 @@ export class Stanza {
     const posto = this.postoDi(token);
     if (posto) posto.offlineDa = null;
     this.aggiornaPresenze();
-    this.segna();
+    this.segna(...this.passaHost());
   }
 
   scollega(connessione: string): void {
@@ -179,22 +189,27 @@ export class Stanza {
       this.togliAttivita((id) => id === posto.id);
     }
     this.aggiornaPresenze();
-    this.segna();
+    this.segna(...this.passaHost());
   }
 
   /**
-   * Chi esce dalla stanza in lobby, o a partita finita, libera il posto (e non torna con «Un'altra partita»).
-   * In partita il posto resta: si può tornare.
+   * Chi esce dalla stanza in lobby, o a partita finita, libera il posto (e non torna con «Un'altra partita»),
+   * a meno che abbia ancora un'altra scheda aperta sulla stanza. In partita il posto resta: si può tornare.
    */
   esci(connessione: string): void {
     const token = this.connessioni.get(connessione);
     this.scollega(connessione);
     const posto = token === undefined ? undefined : this.postoDi(token);
-    if (posto && this.fase !== 'partita') this.rimuovi(posto, 'volontaria');
+    if (posto && this.fase !== 'partita' && !this.collegato(posto.token)) this.rimuovi(posto, 'volontaria');
   }
 
   nessunoCollegato(): boolean {
     return this.connessioni.size === 0;
+  }
+
+  /** Al tavolo non è seduta nessuna persona (al più dei bot). */
+  senzaPersone(): boolean {
+    return !this.posti.some((p) => !p.bot);
   }
 
   /* ------------------------------------------------------------------ */
@@ -289,6 +304,7 @@ export class Stanza {
   private espelliInPartita(token: Token, id: IdGiocatore): Risposta<null> {
     const io = this.postoDi(token);
     if (!io || io.id !== this.host) return no('solo_host', 'Solo l’host può togliere un giocatore dalla partita.');
+    if (!this.inGioco(io.id)) return no('solo_host', 'Sei fuori dalla partita: non puoi più togliere gli altri giocatori.');
     if (!this.impostazioni.stanzaPrivata) {
       return no('solo_host', 'Nelle stanze pubbliche un giocatore si toglie solo con il voto.');
     }
@@ -379,10 +395,12 @@ export class Stanza {
    * A partita finita riporta la stanza in lobby per giocarne un'altra: stesse impostazioni, stessi posti e colori.
    * Lo fa l'host; se l'host non è collegato, qualunque giocatore seduto, che diventa host.
    * Chi non è collegato ha di nuovo due minuti per tornare, come in ogni lobby. Il registro riparte da capo.
+   * Se due la chiedono insieme, il secondo trova la stanza già in lobby: per lui va bene così.
    */
   nuovaPartita(token: Token): Risposta<null> {
     const posto = this.postoDi(token);
     if (!posto) return no('non_seduto', 'Solo chi era al tavolo può preparare un’altra partita.');
+    if (this.fase === 'lobby') return si(null);
     if (this.fase !== 'finita') return no('partita_non_finita', 'La partita non è ancora finita.');
     const host = this.posti.find((p) => p.id === this.host);
     if (posto !== host && host && this.collegato(host.token)) {
@@ -409,10 +427,16 @@ export class Stanza {
   /* Partita e chat                                                      */
   /* ------------------------------------------------------------------ */
 
+  /**
+   * Prima della mossa si applicano le scadenze già passate (fine dell'asta, tempo del turno…), anche se la
+   * sveglia non è ancora arrivata: così, per esempio, un'offerta arrivata dopo la fine dell'asta non la riapre.
+   */
   mossa(token: Token, mossa: Mossa): Risposta<null> {
     const posto = this.postoDi(token);
     if (!posto) return no('non_seduto', 'Stai solo guardando: non puoi giocare.');
     if (this.fase !== 'partita' || !this.partita) return no('partita_non_in_corso', 'La partita non è in corso.');
+    this.scadenzeDellaPartita();
+    if (this.fase !== 'partita' || !this.partita) return no('partita_non_in_corso', 'La partita è appena finita.');
     const esito = applica(this.partita, { ...mossa, giocatore: posto.id } as Azione, this.amb.caso, this.amb.adesso());
     if (!esito.ok) return no(esito.codice, esito.messaggio);
     this.registra(esito);
@@ -438,14 +462,16 @@ export class Stanza {
 
   /**
    * La chat non cambia la versione: il messaggio va mandato a parte (a tutti, o con `squadra` solo ai compagni:
-   * chi può leggerlo lo dice `puoLeggere`).
+   * chi può leggerlo lo dice `puoLeggere`). Chi lo può leggere si decide adesso, una volta per tutte.
    */
   scrivi(token: Token, testo: string, squadra = false): Risposta<MessaggioChat> {
     const posto = this.postoDi(token);
     if (!posto) return no('non_seduto', 'Solo i giocatori possono scrivere in chat.');
-    if (squadra && (!this.impostazioni.squadre || posto.squadra === null)) return SQUADRE_SPENTE;
+    const mia = this.squadraPerChat(token);
+    if (squadra && mia === null) return SQUADRE_SPENTE;
     const pulito = testo.trim();
-    if (!pulito) return no('richiesta_non_valida', 'Il messaggio è vuoto.');
+    // Un messaggio fatto solo di spazi o di caratteri che non si vedono è vuoto.
+    if (!pulisciNome(pulito)) return no('richiesta_non_valida', 'Il messaggio è vuoto.');
     if (Array.from(pulito).length > CHAT_MAX) return no('richiesta_non_valida', `Il messaggio supera i ${CHAT_MAX} caratteri.`);
     const messaggio: MessaggioChat = {
       n: this.prossimoMessaggio++,
@@ -454,18 +480,28 @@ export class Stanza {
       nome: posto.nome,
       colore: posto.colore,
       testo: pulito,
-      ...(squadra && posto.squadra !== null ? { squadra: posto.squadra } : {}),
+      ...(squadra && mia !== null ? { squadra: mia } : {}),
     };
-    this.chat.push(messaggio);
+    const lettori = messaggio.squadra === undefined ? undefined : this.membri(messaggio.squadra);
+    this.chat.push(lettori ? { ...messaggio, lettori } : { ...messaggio });
     if (this.chat.length > CHAT_CRONOLOGIA) this.chat.splice(0, this.chat.length - CHAT_CRONOLOGIA);
     // Per le statistiche di fine partita. Non cambia la versione: i browser lo vedono con il prossimo aggiornamento.
     if (this.fase === 'partita' && this.partita) this.partita = contaMessaggio(this.partita);
     return si(messaggio);
   }
 
-  /** Il messaggio è per tutti, oppure è della chat di squadra e chi presenta il token è in quella squadra. */
+  /**
+   * Il messaggio è per tutti, oppure è della chat di squadra e chi presenta il token è seduto ed era nella squadra
+   * quando il messaggio è stato scritto (chi entra nella squadra dopo non legge i messaggi vecchi).
+   */
   puoLeggere(token: Token, messaggio: MessaggioChat): boolean {
-    return messaggio.squadra === undefined || this.postoDi(token)?.squadra === messaggio.squadra;
+    if (messaggio.squadra === undefined) return true;
+    return this.leggibile(token, this.chat.findLast((m) => m.n === messaggio.n));
+  }
+
+  /** A squadre, la squadra di chi presenta il token, per la chat di squadra; altrimenti `null` (anche per chi guarda). */
+  squadraPerChat(token: Token): number | null {
+    return this.impostazioni.squadre ? (this.postoDi(token)?.squadra ?? null) : null;
   }
 
   /* ------------------------------------------------------------------ */
@@ -496,13 +532,19 @@ export class Stanza {
       }
       return;
     }
-    if (this.fase !== 'partita' || !this.partita || this.pausaDa !== null) return;
-    const esito = applicaScadenze(this.partita, this.amb.caso, adesso);
-    if (esito?.ok) this.registra(esito);
+    if (this.fase !== 'partita' || this.pausaDa !== null) return;
+    this.scadenzeDellaPartita();
     if (this.prossimaMossaBot !== null && this.prossimaMossaBot <= adesso) {
       this.prossimaMossaBot = null;
       this.giocaBot();
     }
+  }
+
+  /** Applica le scadenze della partita già passate (asta, tempo del turno, voto, assenze). In pausa niente. */
+  private scadenzeDellaPartita(): void {
+    if (this.fase !== 'partita' || !this.partita || this.pausaDa !== null) return;
+    const esito = applicaScadenze(this.partita, this.amb.caso, this.amb.adesso());
+    if (esito?.ok) this.registra(esito);
   }
 
   /** Millisecondi alla prossima cosa da fare (scadenza della partita, mossa o arrivo di un bot); `null` se niente. */
@@ -565,7 +607,7 @@ export class Stanza {
       stanza: this.vista(),
       io: this.io(token),
       registro: [...this.registro],
-      chat: this.chat.filter((m) => this.puoLeggere(token, m)),
+      chat: this.chat.filter((m) => m.squadra === undefined || this.leggibile(token, m)).map(senzaLettori),
       attivita: this.mappaAttivita(),
       adesso: this.amb.adesso(),
     };
@@ -610,8 +652,12 @@ export class Stanza {
    * Dopo un riavvio nessuno è collegato: chi era in lobby ha il solito tempo per tornare;
    * la partita resta in pausa dall'ultimo salvataggio finché non torna qualcuno.
    * Le stanze salvate prima della Fase 8 non hanno bot né squadre.
+   * Nei messaggi di squadra salvati senza `lettori`, li possono leggere i giocatori che adesso sono in quella squadra.
+   * Se i dati non hanno la forma di una stanza salvata lancia un errore, prima di creare la stanza.
    */
   static importa(dati: DatiStanza, amb: Ambiente): Stanza {
+    const problema = problemaDiForma(dati);
+    if (problema) throw new Error(`Stanza salvata non valida: ${problema}.`);
     const stanza = new Stanza(dati.codice, amb, { ...IMPOSTAZIONI_PREDEFINITE, ...dati.impostazioni });
     const adesso = amb.adesso();
     const pausaDa = dati.pausaDa ?? adesso;
@@ -626,7 +672,9 @@ export class Stanza {
     stanza.partita = dati.partita && aggiornaSalvata(dati.partita, pausaDa);
     if (stanza.fase === 'partita') stanza.pausaDa = pausaDa;
     stanza.registro = dati.registro;
-    stanza.chat = dati.chat;
+    stanza.chat = dati.chat.map((m) =>
+      m.squadra === undefined || m.lettori ? m : { ...m, lettori: stanza.membri(m.squadra) },
+    );
     stanza.prossimaVoce = dati.prossimaVoce;
     stanza.prossimoMessaggio = dati.prossimoMessaggio;
     return stanza;
@@ -662,6 +710,8 @@ export class Stanza {
 
   /** Un bot fa la sua prossima mossa. Se tocca a più bot (all'asta, per esempio), ne sceglie uno a caso. */
   private giocaBot(): void {
+    // Prima le scadenze già passate (come per le mosse delle persone): un'offerta dopo la fine dell'asta non vale.
+    this.scadenzeDellaPartita();
     const partita = this.partita;
     if (this.fase !== 'partita' || !partita) return;
     const mosse = mosseDeiBot(partita, this.bot(), (id) => this.puoProporre(id));
@@ -735,6 +785,22 @@ export class Stanza {
     return false;
   }
 
+  /** È nella partita in corso e non ne è ancora uscito. */
+  private inGioco(id: IdGiocatore): boolean {
+    return this.partita?.giocatori.some((g) => g.id === id && !g.eliminato) ?? false;
+  }
+
+  /** Chi è seduto nella squadra indicata, bot compresi. */
+  private membri(squadra: number): IdGiocatore[] {
+    return this.posti.filter((p) => p.squadra === squadra).map((p) => p.id);
+  }
+
+  /** Il messaggio di squadra può leggerlo chi presenta il token: è seduto ed era tra i destinatari all'invio. */
+  private leggibile(token: Token, messaggio: MessaggioInStanza | undefined): boolean {
+    const posto = this.postoDi(token);
+    return posto !== undefined && (messaggio?.lettori?.includes(posto.id) ?? false);
+  }
+
   private idLibero(): IdGiocatore {
     let id = nuovoId();
     while (this.posti.some((p) => p.id === id)) id = nuovoId();
@@ -789,7 +855,8 @@ export class Stanza {
 
   /**
    * Accoglie il nuovo stato della partita e toglie le attività sugli scambi che non ci sono più
-   * (o di chi è uscito). Se l'host esce per tempo, assenza o voto, il ruolo passa alla prima persona in gioco.
+   * (o di chi è uscito). Se esce l'ultimo giocatore collegato, la partita va in pausa come quando chiude la pagina.
+   * Il ruolo di host passa come dice `passaHost`.
    */
   private registra(esito: Extract<Esito, { ok: true }>): void {
     const partita = esito.stato;
@@ -800,22 +867,38 @@ export class Stanza {
     this.togliAttivita(
       (id, a) => this.fase !== 'partita' || fuori.has(id) || (a.tipo !== 'crea' && !aperti.has(a.scambio)),
     );
-    const voci: EventoStanza[] = [...esito.eventi];
-    if (esito.eventi.some((e) => e.tipo === 'rimozione' && e.giocatore === this.host)) {
-      const erede = partita.giocatori.find((g) => !g.eliminato && this.posti.some((p) => p.id === g.id && !p.bot));
-      if (erede) {
-        this.host = erede.id;
-        voci.push({ tipo: 'nuovo_host', giocatore: erede.id, nome: erede.nome });
-      }
-    }
-    this.segna(...voci);
+    const hostRimosso = esito.eventi.some((e) => e.tipo === 'rimozione' && e.giocatore === this.host);
+    this.aggiornaPresenze();
+    this.segna(...esito.eventi, ...this.passaHost(hostRimosso));
+  }
+
+  /**
+   * Il ruolo di host in partita. L'host resta tale finché è in gioco, e anche fuori dalla partita (dopo la bancarotta)
+   * finché è collegato a guardare. Se è fuori e non è collegato, il ruolo passa alla prima persona collegata ancora
+   * in gioco. Se esce per tempo, assenza o voto (`rimosso`), passa subito alla prima persona ancora in gioco,
+   * preferendo chi è collegato. Restituisce la voce del registro per il nuovo host, se c'è.
+   */
+  private passaHost(rimosso = false): EventoStanza[] {
+    const partita = this.partita;
+    if (!partita || (this.fase !== 'partita' && !rimosso)) return [];
+    const host = this.posti.find((p) => p.id === this.host);
+    if (!rimosso && host && (this.inGioco(host.id) || this.collegato(host.token))) return [];
+    const persone = partita.giocatori.flatMap((g) => {
+      const posto = this.posti.find((p) => p.id === g.id && !p.bot);
+      return posto && !g.eliminato ? [{ id: g.id, nome: g.nome, collegato: this.collegato(posto.token) }] : [];
+    });
+    const erede = persone.find((p) => p.collegato) ?? (rimosso ? persone[0] : undefined);
+    if (!erede || erede.id === this.host) return [];
+    this.host = erede.id;
+    return [{ tipo: 'nuovo_host', giocatore: erede.id, nome: erede.nome }];
   }
 
   /**
    * Allinea la partita alle connessioni: chi è in gioco e non ha schede aperte risulta assente (i suoi turni
    * passano da soli e dopo due minuti esce). I bot sono sempre presenti.
-   * La partita va in pausa se nessuna persona in gioco è collegata (se in gioco restano solo bot, quando non guarda
-   * più nessuno); al ritorno del primo, gli orologi si spostano avanti del tempo passato in pausa.
+   * La partita va in pausa se nessuna persona in gioco è collegata: chi è già uscito dalla partita e guarda non conta
+   * (se in gioco restano solo bot, si ferma quando non guarda più nessuno). Al ritorno del primo, gli orologi si
+   * spostano avanti del tempo passato in pausa. Va richiamata quando cambiano le connessioni o chi è in gioco.
    */
   private aggiornaPresenze(): void {
     if (this.fase !== 'partita' || !this.partita) return;
@@ -863,6 +946,42 @@ export class Stanza {
     if (this.registro.length > REGISTRO_MAX) this.registro.splice(0, this.registro.length - REGISTRO_MAX);
     this.pianificaBot(eventi);
   }
+}
+
+const FASI: readonly unknown[] = ['lobby', 'partita', 'finita'] satisfies FaseStanza[];
+
+const oggetto = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
+
+const postoValido = (p: unknown) =>
+  oggetto(p) && typeof p.id === 'string' && typeof p.token === 'string' && typeof p.nome === 'string' && typeof p.colore === 'number';
+
+const messaggioValido = (m: unknown) => oggetto(m) && typeof m.n === 'number' && (m.lettori === undefined || Array.isArray(m.lettori));
+
+/**
+ * Cosa non va nei dati di una stanza letti dal file (scritto a mano, rovinato, di un'altra versione), oppure `null`
+ * se hanno la forma giusta. Controlla la stanza, non l'interno della partita.
+ */
+function problemaDiForma(dati: unknown): string | null {
+  if (!oggetto(dati)) return 'non è un oggetto';
+  if (typeof dati.codice !== 'string' || !new RegExp(`^[a-z0-9]{${LUNGHEZZA_CODICE}}$`).test(dati.codice)) return 'codice non valido';
+  if (!FASI.includes(dati.fase)) return 'fase sconosciuta';
+  if (dati.fase === 'lobby' ? dati.partita !== null : !oggetto(dati.partita)) return 'partita non coerente con la fase';
+  if (dati.impostazioni !== undefined && !oggetto(dati.impostazioni)) return 'impostazioni non valide';
+  if (dati.host !== null && typeof dati.host !== 'string') return 'host non valido';
+  if (!Array.isArray(dati.posti) || !dati.posti.every(postoValido)) return 'posti non validi';
+  if (!Array.isArray(dati.registro) || !dati.registro.every(oggetto)) return 'registro non valido';
+  if (!Array.isArray(dati.chat) || !dati.chat.every(messaggioValido)) return 'chat non valida';
+  for (const campo of ['versione', 'prossimaVoce', 'prossimoMessaggio']) {
+    if (!Number.isFinite(dati[campo])) return `manca ${campo}`;
+  }
+  return null;
+}
+
+/** Il messaggio come lo ricevono i browser: senza l'elenco di chi può leggerlo. */
+function senzaLettori(messaggio: MessaggioInStanza): MessaggioChat {
+  const copia = { ...messaggio };
+  delete copia.lettori;
+  return copia;
 }
 
 /**

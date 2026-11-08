@@ -28,6 +28,7 @@ import {
   offri,
   RILANCI,
   riscatta,
+  verificaOffertaInTempo,
   verificaApertura,
   verificaCostruzione,
   verificaDemolizione,
@@ -190,7 +191,7 @@ function ritocca(ctx: Contesto): void {
  * @param adesso orologio del server in millisecondi: serve alle cose a tempo (asta, timer di turno, voto).
  */
 export function applica(stato: Stato, azione: Azione, caso: Caso, adesso = 0): Esito {
-  const problema = verifica(stato, azione);
+  const problema = verifica(stato, azione) ?? (azione.tipo === 'offri' ? verificaOffertaInTempo(stato, adesso) : null);
   if (problema) return { ok: false, ...problema };
 
   const ctx = contesto(stato, caso, adesso);

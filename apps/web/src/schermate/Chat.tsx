@@ -181,7 +181,8 @@ export function Chat({
             value={testo}
             onChange={(e) => {
               setTesto(e.target.value);
-              if (e.target.value.trim()) collegamento.staScrivendo();
+              // Scrivendo alla squadra l'avviso «sta scrivendo» non parte: arriverebbe anche agli avversari.
+              if (e.target.value.trim()) collegamento.staScrivendo(soloSquadra);
             }}
           />
           <button

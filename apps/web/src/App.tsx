@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { usePagina } from './navigazione';
-import { collegamento, ingressi } from './rete/sessione';
+import { collegamento, ingressi, postoTenuto } from './rete/sessione';
 import { Home } from './schermate/Home';
 import { Stanza } from './schermate/Stanza';
 import { Notifiche } from './ui/Notifiche';
@@ -12,10 +12,14 @@ export function App(): ReactNode {
   const pagina = usePagina();
 
   // Tornando alla home (anche con il tasto Indietro) si smette di seguire la stanza.
+  // Se in partita il posto resta, la home offre di rientrare.
   useEffect(() => {
     if (pagina.tipo !== 'home') return;
     ingressi.dimentica();
-    if (collegamento.codiceSeguito() !== null) void collegamento.esci();
+    const seguita = collegamento.codiceSeguito();
+    if (seguita === null) return;
+    postoTenuto.ricorda(seguita);
+    void collegamento.esci();
   }, [pagina.tipo]);
 
   return (

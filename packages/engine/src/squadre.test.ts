@@ -135,6 +135,63 @@ describe('squadre: bancarotta ed eredità', () => {
     expect(problemi(r.stato)).toEqual([]);
   });
 
+  it('con il rosso solo verso la banca si passa comunque dalla liquidazione: le proprietà tornano alla banca', () => {
+    const s = assegna(quattro(), 'a', 1, 3);
+    s.proprieta[1]!.livello = 5;
+    s.proprieta[3]!.livello = 5;
+    g(s, 'a').saldo = -900;
+    g(s, 'a').carteGrazia = ['busta'];
+    const saldoB = g(s, 'b').saldo;
+    const r = esegui(s, { tipo: 'bancarotta', giocatore: 'a' });
+    // Liquidazione: 30 + 35 + due alberghi a metà prezzo (250) + 50 della Carta Grazia = 365, meno dei 900 di rosso.
+    expect(r.eventi).toContainEqual({ tipo: 'bancarotta', giocatore: 'a', recuperi: [] });
+    expect(r.eventi).toContainEqual({ tipo: 'eredita', da: 'a', a: 'b', soldi: 0, caselle: [], grazie: 0 });
+    expect(r.stato.proprieta[1]).toEqual({ proprietario: null, livello: 0, ipotecata: false });
+    expect(r.stato.proprieta[3]).toEqual({ proprietario: null, livello: 0, ipotecata: false });
+    expect(g(r.stato, 'b').saldo).toBe(saldoB);
+    expect(g(r.stato, 'b').carteGrazia).toEqual([]);
+    expect(problemi(r.stato)).toEqual([]);
+  });
+
+  it('il rosso verso la banca si paga dopo i creditori e prima di dare il resto al compagno', () => {
+    const s = assegna(quattro(), 'a', 1, 3);
+    s.proprieta[1]!.livello = 5;
+    s.proprieta[3]!.livello = 5;
+    // 300 di rosso: 200 dovuti a c, 100 alla banca.
+    g(s, 'a').saldo = -300;
+    g(s, 'a').debiti = [{ creditore: 'c', importo: 200 }];
+    const saldoB = g(s, 'b').saldo;
+    const r = esegui(s, { tipo: 'bancarotta', giocatore: 'a' });
+    // Liquidazione 315: 200 a c, 100 alla banca, 15 al compagno.
+    expect(r.eventi).toContainEqual({ tipo: 'bancarotta', giocatore: 'a', recuperi: [{ creditore: 'c', importo: 200 }] });
+    expect(r.eventi).toContainEqual({ tipo: 'eredita', da: 'a', a: 'b', soldi: 15, caselle: [], grazie: 0 });
+    expect(g(r.stato, 'b').saldo).toBe(saldoB + 15);
+    expect(problemi(r.stato)).toEqual([]);
+  });
+
+  it('quello che gli avversari dovevano a chi esce lo devono al compagno che eredita', () => {
+    const s = assegna(quattro(), 'c', 39);
+    g(s, 'c').saldo = -300;
+    g(s, 'c').debiti = [
+      { creditore: 'a', importo: 200 },
+      { creditore: 'b', importo: 100 },
+    ];
+    g(s, 'd').saldo = -50;
+    g(s, 'd').debiti = [{ creditore: 'a', importo: 50 }];
+    let r = esegui(s, { tipo: 'bancarotta', giocatore: 'a' });
+    // A quanto c doveva già a b si sommano i 200 che doveva ad a.
+    expect(g(r.stato, 'c').debiti).toEqual([{ creditore: 'b', importo: 300 }]);
+    expect(g(r.stato, 'd').debiti).toEqual([{ creditore: 'b', importo: 50 }]);
+    expect(problemi(r.stato)).toEqual([]);
+    // Tocca a c: vende Milano (200) e i soldi vanno a b.
+    expect(r.stato.turno.giocatore).toBe('c');
+    const saldoB = g(r.stato, 'b').saldo;
+    r = esegui(r.stato, { tipo: 'vendi', giocatore: 'c', casella: 39 });
+    expect(r.eventi).toContainEqual({ tipo: 'rimborso', da: 'c', a: 'b', importo: 200 });
+    expect(g(r.stato, 'b').saldo).toBe(saldoB + 200);
+    expect(g(r.stato, 'c').debiti).toEqual([{ creditore: 'b', importo: 100 }]);
+  });
+
   it('la partita finisce quando resta una sola squadra, e vince tutta la squadra', () => {
     let s = esegui(quattro(), { tipo: 'bancarotta', giocatore: 'a' }).stato;
     expect(s.fase).toBe('in_corso');

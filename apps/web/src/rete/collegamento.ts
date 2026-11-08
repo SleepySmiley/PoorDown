@@ -153,11 +153,11 @@ export class Collegamento {
   }
 
   /** Da chiamare a ogni tasto: il segnale parte al massimo ogni 1,5 s. */
-  staScrivendo(): void {
+  staScrivendo(squadra = false): void {
     const adesso = Date.now();
     if (!this.presa.connected || adesso - this.ultimoSegnaleScrittura < SEGNALE_SCRITTURA_MS) return;
     this.ultimoSegnaleScrittura = adesso;
-    this.presa.emit('sta_scrivendo');
+    this.presa.emit('sta_scrivendo', squadra);
   }
 
   /** Dice agli altri se si sta creando, guardando o trattando uno scambio. Manda solo i cambiamenti. */
@@ -197,10 +197,18 @@ export class Collegamento {
     }
     if (risposta.ok && risposta.dati.stanza.codice === this.codice) {
       const { adesso, ...dati } = risposta.dati;
+      // Stanza già seguita (riconnessione, versione persa): le voci nate intanto non sono passate da `ricevi`.
+      // Al primo ingresso invece il registro è storia vecchia. I numeri delle voci crescono sempre, anche
+      // quando il registro riparte da capo con «Un'altra partita».
+      const giaSeguita = this.stato.stanza?.codice === dati.stanza.codice;
+      const ultimaPrima = this.stato.registro.at(-1)?.n ?? 0;
+      const perse = giaSeguita ? dati.registro.filter((v) => v.n > ultimaPrima) : [];
       this.scarto = adesso - Date.now();
       this.cambia({ ...dati, scrivono: [] });
       // Dopo una riconnessione il server non sa più cosa stavo facendo con gli scambi.
       if (this.miaAttivita && this.presa.connected) this.presa.emit('attivita', this.miaAttivita);
+      // Chi ascolta le voci (espulsione, proposte di scambio) le riceve come se fossero arrivate una per una.
+      if (perse.length > 0) for (const fn of this.ascoltatoriVoci) fn(perse);
     }
     const daRiprendere = this.messiDaParte.sort((a, b) => a.stanza.versione - b.stanza.versione);
     this.messiDaParte = [];

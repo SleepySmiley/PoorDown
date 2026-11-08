@@ -19,7 +19,7 @@ import {
   valoreIpoteca,
 } from './conti';
 import { tabellone } from './tabelloni';
-import type { Citta, Errore, Giocatore, Stato } from './tipi';
+import type { Citta, Errore, Giocatore, IdGiocatore, Stato } from './tipi';
 
 /** Quanto dura un'asta, e quanto tempo resta dopo ogni offerta. */
 export const ASTA_MS = 10_000;
@@ -38,10 +38,10 @@ function cittaMia(stato: Stato, g: Giocatore, casella: number): Citta | Errore {
   return c;
 }
 
-/** Livelli delle altre città della stessa regione. */
-function altriLivelli(stato: Stato, c: Citta, casella: number): number[] {
+/** Livelli delle altre città della stessa regione; con `soloDi`, solo di quelle di quel giocatore. */
+function altriLivelli(stato: Stato, c: Citta, casella: number, soloDi?: IdGiocatore): number[] {
   return caselleDellaRegione(tabellone(stato.mappa), c.regione)
-    .filter((i) => i !== casella)
+    .filter((i) => i !== casella && (soloDi === undefined || stato.proprieta[i]?.proprietario === soloDi))
     .map((i) => stato.proprieta[i]?.livello ?? 0);
 }
 
@@ -79,15 +79,19 @@ export function costruisci(ctx: Contesto, g: Giocatore, casella: number): void {
   ctx.eventi.push({ tipo: 'costruzione', giocatore: g.id, casella, livello: p.livello, costo });
 }
 
+/**
+ * Per vendere contano solo le città del giocatore: a squadre le case dei compagni non bloccano le sue
+ * (chi è in rosso deve poterle vendere). Per costruire invece la regione sale tutta insieme.
+ */
 export function verificaDemolizione(stato: Stato, g: Giocatore, casella: number): Errore | null {
   const c = cittaMia(stato, g, casella);
   if ('codice' in c) return c;
   const livello = stato.proprieta[casella]!.livello;
   if (livello === 0) return errore('livello_minimo', 'Su questa città non ci sono edifici da vendere.');
-  if (stato.impostazioni.costruzioneUniforme && altriLivelli(stato, c, casella).some((l) => l > livello)) {
+  if (stato.impostazioni.costruzioneUniforme && altriLivelli(stato, c, casella, g.id).some((l) => l > livello)) {
     return errore(
       'costruzione_uniforme',
-      'Costruzione uniforme: prima vendi gli edifici delle città della regione che ne hanno di più.',
+      'Costruzione uniforme: prima vendi gli edifici delle tue città della regione che ne hanno di più.',
     );
   }
   return null;
@@ -179,6 +183,15 @@ export function verificaOfferta(stato: Stato, g: Giocatore, importo: number): Er
   return null;
 }
 
+/**
+ * L'asta è già scaduta a quest'ora, anche se nessuno l'ha ancora chiusa: un'offerta arrivata dopo non vale
+ * (e non deve riaprire il conto alla rovescia). Il controllo vuole l'ora, quindi lo fa `applica`, non `verifica`.
+ */
+export function verificaOffertaInTempo(stato: Stato, adesso: number): Errore | null {
+  if (stato.asta && adesso >= stato.asta.scadenza) return errore('asta_finita', 'L’asta è appena finita.');
+  return null;
+}
+
 /** Ogni offerta riporta il conto alla rovescia a 10 secondi. */
 export function offri(ctx: Contesto, g: Giocatore, importo: number): void {
   const asta = ctx.s.asta!;
@@ -196,10 +209,12 @@ export function chiudiAsta(ctx: Contesto): void {
   const asta = s.asta;
   if (!asta) return;
   s.asta = null;
-  // L'orologio del turno riparte da dove si era fermato.
+  // L'orologio del turno riparte da dove si era fermato, e con lui la grazia di chi gioca scollegato.
   const tempo = s.turno.tempo;
   if (tempo.fermoDa !== null) {
-    tempo.inizio += Math.max(0, ctx.adesso - tempo.fermoDa);
+    const pausa = Math.max(0, ctx.adesso - tempo.fermoDa);
+    tempo.inizio += pausa;
+    if (tempo.assenteDa != null) tempo.assenteDa += pausa;
     tempo.fermoDa = null;
   }
   const migliore = asta.migliore;

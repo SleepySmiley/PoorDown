@@ -20,12 +20,18 @@ export function nomeCasuale(caso: Caso): string {
   return `${SOSTANTIVI[caso.intero(SOSTANTIVI.length)]!} ${AGGETTIVI[caso.intero(AGGETTIVI.length)]!}`;
 }
 
-/** Caratteri di controllo, separatori di riga e comandi di direzione del testo (che rovinano l'impaginazione). */
-const INVISIBILI = /[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069]/gu;
+/**
+ * Caratteri di controllo, separatori di riga, comandi di direzione del testo (che rovinano l'impaginazione)
+ * e caratteri che non si vedono: trattino facoltativo, spazi di larghezza zero, riempitivi hangul, braille vuoto\u2026
+ * Resta il "zero width joiner" (U+200D), che tiene insieme le emoji composte. I segni che si combinano con la
+ * lettera prima (U+034F, U+17B4, U+17B5) stanno fuori dalle parentesi quadre, dove si confonderebbero con lei.
+ */
+const INVISIBILI =
+  /[\p{Cc}\u00AD\u061C\u115F\u1160\u180E\u200B\u200C\u200E\u200F\u2028\u2029\u202A-\u202E\u2060-\u2064\u2066-\u206F\u2800\u3164\uFEFF\uFFA0]|\u034F|\u17B4|\u17B5/gu;
 
 /**
  * Toglie i caratteri invisibili e gli spazi in eccesso e taglia a `NOME_MAX` caratteri
- * (un'emoji semplice conta uno). Può restituire una stringa vuota.
+ * (un'emoji semplice conta uno). Restituisce una stringa vuota se nel testo non c'è niente che si veda.
  */
 export function pulisciNome(testo: string): string {
   const pulito = testo.replace(/\s+/g, ' ').replace(INVISIBILI, '').trim();

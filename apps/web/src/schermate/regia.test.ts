@@ -16,6 +16,8 @@ import { Regia } from './regia';
 /** Finto collegamento: basta leggere lo stato e avvisare chi ascolta. */
 class CollegamentoFinto {
   stato: StatoCollegamento;
+  /** L'ora del server: le voci di prova nascono a 0, quindi arrivano senza ritardo. */
+  adesso = 0;
   private readonly ascoltatori = new Set<() => void>();
 
   constructor(stanza: VistaStanza, registro: VoceRegistro[]) {
@@ -23,6 +25,8 @@ class CollegamentoFinto {
   }
 
   leggi = () => this.stato;
+
+  orologio = () => this.adesso;
 
   ascolta(fn: () => void) {
     this.ascoltatori.add(fn);
@@ -119,6 +123,95 @@ describe('Regia della partita', () => {
     coll.cambia({ registro: tanti });
     expect(regia.leggi()).toMatchObject({ occupata: false, registroFino: 30 });
     regia.ferma();
+  });
+
+  it('gli eventi arrivati in ritardo (dopo una disconnessione) non si rimettono in scena', () => {
+    const prima = partitaIniziale();
+    const lancio = applica(prima, { tipo: 'lancia', giocatore: 'a' }, casoDaSeme(7));
+    if (!lancio.ok) throw new Error(lancio.messaggio);
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    coll.adesso = 25_000;
+    const nuove = voci(lancio.eventi, 1);
+    coll.cambia({ stanza: stanzaCon(lancio.stato, 2), registro: nuove });
+    expect(regia.leggi()).toMatchObject({ occupata: false, rotola: false, registroFino: nuove.at(-1)!.n });
+    expect(regia.leggi().partita?.giocatori[0]?.posizione).toBe(lancio.stato.giocatori[0]?.posizione);
+    expect(regia.leggi().dadi).toEqual(lancio.stato.turno.dadi);
+    regia.ferma();
+  });
+
+  it('gli eventi senza animazione non fermano i pulsanti del turno', () => {
+    const prima = partitaIniziale();
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    const occupata: boolean[] = [];
+    regia.iscrivi(() => occupata.push(regia.leggi().occupata));
+    coll.cambia({ stanza: stanzaCon(prima, 2), registro: voci([{ tipo: 'tempo_chiesto', giocatore: 'a' }], 1) });
+    expect(occupata).not.toContain(true);
+    expect(regia.leggi()).toMatchObject({ occupata: false, registroFino: 1 });
+    regia.ferma();
+  });
+
+  it('una scena interrotta non rimette i dadi del lancio vecchio', async () => {
+    const prima = partitaIniziale();
+    const lancio = applica(prima, { tipo: 'lancia', giocatore: 'a' }, casoDaSeme(7));
+    if (!lancio.ok) throw new Error(lancio.messaggio);
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    const nuove = voci(lancio.eventi, 1);
+    coll.cambia({ stanza: stanzaCon(lancio.stato, 2), registro: nuove });
+    await vi.advanceTimersByTimeAsync(200);
+    expect(regia.leggi().rotola).toBe(true);
+
+    // A metà del rotolamento arriva un'altra partita, con tanti eventi insieme: si salta allo stato nuovo.
+    const dopo = structuredClone(lancio.stato);
+    dopo.turno.dadi = lancio.stato.turno.dadi?.[0] === 6 ? [1, 2] : [6, 5];
+    const tanti = voci(
+      Array.from({ length: 30 }, () => ({ tipo: 'tempo_chiesto', giocatore: 'b' }) as Evento),
+      nuove.length + 1,
+    );
+    coll.cambia({ stanza: stanzaCon(dopo, 3), registro: [...nuove, ...tanti] });
+    expect(regia.leggi()).toMatchObject({ occupata: false, rotola: false, dadi: dopo.turno.dadi });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(regia.leggi()).toMatchObject({ occupata: false, rotola: false, dadi: dopo.turno.dadi });
+    regia.ferma();
+  });
+
+  it('quando la scheda si nasconde la scena si chiude subito', async () => {
+    let fn: (() => void) | null = null;
+    const documento = {
+      hidden: false,
+      addEventListener: (_: string, f: () => void) => (fn = f),
+      removeEventListener: () => (fn = null),
+    };
+    vi.stubGlobal('document', documento);
+    try {
+      const prima = partitaIniziale();
+      const lancio = applica(prima, { tipo: 'lancia', giocatore: 'a' }, casoDaSeme(7));
+      if (!lancio.ok) throw new Error(lancio.messaggio);
+      const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+      const regia = new Regia(coll as unknown as Collegamento);
+      regia.avvia();
+      expect(fn).not.toBeNull();
+      const nuove = voci(lancio.eventi, 1);
+      coll.cambia({ stanza: stanzaCon(lancio.stato, 2), registro: nuove });
+      await vi.advanceTimersByTimeAsync(200);
+      expect(regia.leggi().occupata).toBe(true);
+
+      documento.hidden = true;
+      fn!();
+      expect(regia.leggi()).toMatchObject({ occupata: false, rotola: false, registroFino: nuove.at(-1)!.n });
+      expect(regia.leggi().dadi).toEqual(lancio.stato.turno.dadi);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(regia.leggi()).toMatchObject({ occupata: false, rotola: false, dadi: lancio.stato.turno.dadi });
+      regia.ferma();
+      expect(fn).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('i messaggi di chat durante una scena non la interrompono', async () => {

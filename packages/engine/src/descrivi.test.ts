@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { descrivi, descriviVoce, euro } from './descrivi';
-import { dadi, esegui, partitaDiProva, primaCarta } from './prove';
+import { dadi, esegui, partitaASquadre, partitaDiProva, primaCarta } from './prove';
 
 describe('descrivi', () => {
   it('formatta gli euro all’italiana', () => {
@@ -72,6 +72,14 @@ describe('descrivi', () => {
     ).toBe('Bruno accetta lo scambio proposto da Anna. Anna dà Siena, Pisa, la Carta Grazia e 100 €; Bruno non dà niente.');
     expect(testo({ tipo: 'scambio_rifiutato', scambio: 1, da: 'a', a: 'b' })).toBe('Bruno rifiuta lo scambio proposto da Anna.');
     expect(testo({ tipo: 'scambio_annullato', scambio: 1, da: 'a', a: 'b' })).toBe('Anna ritira lo scambio proposto a Bruno.');
+  });
+
+  it('a squadre scrive «Vince Squadra 1» ma «Vince la squadra Volpi»', () => {
+    const s = partitaASquadre([0, 1]);
+    const fine = { tipo: 'fine', vincitore: 'a', squadra: 0 } as const;
+    expect(descrivi(fine, s)).toBe('Partita finita. Vince Squadra 1.');
+    s.squadre[0] = 'Volpi';
+    expect(descrivi(fine, s)).toBe('Partita finita. Vince la squadra Volpi.');
   });
 
   it('scrive anche i fatti della lobby', () => {

@@ -4,8 +4,9 @@
  * - Le righe del registro compaiono quando il loro evento "accade" sullo schermo.
  * - Il resto della partita (saldi, turno, proprietà) si aggiorna alla fine della scena,
  *   e intanto i pulsanti del turno aspettano.
- * Se la scheda è nascosta, se ci sono troppi eventi insieme o se si preferisce meno movimento,
- * si salta direttamente allo stato finale.
+ * Gli eventi senza animazione (voti, scambi, ipoteche…) compaiono subito, senza fermare i pulsanti.
+ * Se la scheda è nascosta, se ci sono troppi eventi insieme, se arrivano in ritardo (dopo una disconnessione)
+ * o se si preferisce meno movimento, si salta direttamente allo stato finale.
  */
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -39,9 +40,41 @@ const ROTOLA_MS = 95;
 const FACCE_ROTOLANDO = 7;
 /** Con più eventi di così in un colpo solo (es. dopo una risincronizzazione) non si anima. */
 const MAX_ANIMATI = 25;
+/**
+ * Eventi nati più di così prima di arrivare (dopo una disconnessione) sono già passati: rimetterli in scena
+ * lascerebbe lo schermo indietro mentre il turno, magari il mio, sta già scorrendo.
+ */
+const RITARDO_MAX_MS = 2_000;
+
+/** Eventi che fermano la scena per un attimo, giusto il tempo di leggerli. */
+const CON_PAUSA = new Set<EventoStanza['tipo']>([
+  'acquisto',
+  'asta_vinta',
+  'costruzione',
+  'affitto',
+  'tassa',
+  'premio',
+  'partenza',
+  'prigione_fallita',
+  'vacanza',
+]);
+
+/** L'evento ha una scena sul tabellone (gli stessi casi di `anima`, tranne quelli istantanei). */
+function animabile(e: EventoStanza): boolean {
+  return e.tipo === 'dadi' || e.tipo === 'movimento' || e.tipo === 'prigione' || e.tipo === 'carta' || CON_PAUSA.has(e.tipo);
+}
 
 function ultimoNumero(registro: readonly VoceRegistro[]): number {
   return registro.at(-1)?.n ?? 0;
+}
+
+/** L'ultimo lancio nel registro: i dadi da mostrare quando il turno nuovo non ha ancora tirato. */
+function ultimoLancio(registro: readonly VoceRegistro[]): [number, number] | undefined {
+  for (let i = registro.length - 1; i >= 0; i--) {
+    const e = registro[i]!.evento;
+    if (e.tipo === 'dadi') return e.dadi;
+  }
+  return undefined;
 }
 
 function faccia(): number {
@@ -93,6 +126,7 @@ export class Regia {
 
   avvia(): void {
     this.smetti = this.coll.ascolta(() => this.aggiorna());
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.cambiaVisibilita);
     this.ultimaVista = ultimoNumero(this.coll.leggi().registro);
     this.allinea();
   }
@@ -100,6 +134,7 @@ export class Regia {
   ferma(): void {
     this.smetti?.();
     this.smetti = null;
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.cambiaVisibilita);
     this.generazione++;
     for (const t of this.timer) clearTimeout(t);
     this.timer.clear();
@@ -115,31 +150,49 @@ export class Regia {
     // Registro ricaricato da capo (risincronizzazione): niente da animare.
     const nuove = ultimo < this.ultimaVista ? [] : s.registro.filter((v) => v.n > this.ultimaVista);
     this.ultimaVista = ultimo;
+    const inRitardo = nuove.length > 0 && this.coll.orologio() - nuove[0]!.quando > RITARDO_MAX_MS;
 
-    if (!s.stanza?.partita || nascosta() || pocoMovimento() || nuove.length > MAX_ANIMATI) {
-      // Si interrompe anche la scena in corso: le sue attese restano senza effetto.
-      this.coda = [];
-      this.generazione++;
-      this.inScena = false;
+    if (!s.stanza?.partita || nascosta() || pocoMovimento() || nuove.length > MAX_ANIMATI || inRitardo) {
+      this.interrompi();
+      return;
+    }
+    if (this.inScena) {
+      this.coda.push(...nuove);
+      return;
+    }
+    // Niente da animare: la partita si aggiorna subito e i pulsanti del turno restano dove sono.
+    if (!nuove.some((v) => animabile(v.evento))) {
       this.allinea();
       return;
     }
     this.coda.push(...nuove);
-    if (this.inScena) return;
-    if (this.coda.length > 0) void this.recita();
-    else this.allinea();
+    void this.recita();
   }
+
+  /** Interrompe la scena in corso (le sue attese restano senza effetto) e mostra la partita com'è adesso. */
+  private interrompi(): void {
+    this.coda = [];
+    this.generazione++;
+    this.inScena = false;
+    this.allinea();
+  }
+
+  /** La scheda si nasconde: i timer del browser rallentano, quindi la scena si chiude subito. */
+  private readonly cambiaVisibilita = (): void => {
+    if (nascosta() && (this.inScena || this.coda.length > 0)) this.interrompi();
+  };
 
   /** Mostra la partita com'è adesso, senza animazioni in sospeso. */
   private allinea(): void {
-    const partita = this.coll.leggi().stanza?.partita ?? null;
+    const s = this.coll.leggi();
+    const partita = s.stanza?.partita ?? null;
     this.cambia({
       partita,
       registroFino: this.ultimaVista,
       posizioni: {},
       rotola: false,
       occupata: false,
-      dadi: partita?.turno.dadi ?? this.scena.dadi,
+      dadi: partita?.turno.dadi ?? ultimoLancio(s.registro) ?? this.scena.dadi,
     });
   }
 
@@ -167,6 +220,8 @@ export class Regia {
           this.cambia({ dadi: [faccia(), faccia()] });
           await this.attendi(ROTOLA_MS);
         }
+        // Scena interrotta: i dadi giusti li ha già messi `allinea`.
+        if (gen !== this.generazione) return;
         this.cambia({ dadi: e.dadi, rotola: false });
         await this.attendi(150);
         return;
@@ -199,18 +254,8 @@ export class Regia {
       case 'carta':
         await this.attendi(600);
         return;
-      case 'acquisto':
-      case 'asta_vinta':
-      case 'costruzione':
-      case 'affitto':
-      case 'tassa':
-      case 'premio':
-      case 'partenza':
-      case 'prigione_fallita':
-      case 'vacanza':
-        await this.attendi(250);
-        return;
       default:
+        if (CON_PAUSA.has(e.tipo)) await this.attendi(250);
         return;
     }
   }
