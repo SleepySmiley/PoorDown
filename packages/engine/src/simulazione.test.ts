@@ -1,8 +1,9 @@
 /*
  * Partite intere giocate a caso, con seme fisso. Dopo ogni azione lo stato deve restare coerente
  * e il giocatore di turno deve avere sempre qualcosa da fare.
- * I giocatori comprano, costruiscono, ipotecano, fanno aste e scambi; le regole facoltative
- * cambiano da una partita all'altra.
+ * I giocatori comprano, costruiscono, ipotecano, fanno aste e scambi; ogni tanto qualcuno si scollega,
+ * si distrae fino allo scadere del tempo, chiede o regala tempo, vota o viene espulso.
+ * Le regole facoltative cambiano da una partita all'altra.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -11,7 +12,8 @@ import { possedute } from './conti';
 import { IMPOSTAZIONI_PREDEFINITE, SOLDI_INIZIALI_POSSIBILI } from './impostazioni';
 import { creaPartita } from './partita';
 import { ID, NOMI, problemi } from './prove';
-import { applica, applicaScadenze, azioniPossibili, verifica } from './regole';
+import { applica, applicaScadenze, azioniPossibili, espelli, prossimaScadenza, verifica } from './regole';
+import { connessione, sposta } from './tempo';
 import type { Azione, Caso, Esito, Giocatore, Pacchetto, Stato, TipoEvento } from './tipi';
 
 const PARTITE = 80;
@@ -103,6 +105,54 @@ function mossaAsta(s: Stato, caso: Caso, adesso: number): { azione: Azione } | {
   return { scadenza: Math.max(adesso, s.asta!.scadenza) };
 }
 
+/** Qualcuno chiede, regala tempo o vota; `null` se in questo momento non si può. */
+function mossaDiTempo(s: Stato, caso: Caso): Azione | null {
+  const vivi = s.giocatori.filter((g) => !g.eliminato);
+  const altro = scegli(
+    vivi.filter((g) => g.id !== s.turno.giocatore),
+    caso,
+  );
+  if (!altro) return null;
+  const azioni: Azione[] = [
+    { tipo: 'chiedi_tempo', giocatore: s.turno.giocatore },
+    { tipo: 'regala_tempo', giocatore: altro.id },
+    { tipo: 'vota', giocatore: altro.id, favorevole: true },
+    { tipo: 'vota', giocatore: altro.id, favorevole: false },
+  ];
+  const azione = scegli(azioni, caso)!;
+  return verifica(s, azione) === null ? azione : null;
+}
+
+/** Cose che succedono intorno alla partita: tempo che scade, connessioni, pause, espulsioni. */
+function imprevisto(s: Stato, caso: Caso, adesso: number): { esito: Esito; adesso: number; descrizione: string } | null {
+  const vivi = s.giocatori.filter((g) => !g.eliminato);
+  switch (caso.intero(4)) {
+    case 0: {
+      // Nessuno fa niente fino alla prossima scadenza.
+      const scadenza = prossimaScadenza(s);
+      if (scadenza === null) return null;
+      const quando = Math.max(adesso, scadenza);
+      return { esito: applicaScadenze(s, caso, quando)!, adesso: quando, descrizione: 'scadenza' };
+    }
+    case 1: {
+      const g = scegli(vivi, caso)!;
+      const stato = connessione(s, g.id, g.offlineDa !== null, adesso);
+      return { esito: { ok: true, stato, eventi: [] }, adesso, descrizione: 'connessione' };
+    }
+    case 2: {
+      // Pausa: nessuno è collegato e gli orologi si fermano.
+      return { esito: { ok: true, stato: sposta(s, 1 + caso.intero(600_000)), eventi: [] }, adesso, descrizione: 'pausa' };
+    }
+    default: {
+      const bersaglio = scegli(
+        vivi.filter((g) => g.id !== s.turno.giocatore),
+        caso,
+      );
+      return bersaglio ? { esito: espelli(s, bersaglio.id, caso, adesso), adesso, descrizione: 'espulsione' } : null;
+    }
+  }
+}
+
 function giocaPartita(seme: number) {
   const caso = casoDaSeme(seme);
   const n = 2 + caso.intero(7);
@@ -118,6 +168,7 @@ function giocaPartita(seme: number) {
       ipoteche: caso.intero(2) === 1,
       costruzioneUniforme: caso.intero(3) > 0,
       stanzaPrivata: caso.intero(2) === 1,
+      timerTurno: caso.intero(3) > 0,
     },
     caso,
   );
@@ -125,7 +176,10 @@ function giocaPartita(seme: number) {
 
   let s = creata.stato;
   let adesso = 0;
+  // In metà delle partite c'è un distratto: nel suo turno lascia scadere il tempo, e gli altri lo votano.
+  const distratto = caso.intero(2) === 0 ? scegli(s.giocatori, caso)!.id : null;
   const visti = new Set<TipoEvento>(creata.eventi.map((e) => e.tipo));
+  const uscite = new Set<string>();
   let azioni = 0;
   for (; azioni < AZIONI_MAX && s.fase === 'in_corso'; azioni++) {
     adesso += PASSO_MS;
@@ -133,7 +187,33 @@ function giocaPartita(seme: number) {
     let descrizione: string;
     const fuoriTurno = s.giocatori.filter((g) => !g.eliminato && g.id !== s.turno.giocatore);
     const scambio = caso.intero(25) === 0 ? scambioCasuale(s, caso) : null;
-    if (caso.intero(azioni > PAZIENZA ? 200 : 2000) === 0 && fuoriTurno.length) {
+    const tempo = caso.intero(40) === 0 ? mossaDiTempo(s, caso) : null;
+    const fuori = caso.intero(azioni > PAZIENZA ? 20 : 150) === 0 ? imprevisto(s, caso, adesso) : null;
+    const scadenza = prossimaScadenza(s);
+    if (s.turno.giocatore === distratto && !s.asta && scadenza !== null && !fuori) {
+      const voto: Azione | undefined = scegli(
+        s.giocatori
+          .filter((g) => !g.eliminato && g.id !== distratto)
+          .map((g): Azione => ({ tipo: 'vota', giocatore: g.id, favorevole: true }))
+          .filter((a) => verifica(s, a) === null),
+        caso,
+      );
+      if (voto && probabile(caso, 5)) {
+        esito = applica(s, voto, caso, adesso);
+        descrizione = 'voto contro il distratto';
+      } else {
+        adesso = Math.max(adesso, scadenza);
+        esito = applicaScadenze(s, caso, adesso)!;
+        descrizione = 'tempo scaduto al distratto';
+      }
+    } else if (fuori) {
+      esito = fuori.esito;
+      adesso = fuori.adesso;
+      descrizione = fuori.descrizione;
+    } else if (tempo) {
+      esito = applica(s, tempo, caso, adesso);
+      descrizione = tempo.tipo;
+    } else if (caso.intero(azioni > PAZIENZA ? 200 : 2000) === 0 && fuoriTurno.length) {
       // Ogni tanto qualcuno fuori turno si arrende, più spesso se la partita si allunga.
       const azione: Azione = { tipo: 'bancarotta', giocatore: scegli(fuoriTurno, caso)!.id };
       esito = applica(s, azione, caso, adesso);
@@ -159,20 +239,26 @@ function giocaPartita(seme: number) {
 
     if (!esito.ok) throw new Error(`Seme ${seme}, azione ${azioni}: ${descrizione} rifiutata (${esito.messaggio}).`);
     s = esito.stato;
-    for (const e of esito.eventi) visti.add(e.tipo);
+    for (const e of esito.eventi) {
+      visti.add(e.tipo);
+      if (e.tipo === 'rimozione') uscite.add(e.motivo);
+      if (e.tipo === 'bancarotta') uscite.add(e.automatica ? 'bancarotta automatica' : 'bancarotta');
+    }
     const errori = problemi(s);
     if (errori.length) throw new Error(`Seme ${seme}, azione ${azioni} (${descrizione}): ${errori.join(' ')}`);
   }
-  return { stato: s, azioni, visti };
+  return { stato: s, azioni, visti, uscite };
 }
 
 describe('simulazione di partite intere', () => {
   it(`${PARTITE} partite arrivano alla fine senza errori né stati incoerenti`, { timeout: 60_000 }, () => {
     const visti = new Set<TipoEvento>();
+    const uscite = new Set<string>();
     let finite = 0;
     for (let seme = 1; seme <= PARTITE; seme++) {
       const partita = giocaPartita(seme);
       for (const t of partita.visti) visti.add(t);
+      for (const u of partita.uscite) uscite.add(u);
       if (partita.stato.fase === 'finita') finite++;
     }
     expect(finite).toBe(PARTITE);
@@ -182,8 +268,13 @@ describe('simulazione di partite intere', () => {
       'prigione', 'prigione_fallita', 'uscita_prigione', 'vacanza', 'vendita', 'debito', 'rimborso', 'bancarotta', 'fine',
       'costruzione', 'demolizione', 'ipoteca', 'riscatto', 'asta', 'asta_vinta', 'asta_deserta',
       'scambio_proposto', 'scambio_accettato', 'scambio_rifiutato', 'scambio_annullato',
+      'tempo_scaduto', 'tempo_chiesto', 'tempo_regalato', 'voto', 'rimozione',
     ];
     expect(tutti.filter((t) => !visti.has(t))).toEqual([]);
+    // E ogni modo di uscire dalla partita.
+    expect([...uscite].sort()).toEqual(
+      ['assenza', 'bancarotta', 'bancarotta automatica', 'espulsione', 'tempo', 'voto'].sort(),
+    );
   });
 
   it('stesso seme, stessa partita', () => {

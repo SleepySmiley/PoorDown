@@ -1,13 +1,19 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { CHAT_MAX, type IdGiocatore, type MessaggioChat, type VistaStanza } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
+import { silenzia, useSilenziati } from '../rete/silenziati';
 import { avvisa } from '../ui/avvisi';
 import { Pedina, PulsanteIcona } from '../ui/comuni';
 import { Icona } from '../ui/icone';
 
-function chiScrive(stanza: VistaStanza, scrivono: IdGiocatore[], io: IdGiocatore | null): string | null {
+function chiScrive(
+  stanza: VistaStanza,
+  scrivono: IdGiocatore[],
+  io: IdGiocatore | null,
+  silenziati: readonly IdGiocatore[],
+): string | null {
   const nomi = scrivono
-    .filter((id) => id !== io)
+    .filter((id) => id !== io && !silenziati.includes(id))
     .map((id) => stanza.partecipanti.find((p) => p.id === id)?.nome)
     .filter((n): n is string => Boolean(n));
   if (nomi.length === 0) return null;
@@ -32,7 +38,16 @@ export function Chat({
   const [testo, setTesto] = useState('');
   const [invio, setInvio] = useState(false);
   const lista = useRef<HTMLOListElement>(null);
-  const ultimo = messaggi.at(-1)?.n;
+  const silenziati = useSilenziati(stanza.codice);
+  // I messaggi di chi ho silenziato non si vedono (i miei sì, sempre).
+  const visibili = messaggi.filter((m) => m.da === io || !silenziati.includes(m.da));
+  const ultimo = visibili.at(-1)?.n;
+  // Il nome di chi ho silenziato, dalla stanza o dall'ultimo suo messaggio.
+  const nomeDi = (id: IdGiocatore) =>
+    stanza.partecipanti.find((p) => p.id === id)?.nome ?? messaggi.findLast((m) => m.da === id)?.nome;
+  const muti = silenziati
+    .map((id) => ({ id, nome: nomeDi(id) }))
+    .filter((x): x is { id: IdGiocatore; nome: string } => x.nome !== undefined);
 
   // Ogni messaggio nuovo porta in fondo alla chat.
   useLayoutEffect(() => {
@@ -40,7 +55,7 @@ export function Chat({
     if (el) el.scrollTop = el.scrollHeight;
   }, [ultimo]);
 
-  const scrive = chiScrive(stanza, scrivono, io);
+  const scrive = chiScrive(stanza, scrivono, io, silenziati);
 
   return (
     <section className="pannello chat" aria-label="Chat">
@@ -50,19 +65,30 @@ export function Chat({
         </span>
         <h2 className="chat__titolo">Chat</h2>
       </header>
-      {messaggi.length === 0 ? (
-        <p className="chat__vuota">Ancora nessun messaggio.</p>
+      {visibili.length === 0 ? (
+        <p className="chat__vuota">
+          {messaggi.length > 0 ? 'I messaggi di chi hai silenziato sono nascosti.' : 'Ancora nessun messaggio.'}
+        </p>
       ) : (
         <ol className="chat__messaggi" ref={lista}>
-          {messaggi.map((m, i) => {
+          {visibili.map((m, i) => {
             const mio = m.da === io;
-            const stessoAutore = messaggi[i - 1]?.da === m.da;
+            const stessoAutore = visibili[i - 1]?.da === m.da;
             return (
               <li key={m.n} className={mio ? 'messaggio messaggio--mio' : 'messaggio'}>
                 {!mio && !stessoAutore && (
                   <span className="messaggio__autore">
                     <Pedina colore={m.colore} className="pedina--mini" />
                     {m.nome}
+                    <button
+                      type="button"
+                      className="messaggio__silenzia"
+                      aria-label={`Silenzia ${m.nome} in chat`}
+                      title={`Silenzia ${m.nome}: non vedrai più i suoi messaggi`}
+                      onClick={() => silenzia(stanza.codice, m.da, true)}
+                    >
+                      <Icona nome="muto" />
+                    </button>
                   </span>
                 )}
                 <p className="messaggio__testo">{m.testo}</p>
@@ -70,6 +96,24 @@ export function Chat({
             );
           })}
         </ol>
+      )}
+      {muti.length > 0 && (
+        <p className="chat__silenziati">
+          <Icona nome="muto" titolo="Silenziati" />
+          <span>Non vedi i messaggi di</span>
+          {muti.map((x) => (
+            <button
+              key={x.id}
+              type="button"
+              className="chat__riattiva"
+              title={`Riattiva ${x.nome}: torni a vedere i suoi messaggi`}
+              onClick={() => silenzia(stanza.codice, x.id, false)}
+            >
+              {x.nome}
+              <Icona nome="chiudi" />
+            </button>
+          ))}
+        </p>
       )}
       <p className="chat__scrive" aria-live="polite">
         {scrive}

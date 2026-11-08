@@ -168,7 +168,8 @@ describe('ipoteche', () => {
 });
 
 describe('aste', () => {
-  const T0 = 1_000_000;
+  // La partita di prova comincia a 0: l'asta si apre pochi secondi dopo, ben dentro il tempo del turno.
+  const T0 = 5_000;
 
   /** 'a' si ferma su Siena (libera): tocca a lui decidere. */
   function suSiena(impostazioni: Partial<Impostazioni> = {}, tiro: [number, number] = [5, 6]): Stato {

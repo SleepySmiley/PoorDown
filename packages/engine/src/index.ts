@@ -39,7 +39,16 @@ export {
   NOME_MAX,
   REGISTRO_MAX,
 } from './protocollo';
-export { applica, applicaScadenze, azioniPossibili, prossimaScadenza, TENTATIVI_PRIGIONE, verifica } from './regole';
+export { votoPossibile } from './moderazione';
+export {
+  applica,
+  applicaScadenze,
+  azioniPossibili,
+  espelli,
+  prossimaScadenza,
+  TENTATIVI_PRIGIONE,
+  verifica,
+} from './regole';
 export {
   caselleIpotecate,
   NOTA_MAX,
@@ -51,4 +60,22 @@ export {
   type BozzaScambio,
 } from './scambi';
 export { tabellone, TABELLONI } from './tabelloni';
+export {
+  ASSENZA_MS,
+  BANCA_INIZIALE_MS,
+  BANCA_MAX_MS,
+  connessione,
+  GRAZIA_DEBITO_MS,
+  GRAZIA_MS,
+  POCO_TEMPO_MS,
+  REGALI_MAX_MS,
+  REGALO_MS,
+  sposta,
+  tempoTurno,
+  turnoConLimite,
+  TURNI_AUTOMATICI_MAX,
+  VOTO_A_TEMPO_MS,
+  votiNecessari,
+  type TempoMostrato,
+} from './tempo';
 export { comeMossa, mossePossibili, vistaPartita } from './vista';

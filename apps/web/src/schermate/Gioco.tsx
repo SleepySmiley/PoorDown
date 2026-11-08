@@ -1,6 +1,7 @@
 import '../stili/gioco.css';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  ASSENZA_MS,
   costoProssimoEdificio,
   costoRiscatto,
   euro,
@@ -32,10 +33,12 @@ import { stilePopover } from '../ui/geometria';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { Asta } from './Asta';
 import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
+import { FuoriDallaPartita, NotaVoto, PulsanteVoto } from './Moderazione';
 import { useScena } from './regia';
 import { EditorScambio, PannelloScambi, VediScambio } from './Scambi';
 import { SchedaProprieta, Tabellone } from './Tabellone';
-import { righeRegistro } from './testi';
+import { ESITO_USCITA, righeRegistro } from './testi';
+import { TimerTurno } from './Timer';
 
 /** `null` se la mossa si può fare adesso, altrimenti il motivo (per il suggerimento del pulsante). */
 function motivo(partita: Stato, io: IdGiocatore, mossa: Mossa): string | null {
@@ -109,7 +112,8 @@ function AzioneScheda({
 }
 
 /** Cosa sta facendo un giocatore, al centro del tabellone, per chi aspetta. */
-function cosaFa(attivita: Attivita | undefined): string {
+function cosaFa(attivita: Attivita | undefined, assente: boolean): string {
+  if (assente) return 'ha perso il collegamento: il turno passa da solo…';
   switch (attivita?.tipo) {
     case 'crea':
       return 'sta creando uno scambio…';
@@ -279,6 +283,7 @@ export function Gioco({
   const [mia, setMia] = useState<{ n: number; top: number; right: number } | null>(null);
   const [impostazioni, setImpostazioni] = useState(false);
   const [bancarotta, setBancarotta] = useState(false);
+  const [daTogliere, setDaTogliere] = useState<Giocatore | null>(null);
   const [consiglio, setConsiglio] = useState(true);
   const [finestraChiesta, setFinestraScambio] = useState<FinestraScambio | null>(null);
 
@@ -363,6 +368,8 @@ export function Gioco({
 
   /* ---------- Centro del tabellone ---------- */
 
+  // Presenze e voti seguono la partita aggiornata, come il timer.
+  const vivi = new Map(vivo.giocatori.map((g) => [g.id, g]));
   const righe = righeRegistro(registro, stanza, scena.registroFino);
   let azioni: ReactNode;
   if (!inCorso) {
@@ -378,7 +385,7 @@ export function Gioco({
       <div className="centro-gioco__azioni">
         <p className="sta-giocando">
           <Pedina colore={corrente.colore} className="pedina--mini" />
-          <b>{corrente.nome}</b> {cosaFa(attivita[corrente.id])}
+          <b>{corrente.nome}</b> {cosaFa(attivita[corrente.id], vivi.get(corrente.id)?.offlineDa != null)}
         </p>
       </div>
     );
@@ -387,7 +394,7 @@ export function Gioco({
   const inRosso = me && me.saldo < 0 && inCorso && !scena.occupata;
   const centro = (
     <div className="centro-gioco">
-      <div className="centro-gioco__timer" />
+      <TimerTurno partita={vivo} io={giocoIo} inviando={inviando} onMossa={mossa} />
       {inCorso ? (
         <>
           <div
@@ -404,6 +411,7 @@ export function Gioco({
               {partita.impostazioni.ipoteche ? ', ipotecale' : ''} o proponi uno scambio. Altrimenti dichiara bancarotta.
             </p>
           )}
+          <NotaVoto partita={vivo} io={giocoIo} />
         </>
       ) : (
         <FinePartita partita={partita} onEsci={onEsci} />
@@ -415,6 +423,8 @@ export function Gioco({
   /* ---------- Colonna destra ---------- */
 
   const connessi = new Map(stanza.partecipanti.map((p) => [p.id, p.connesso]));
+  // L'host di una stanza privata può togliere dalla partita chi non sta giocando il suo turno.
+  const puoTogliere = inCorso && io !== null && stanza.host === io && stanza.impostazioni.stanzaPrivata;
   const mie = me ? possedute(partita, me.id) : [];
   const popoverBordo = scheda;
   const casellaMia = mia ? caselle[mia.n] : undefined;
@@ -588,28 +598,41 @@ export function Gioco({
           <>
             <section className="pannello pannello--scuro giocatori" aria-label="Giocatori">
               <ul>
-                {partita.giocatori.map((g) => (
-                  <RigaGiocatore
-                    key={g.id}
-                    g={{
-                      id: g.id,
-                      nome: g.nome,
-                      colore: g.colore,
-                      host: g.id === stanza.host,
-                      tu: g.id === io,
-                      connesso: connessi.get(g.id) ?? false,
-                      saldo: g.saldo,
-                      turno: inCorso && g.id === corrente?.id,
-                      prigione: g.prigione !== null && !g.eliminato,
-                      fuori: g.eliminato !== null,
-                    }}
-                  />
-                ))}
+                {partita.giocatori.map((g) => {
+                  const offlineDa = vivi.get(g.id)?.offlineDa ?? null;
+                  return (
+                    <RigaGiocatore
+                      key={g.id}
+                      g={{
+                        id: g.id,
+                        nome: g.nome,
+                        colore: g.colore,
+                        host: g.id === stanza.host,
+                        tu: g.id === io,
+                        // Di chi è fuori dalla partita non interessa se è collegato.
+                        connesso: g.eliminato !== null || (connessi.get(g.id) ?? false),
+                        saldo: g.saldo,
+                        turno: inCorso && g.id === corrente?.id,
+                        prigione: g.prigione !== null && !g.eliminato,
+                        fuori: g.eliminato !== null,
+                        esito: g.eliminato ? ESITO_USCITA[g.eliminato.motivo] : undefined,
+                        assenteFino: inCorso && !g.eliminato && offlineDa !== null ? offlineDa + ASSENZA_MS : undefined,
+                      }}
+                      puoEspellere={puoTogliere}
+                      etichettaEspulsione={`Togli ${g.nome} dalla partita`}
+                      bloccoEspulsione={
+                        g.id === vivo.turno.giocatore ? 'Non puoi togliere chi sta giocando il suo turno: aspetta che finisca.' : null
+                      }
+                      onEspelli={() => setDaTogliere(g)}
+                    />
+                  );
+                })}
               </ul>
             </section>
 
             {me && inCorso && (
               <div className="bancarotta">
+                {giocoIo && <PulsanteVoto partita={vivo} io={giocoIo} inviando={inviando} onMossa={mossa} />}
                 <button
                   type="button"
                   className="pulsante pulsante--piccolo pulsante--rosso"
@@ -732,6 +755,38 @@ export function Gioco({
           </div>
         </Finestra>
       )}
+
+      {daTogliere && (
+        <Finestra titolo="Togli dalla partita" onChiudi={() => setDaTogliere(null)}>
+          <div className="finestra__corpo">
+            <p>
+              Vuoi togliere <b>{daTogliere.nome}</b> dalla partita? Le sue proprietà tornano alla banca e non potrà più giocare
+              né scrivere in chat. Non si può annullare.
+            </p>
+          </div>
+          <div className="finestra__azioni">
+            <button type="button" className="pulsante pulsante--fantasma" onClick={() => setDaTogliere(null)}>
+              Annulla
+            </button>
+            <button
+              type="button"
+              className="pulsante pulsante--rosso"
+              onClick={() => {
+                const id = daTogliere.id;
+                setDaTogliere(null);
+                void collegamento.comando('espelli', { giocatore: id }).then((r) => {
+                  if (!r.ok) avvisa(r.messaggio, 'errore');
+                });
+              }}
+            >
+              <Icona nome="chiudi" />
+              Togli dalla partita
+            </button>
+          </div>
+        </Finestra>
+      )}
+
+      <FuoriDallaPartita codice={stanza.codice} partita={partita} io={io} onEsci={onEsci} />
 
       {bancarotta && (
         <Finestra titolo="Dichiara bancarotta" onChiudi={() => setBancarotta(false)}>

@@ -1,8 +1,24 @@
 /* Righe del registro con i nomi dei giocatori in grassetto e il pallino del colore di chi agisce. */
 
 import type { ReactNode } from 'react';
-import { descriviVoce, type EventoStanza, type IdGiocatore, type VistaStanza, type VoceRegistro } from '@poordown/engine';
+import {
+  descriviVoce,
+  type EventoStanza,
+  type IdGiocatore,
+  type MotivoUscita,
+  type VistaStanza,
+  type VoceRegistro,
+} from '@poordown/engine';
 import type { RigaRegistro } from '../ui/comuni';
+
+/** Cosa scrivere nella lista giocatori, al posto del saldo, per chi è uscito dalla partita. */
+export const ESITO_USCITA: Record<MotivoUscita, string> = {
+  bancarotta: 'Bancarotta',
+  tempo: 'Tempo scaduto',
+  assenza: 'Assenza',
+  voto: 'Votazione',
+  espulsione: 'Espulsione',
+};
 
 function protagonista(e: EventoStanza): IdGiocatore | null {
   // Lo scambio lo accetta o lo rifiuta chi l'ha ricevuto.

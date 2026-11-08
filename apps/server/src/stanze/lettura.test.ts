@@ -8,6 +8,9 @@ describe('lettura dei comandi di gioco', () => {
     expect(leggiMossa({ tipo: 'costruisci', casella: 11 })).toEqual({ tipo: 'costruisci', casella: 11 });
     expect(leggiMossa({ tipo: 'riscatta', casella: '11' })).toBeNull();
     expect(leggiMossa({ tipo: 'asta', extra: 1 })).toEqual({ tipo: 'asta' });
+    expect(leggiMossa({ tipo: 'regala_tempo' })).toEqual({ tipo: 'regala_tempo' });
+    expect(leggiMossa({ tipo: 'vota', favorevole: false })).toEqual({ tipo: 'vota', favorevole: false });
+    expect(leggiMossa({ tipo: 'vota', favorevole: 'si' })).toBeNull();
     expect(leggiMossa({ tipo: 'offri', importo: 12 })).toEqual({ tipo: 'offri', importo: 12 });
     expect(leggiMossa({ tipo: 'offri', importo: 0 })).toBeNull();
     expect(leggiMossa({ tipo: 'offri', importo: 2.5 })).toBeNull();

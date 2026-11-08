@@ -422,3 +422,109 @@
   color: var(--testo-tenue);
   box-shadow: inset 0 0 0 1px var(--bordo);
 }
+
+/* ---------- Tempo, assenze e moderazione (Fase 6) ---------- */
+
+/* Durante l'asta l'orologio è fermo: il timer si spegne un po'. */
+.centro-gioco__timer .timer--fermo {
+  opacity: 0.6;
+}
+
+.centro-gioco__timer .timer__assente {
+  width: 18px;
+  height: 18px;
+  color: var(--rosso);
+}
+
+.centro-gioco__timer .pulsante {
+  white-space: nowrap;
+}
+
+.bancarotta.bancarotta {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.giocatore__nome .giocatore__assenza {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--rosso);
+  font: 600 0.875rem/1 var(--stretto);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Silenzia: il pulsante accanto al nome compare passando sul messaggio (o con la tastiera). */
+.messaggio__autore .messaggio__silenzia {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--testo-tenue);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.messaggio__silenzia .icona {
+  width: 15px;
+  height: 15px;
+}
+
+.messaggio:hover .messaggio__silenzia,
+.messaggio__autore .messaggio__silenzia:focus-visible {
+  opacity: 1;
+}
+
+.messaggio__autore .messaggio__silenzia:hover {
+  background: var(--riga);
+  color: var(--testo);
+}
+
+.chat .chat__silenziati {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 6px 14px 0;
+  color: var(--testo-tenue);
+  font-size: 0.8125rem;
+}
+
+.chat__silenziati > .icona {
+  width: 15px;
+  height: 15px;
+}
+
+.chat__silenziati .chat__riattiva {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px 2px 7px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--riga);
+  color: var(--testo);
+  font: 600 0.8125rem/1.2 var(--stretto);
+  cursor: pointer;
+}
+
+.chat__riattiva .icona {
+  width: 12px;
+  height: 12px;
+}
+
+.chat__silenziati .chat__riattiva:hover {
+  background: var(--cemento-scuro);
+}
+
+.giocatore .giocatore__senza-x {
+  visibility: hidden;
+}

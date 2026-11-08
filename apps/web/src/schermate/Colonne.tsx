@@ -18,6 +18,7 @@ import { iniziale } from '../ui/utili';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { PassiDelGioco } from '../ui/Regole';
 import { BollaChat, Chat } from './Chat';
+import { ContoAllaRovescia } from './Timer';
 
 /* ---------------- Impaginazione a tre colonne ---------------- */
 
@@ -293,19 +294,29 @@ export interface DatiRiga {
   turno?: boolean;
   prigione?: boolean;
   fuori?: boolean;
+  /** Per chi è fuori: perché (al posto del saldo). */
+  esito?: string;
+  /** In partita, per chi ha perso il collegamento: quando perde il posto (ms del server). */
+  assenteFino?: number;
 }
 
 export function RigaGiocatore({
   g,
   puoEspellere,
+  etichettaEspulsione,
+  bloccoEspulsione,
   onEspelli,
   onCambiaColore,
 }: {
   g: DatiRiga;
   puoEspellere?: boolean;
+  etichettaEspulsione?: string;
+  /** Perché adesso non si può espellere, `null` se si può. */
+  bloccoEspulsione?: string | null;
   onEspelli?: () => void;
   onCambiaColore?: () => void;
 }): ReactNode {
+  const etichetta = etichettaEspulsione ?? `Espelli ${g.nome}`;
   const mostraSaldo = g.saldo !== undefined;
   const classi = [
     'giocatore',
@@ -332,9 +343,18 @@ export function RigaGiocatore({
             </span>
           )}
           {g.host && mostraSaldo && <Icona nome="corona" className="giocatore__segno giocatore__corona" titolo="Host" />}
-          {!g.connesso && (
-            <Icona nome="scollegato" className="giocatore__segno giocatore__scollegato" titolo="Non è collegato" />
-          )}
+          {!g.connesso &&
+            (g.assenteFino === undefined ? (
+              <Icona nome="scollegato" className="giocatore__segno giocatore__scollegato" titolo="Senza collegamento" />
+            ) : (
+              <span
+                className="giocatore__assenza"
+                title="Ha perso il collegamento: i suoi turni passano da soli e allo zero perde il posto. Se sta per tornare, puoi dargli più tempo."
+              >
+                <Icona nome="scollegato" className="giocatore__segno giocatore__scollegato" titolo="Senza collegamento" />
+                <ContoAllaRovescia fino={g.assenteFino} />
+              </span>
+            ))}
         </span>
         {g.tu && onCambiaColore && (
           <button type="button" className="giocatore__colore" onClick={onCambiaColore}>
@@ -348,8 +368,20 @@ export function RigaGiocatore({
           <Soldi valore={g.saldo} />
         </span>
       )}
-      {g.fuori && <span className="giocatore__esito">Bancarotta</span>}
-      {puoEspellere && !g.tu && <PulsanteIcona icona="chiudi" etichetta={`Espelli ${g.nome}`} onClick={onEspelli} />}
+      {g.fuori && <span className="giocatore__esito">{g.esito ?? 'Bancarotta'}</span>}
+      {/* La propria riga (e chi è già fuori) tiene lo spazio della X: i saldi restano in colonna. */}
+      {puoEspellere &&
+        (g.tu || g.fuori ? (
+          <span className="pulsante-icona giocatore__senza-x" aria-hidden="true" />
+        ) : bloccoEspulsione ? (
+          <span className="con-suggerimento" data-testo={bloccoEspulsione}>
+            <button type="button" className="pulsante-icona" aria-label={etichetta} disabled>
+              <Icona nome="chiudi" />
+            </button>
+          </span>
+        ) : (
+          <PulsanteIcona icona="chiudi" etichetta={etichetta} onClick={onEspelli} />
+        ))}
     </li>
   );
 }
@@ -375,7 +407,12 @@ const STANZA: Voce[] = [
   },
   { chiave: 'bot', icona: 'robot', nome: 'Bot', descrizione: 'Dei giocatori automatici occupano i posti liberi', presto: true },
   { chiave: 'mappa', icona: 'mappa', nome: 'Tabellone', descrizione: 'Caselle, città e mazzi della partita' },
-  { chiave: 'timerTurno', icona: 'orologio', nome: 'Timer di turno', descrizione: 'Ogni turno ha un tempo limite', presto: true },
+  {
+    chiave: 'timerTurno',
+    icona: 'orologio',
+    nome: 'Timer di turno',
+    descrizione: 'Ogni turno ha un tempo limite: allo scadere il gioco tira i dadi e finisce il turno',
+  },
 ];
 
 const REGOLE: Voce[] = [

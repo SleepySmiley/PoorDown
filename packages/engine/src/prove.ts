@@ -6,6 +6,7 @@ import { IMPOSTAZIONI_PREDEFINITE } from './impostazioni';
 import { creaPartita } from './partita';
 import { applica } from './regole';
 import { tabellone } from './tabelloni';
+import { BANCA_MAX_MS } from './tempo';
 import type { Azione, Caso, Evento, IdGiocatore, Impostazioni, NomeMazzo, Stato } from './tipi';
 
 export const NOMI = ['Anna', 'Bruno', 'Carla', 'Dario', 'Elena', 'Fabio', 'Gina', 'Ugo'];
@@ -93,6 +94,21 @@ export function problemi(s: Stato): string[] {
     }
     if (x.eliminato) {
       if (x.saldo !== 0 || x.debiti.length || x.carteGrazia.length) out.push(`${x.id}: eliminato con beni o debiti.`);
+      if (x.offlineDa !== null) out.push(`${x.id}: eliminato ma ancora segnato come assente.`);
+    }
+    if (x.banca < 0 || x.banca > BANCA_MAX_MS) out.push(`${x.id}: banca di tempo fuori dai limiti (${x.banca}).`);
+    if (x.automatici < 0) out.push(`${x.id}: turni automatici negativi.`);
+  }
+
+  const t = s.turno;
+  if (s.fase === 'in_corso') {
+    if ((t.tempo.fermoDa !== null) !== (s.asta !== null)) out.push('Orologio del turno fermo senza asta, o che scorre durante l’asta.');
+    if (t.tempo.regalato !== t.tempo.regali.length * 60_000) out.push('Tempo regalato che non torna con i regali.');
+    if (t.votazione.voti.includes(t.giocatore)) out.push('Voto di chi gioca contro sé stesso.');
+    if (t.votazione.voti.some((id) => giocatore(s, id)?.eliminato !== null)) out.push('Voto di chi non è in gioco.');
+    if (new Set(t.votazione.voti).size !== t.votazione.voti.length) out.push('Voto doppio.');
+    if (t.votazione.scadenza !== null && (t.votazione.voti.length === 0 || s.impostazioni.timerTurno)) {
+      out.push('Voto a tempo senza voti o con il timer attivo.');
     }
   }
 

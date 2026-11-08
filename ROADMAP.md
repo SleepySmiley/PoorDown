@@ -121,11 +121,12 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 **Fatto quando:** ogni impostazione di gioco cambia davvero la partita, con test per ciascuna. ✔ Fatto: test per aste, ipoteche, costruzione uniforme e stanza privata (regola degli scambi sbilanciati), più la simulazione di 80 partite con tutte le regole accese a caso. Verificato con due browser Edge: case su una regione intera, ipoteca, due aste, scambio con nota e controproposta.
 
 ### Fase 6 — Tempo, assenze, moderazione · M
-- [ ] Timer di turno (grazia + banca + ricarica), "Chiedi tempo", "+1 min", gioco automatico, rimozione, bancarotta automatica in debito
-- [ ] Disconnessione: indicatore visibile, conto alla rovescia di 2 min, turni saltati, rimozione
-- [ ] Votekick, kick dell'host in partita, muto della chat
+- [x] Timer di turno (grazia + banca + ricarica), "Chiedi tempo", "+1 min", gioco automatico, rimozione, bancarotta automatica in debito
+- [x] Disconnessione: indicatore visibile, conto alla rovescia di 2 min, turni saltati, rimozione
+- [x] Votekick, kick dell'host in partita, muto della chat
+- [x] In più: se nessun giocatore è collegato la partita si ferma e riprende da dove era (anche dopo un riavvio del server); se l'host esce per tempo, assenza o voto il ruolo passa al primo giocatore rimasto; le partite salvate prima della Fase 6 riprendono. In lobby resta con «Presto» solo l'impostazione dei bot
 
-**Fatto quando:** una partita va avanti da sola se qualcuno chiude il browser o si allontana.
+**Fatto quando:** una partita va avanti da sola se qualcuno chiude il browser o si allontana. ✔ Fatto: test del motore per ogni regola del tempo e del voto, simulazione di 80 partite con assenze, pause, tempi scaduti, voti ed espulsioni. Verificato con due browser Edge e un terzo giocatore da script: tempo chiesto e regalato, turno giocato in automatico, giocatrice scollegata tolta dopo 2 minuti, browser chiuso a metà turno fino alla fine della partita, voto senza timer, espulsione dell'host, chat silenziata.
 
 ### Fase 7 — Fine partita e statistiche · S
 - [ ] Schermata finale, coriandoli, classifica per turni sopravvissuti
@@ -165,6 +166,13 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Turno durante l'asta | Fermo: il giocatore di turno aspetta la fine dell'asta. Scambi e bancarotta restano possibili |
 | Costruire prima di tirare i dadi | Si può, sempre e solo nel proprio turno (anche in prigione) |
 | Regola sul debito negli scambi | Lo scambio non deve togliere niente ai creditori: conta quello che incassano subito più quello che potrebbero recuperare dopo |
+| Chi può regalare tempo, e quanto | Ogni altro giocatore in gioco, un "+1 min" a testa per turno, al massimo 2 minuti a turno; mai durante l'asta |
+| Ricarica della banca di tempo | Da 20 s (turno finito subito) a 6 s (grazia usata tutta), in proporzione; nessuna ricarica dopo un tempo scaduto |
+| Turno di chi è scollegato | Ha solo la grazia di 20 s da quando sparisce (anche senza timer), poi il gioco tira e finisce il turno per lui; gli altri possono dargli "+1 min" |
+| Nessun giocatore collegato | La partita si ferma: niente turni automatici né rimozioni. Quando torna qualcuno, gli orologi ripartono da dove erano |
+| Voto senza timer di turno | Si può votare sempre contro chi gioca; il primo voto fa partire 5 minuti, scaduti i quali esce comunque se non ha finito il turno |
+| Kick dell'host in partita | Solo nelle stanze private e non durante il turno del giocatore; chi è espulso perde anche il posto (non scrive più in chat) e torna alla home |
+| Muto della chat | Per singolo giocatore, salvato in questo browser: i suoi messaggi spariscono e si riattivano dal riquadro della chat |
 
 ---
 

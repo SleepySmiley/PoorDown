@@ -106,7 +106,13 @@ export function leggiMossa(dati: unknown): Mossa | null {
     case 'paga_cauzione':
     case 'asta':
     case 'bancarotta':
+    case 'chiedi_tempo':
+    case 'regala_tempo':
       return { tipo };
+    case 'vota': {
+      const favorevole = booleano(dati, 'favorevole');
+      return favorevole === null ? null : { tipo, favorevole };
+    }
     case 'usa_grazia': {
       const mazzo = o?.mazzo;
       if (mazzo === undefined) return { tipo };

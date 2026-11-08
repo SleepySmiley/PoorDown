@@ -162,6 +162,8 @@ export function apriAsta(ctx: Contesto, g: Giocatore): void {
   const casella = acquistoInSospeso(ctx.s)!;
   ctx.s.turno.acquisto = null;
   ctx.s.asta = { casella, giocatore: g.id, migliore: null, offerte: [], scadenza: ctx.adesso + ASTA_MS };
+  // Durante l'asta l'orologio del turno è fermo.
+  ctx.s.turno.tempo.fermoDa ??= ctx.adesso;
   ctx.eventi.push({ tipo: 'asta', giocatore: g.id, casella });
 }
 
@@ -194,6 +196,12 @@ export function chiudiAsta(ctx: Contesto): void {
   const asta = s.asta;
   if (!asta) return;
   s.asta = null;
+  // L'orologio del turno riparte da dove si era fermato.
+  const tempo = s.turno.tempo;
+  if (tempo.fermoDa !== null) {
+    tempo.inizio += Math.max(0, ctx.adesso - tempo.fermoDa);
+    tempo.fermoDa = null;
+  }
   const migliore = asta.migliore;
   const vincitore = migliore ? giocatore(s, migliore.giocatore) : undefined;
   const p = s.proprieta[asta.casella]!;

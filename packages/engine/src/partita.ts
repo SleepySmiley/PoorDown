@@ -1,8 +1,9 @@
 import { mescola } from './caso';
 import { proprietabile } from './conti';
 import { GIOCATORI_MAX, GIOCATORI_MIN } from './impostazioni';
-import { iniziaTurno } from './regole';
 import { tabellone } from './tabelloni';
+import { BANCA_INIZIALE_MS } from './tempo';
+import { iniziaTurno } from './turni';
 import type { Caso, Esito, Evento, IdGiocatore, Impostazioni, Mazzo, Stato } from './tipi';
 
 export interface NuovoGiocatore {
@@ -14,8 +15,14 @@ export interface NuovoGiocatore {
 /**
  * Prepara una partita: ordine dei giocatori (mescolato se richiesto), mazzi mescolati,
  * soldi iniziali, e fa partire il primo turno.
+ * @param adesso orologio del server (ms): da qui parte il tempo del primo turno.
  */
-export function creaPartita(giocatori: readonly NuovoGiocatore[], impostazioni: Impostazioni, caso: Caso): Esito {
+export function creaPartita(
+  giocatori: readonly NuovoGiocatore[],
+  impostazioni: Impostazioni,
+  caso: Caso,
+  adesso = 0,
+): Esito {
   if (giocatori.length < GIOCATORI_MIN || giocatori.length > GIOCATORI_MAX) {
     return {
       ok: false,
@@ -45,13 +52,26 @@ export function creaPartita(giocatori: readonly NuovoGiocatore[], impostazioni: 
       vacanza: false,
       carteGrazia: [],
       eliminato: null,
+      banca: BANCA_INIZIALE_MS,
+      automatici: 0,
+      offlineDa: null,
     })),
     proprieta: tab.caselle.map((_, i) =>
       proprietabile(tab, i) ? { proprietario: null, livello: 0, ipotecata: false } : null,
     ),
     mazzi: { busta: nuovoMazzo(tab.mazzi.busta.length), cartolina: nuovoMazzo(tab.mazzi.cartolina.length) },
     cassaVacanza: 0,
-    turno: { giocatore: '', numero: 0, fase: 'lancio', dadi: null, doppi: 0, rilancio: false, acquisto: null },
+    turno: {
+      giocatore: '',
+      numero: 0,
+      fase: 'lancio',
+      dadi: null,
+      doppi: 0,
+      rilancio: false,
+      acquisto: null,
+      tempo: { inizio: adesso, grazia: 0, regalato: 0, regali: [], richiesta: false, automatico: false, fermoDa: null },
+      votazione: { voti: [], scadenza: null },
+    },
     asta: null,
     scambi: [],
     prossimoScambio: 1,
@@ -60,6 +80,6 @@ export function creaPartita(giocatori: readonly NuovoGiocatore[], impostazioni: 
   };
 
   const eventi: Evento[] = [{ tipo: 'inizio', ordineCasuale: impostazioni.ordineCasuale }];
-  iniziaTurno(stato, eventi, stato.giocatori[0]!);
+  iniziaTurno(stato, eventi, stato.giocatori[0]!, adesso);
   return { ok: true, stato, eventi };
 }

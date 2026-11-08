@@ -136,10 +136,19 @@ export interface Debito {
   importo: number;
 }
 
+/**
+ * Perché un giocatore è uscito dalla partita.
+ * - `tempo`: il timer è scaduto troppe volte di fila.
+ * - `assenza`: è rimasto scollegato troppo a lungo.
+ * - `voto`: gli altri hanno votato per toglierlo.
+ * - `espulsione`: l'ha tolto l'host.
+ */
+export type MotivoUscita = 'bancarotta' | 'tempo' | 'assenza' | 'voto' | 'espulsione';
+
 export interface Eliminazione {
   /** Numero del turno in cui è uscito: serve alla classifica dei turni sopravvissuti. */
   turno: number;
-  motivo: 'bancarotta';
+  motivo: MotivoUscita;
 }
 
 export interface Giocatore {
@@ -161,6 +170,12 @@ export interface Giocatore {
   vacanza: boolean;
   carteGrazia: NomeMazzo[];
   eliminato: Eliminazione | null;
+  /** Banca di tempo personale del timer di turno (ms): si consuma dopo la grazia e si ricarica a fine turno. */
+  banca: number;
+  /** Turni di fila che il gioco ha dovuto finire al posto suo, allo scadere del tempo. */
+  automatici: number;
+  /** Da quando non è collegato (ms del server); `null` se è collegato. */
+  offlineDa: number | null;
 }
 
 export interface Proprieta {
@@ -184,6 +199,35 @@ export interface Mazzo {
  */
 export type FaseTurno = 'lancio' | 'prigione' | 'dopo_lancio';
 
+/**
+ * Il tempo del turno. La scadenza è `inizio + grazia + regalato + banca del giocatore` (vedi tempo.ts);
+ * chi non è collegato ha solo la grazia normale, contata da quando è sparito.
+ */
+export interface TempoTurno {
+  /** Quando è cominciato il turno (ms del server). Le pause dell'asta lo spostano avanti. */
+  inizio: number;
+  /** Tempo gratuito del turno (ms): più lungo se chi gioca è in debito. */
+  grazia: number;
+  /** Tempo regalato dagli altri giocatori in questo turno (ms). */
+  regalato: number;
+  /** Chi ha già regalato tempo in questo turno: uno a testa. */
+  regali: IdGiocatore[];
+  /** Chi gioca ha chiesto più tempo. */
+  richiesta: boolean;
+  /** Il tempo è scaduto e il gioco sta facendo le mosse al posto suo. */
+  automatico: boolean;
+  /** Da quando l'asta tiene fermo l'orologio (ms del server); `null` se scorre. */
+  fermoDa: number | null;
+}
+
+/** Il voto per togliere dalla partita chi sta giocando il turno. Si azzera a ogni turno. */
+export interface Votazione {
+  /** Chi ha votato a favore. */
+  voti: IdGiocatore[];
+  /** Senza timer di turno: quando il voto toglie comunque il giocatore (ms del server). */
+  scadenza: number | null;
+}
+
 export interface Turno {
   giocatore: IdGiocatore;
   /** Contatore dei turni giocati nella partita, dal primo (1). I turni saltati non contano. */
@@ -197,6 +241,8 @@ export interface Turno {
   rilancio: boolean;
   /** Casella libera su cui si è fermato e che può comprare. */
   acquisto: number | null;
+  tempo: TempoTurno;
+  votazione: Votazione;
 }
 
 export interface Offerta {
@@ -300,7 +346,13 @@ export type Azione =
   | { tipo: 'rifiuta'; giocatore: IdGiocatore; scambio: number }
   /** Chi ha proposto lo scambio lo ritira. */
   | { tipo: 'annulla'; giocatore: IdGiocatore; scambio: number }
-  | { tipo: 'bancarotta'; giocatore: IdGiocatore };
+  | { tipo: 'bancarotta'; giocatore: IdGiocatore }
+  /** Chi gioca chiede agli altri più tempo. */
+  | { tipo: 'chiedi_tempo'; giocatore: IdGiocatore }
+  /** Un altro giocatore regala un minuto a chi gioca. */
+  | { tipo: 'regala_tempo'; giocatore: IdGiocatore }
+  /** Voto (o ritiro del voto) per togliere dalla partita chi sta giocando il turno. */
+  | { tipo: 'vota'; giocatore: IdGiocatore; favorevole: boolean };
 
 export type TipoAzione = Azione['tipo'];
 
@@ -339,8 +391,19 @@ export type Evento =
   | { tipo: 'debito'; da: IdGiocatore; a: IdGiocatore; importo: number }
   /** Parte di un debito saldata in automatico con un'entrata. */
   | { tipo: 'rimborso'; da: IdGiocatore; a: IdGiocatore; importo: number }
-  /** `recuperi`: quanto la banca dà a ogni creditore, dal valore dei beni del fallito. */
-  | { tipo: 'bancarotta'; giocatore: IdGiocatore; recuperi: Debito[] }
+  /**
+   * `recuperi`: quanto la banca dà a ogni creditore, dal valore dei beni del fallito.
+   * `automatica`: il tempo è scaduto mentre era in debito.
+   */
+  | { tipo: 'bancarotta'; giocatore: IdGiocatore; recuperi: Debito[]; automatica?: true }
+  /** Uscita dalla partita per tempo, assenza, voto o espulsione: i beni vanno come in una bancarotta. */
+  | { tipo: 'rimozione'; giocatore: IdGiocatore; motivo: Exclude<MotivoUscita, 'bancarotta'>; recuperi: Debito[] }
+  /** Il tempo del turno è finito: da qui il gioco fa le mosse al posto suo. `assente`: non è collegato. */
+  | { tipo: 'tempo_scaduto'; giocatore: IdGiocatore; assente: boolean }
+  | { tipo: 'tempo_chiesto'; giocatore: IdGiocatore }
+  | { tipo: 'tempo_regalato'; da: IdGiocatore; a: IdGiocatore; ms: number }
+  /** `voti`: quanti sono adesso i voti a favore; `servono`: quanti ne servono per toglierlo. */
+  | { tipo: 'voto'; da: IdGiocatore; contro: IdGiocatore; favorevole: boolean; voti: number; servono: number }
   | { tipo: 'fine'; vincitore: IdGiocatore | null };
 
 export type TipoEvento = Evento['tipo'];
@@ -379,7 +442,15 @@ export type CodiceErrore =
   | 'scambio_inesistente'
   | 'non_tuo_scambio'
   | 'troppi_scambi'
-  | 'scambio_non_valido';
+  | 'scambio_non_valido'
+  | 'timer_spento'
+  | 'gia_chiesto'
+  | 'gia_regalato'
+  | 'regali_esauriti'
+  | 'voto_non_disponibile'
+  | 'gia_votato'
+  | 'non_votato'
+  | 'sta_giocando';
 
 export interface Errore {
   codice: CodiceErrore;

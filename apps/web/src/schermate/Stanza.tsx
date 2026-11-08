@@ -71,14 +71,23 @@ export function Stanza({ codice }: { codice: string }): ReactNode {
     if (stato.io) ultimoIo.current = stato.io;
   }, [stato.io]);
 
-  // Espulsione: il registro dice che il mio posto è stato tolto dall'host.
+  // Espulsione: il registro dice che il mio posto è stato tolto dall'host (in lobby o in partita).
   useEffect(
     () =>
       collegamento.ascoltaVoci((voci) => {
         const io = ultimoIo.current;
-        if (io && voci.some((v) => v.evento.tipo === 'uscita' && v.evento.motivo === 'espulsione' && v.evento.giocatore === io)) {
-          ultimoIo.current = null;
-          esciDallaStanza('Sei stato espulso dalla stanza.');
+        if (!io) return;
+        for (const { evento: e } of voci) {
+          if (e.tipo === 'uscita' && e.motivo === 'espulsione' && e.giocatore === io) {
+            ultimoIo.current = null;
+            esciDallaStanza('Sei stato espulso dalla stanza.');
+            return;
+          }
+          if (e.tipo === 'rimozione' && e.motivo === 'espulsione' && e.giocatore === io) {
+            ultimoIo.current = null;
+            esciDallaStanza('L’host ti ha tolto dalla partita.');
+            return;
+          }
         }
       }),
     [],
@@ -97,12 +106,15 @@ export function Stanza({ codice }: { codice: string }): ReactNode {
     scrivono: stato.scrivono,
     onEsci: () => esciDallaStanza(),
   };
+  const inGioco =
+    stanza.fase === 'partita' && stanza.partita?.giocatori.some((g) => g.id === stato.io && !g.eliminato) === true;
   return (
     <>
       {stanza.fase === 'lobby' ? <Lobby {...comuni} /> : <Gioco {...comuni} attivita={stato.attivita} />}
       {stato.rete === 'perso' && (
         <p className="rete-persa" role="alert">
           Collegamento perso con il server. Riprovo da solo: controlla che il PC con PoorDown sia acceso e sulla stessa rete.
+          {inGioco && ' Intanto i tuoi turni passano da soli, e dopo due minuti perdi il posto nella partita.'}
         </p>
       )}
     </>

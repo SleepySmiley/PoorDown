@@ -3,7 +3,7 @@
 import { giocatore } from './conti';
 import type { EventoStanza } from './protocollo';
 import { tabellone } from './tabelloni';
-import type { Casella, Evento, IdGiocatore, NomeMazzo, Pacchetto, Stato } from './tipi';
+import type { Casella, Evento, IdGiocatore, MotivoUscita, NomeMazzo, Pacchetto, Stato } from './tipi';
 
 /** 1500 → "1.500 €". In italiano il punto delle migliaia si mette anche sotto i 10.000. */
 export function euro(importo: number): string {
@@ -12,6 +12,19 @@ export function euro(importo: number): string {
 }
 
 const NOME_MAZZO: Record<NomeMazzo, string> = { busta: 'Busta', cartolina: 'Cartolina' };
+
+const MOTIVO_RIMOZIONE: Record<Exclude<MotivoUscita, 'bancarotta'>, string> = {
+  tempo: 'Tempo scaduto troppe volte',
+  assenza: 'Assenza prolungata',
+  voto: 'Votazione',
+  espulsione: 'Espulsione',
+};
+
+/** 60000 → "un minuto", 120000 → "2 minuti". */
+function minuti(ms: number): string {
+  const n = Math.round(ms / 60_000);
+  return n === 1 ? 'un minuto' : `${n} minuti`;
+}
 
 /**
  * Riga del registro per un evento, oppure `null` per gli eventi che servono solo alle animazioni
@@ -113,8 +126,25 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       return `${nome(evento.da)} restituisce ${euro(evento.importo)} ${a(nome(evento.a))}.`;
     case 'bancarotta': {
       const recuperi = evento.recuperi.map((r) => ` ${nome(r.creditore)} recupera ${euro(r.importo)} dalla banca.`);
-      return `${nome(evento.giocatore)} fa bancarotta. Le sue proprietà tornano alla banca.${recuperi.join('')}`;
+      const prima = evento.automatica ? 'Tempo scaduto in debito: ' : '';
+      return `${prima}${nome(evento.giocatore)} fa bancarotta. Le sue proprietà tornano alla banca.${recuperi.join('')}`;
     }
+    case 'rimozione': {
+      const recuperi = evento.recuperi.map((r) => ` ${nome(r.creditore)} recupera ${euro(r.importo)} dalla banca.`);
+      return `${MOTIVO_RIMOZIONE[evento.motivo]}: ${nome(evento.giocatore)} esce dalla partita e le sue proprietà tornano alla banca.${recuperi.join('')}`;
+    }
+    case 'tempo_scaduto':
+      return evento.assente
+        ? `${nome(evento.giocatore)} ha perso il collegamento: il gioco fa le sue mosse.`
+        : `Tempo scaduto per ${nome(evento.giocatore)}: il gioco fa le sue mosse.`;
+    case 'tempo_chiesto':
+      return `${nome(evento.giocatore)} chiede più tempo.`;
+    case 'tempo_regalato':
+      return `${nome(evento.da)} dà ${minuti(evento.ms)} in più ${a(nome(evento.a))}.`;
+    case 'voto':
+      return evento.favorevole
+        ? `${nome(evento.da)} vota per far uscire ${nome(evento.contro)} dalla partita (${evento.voti} di ${evento.servono}).`
+        : `${nome(evento.da)} ritira il voto contro ${nome(evento.contro)}.`;
     case 'fine':
       return evento.vincitore ? `Partita finita. Vince ${nome(evento.vincitore)}.` : 'Partita finita.';
   }
