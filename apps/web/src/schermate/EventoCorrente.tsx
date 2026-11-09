@@ -9,7 +9,9 @@
 import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
+  aOppureAd,
   euro,
+  preposizioneA,
   tabellone,
   type EventoStanza,
   type Giocatore,
@@ -83,7 +85,7 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
         coppia: [e.da, e.a],
         titolo: (
           <>
-            <b>{nome(e.da)}</b> paga l’affitto a <b>{nome(e.a)}</b>
+            <b>{nome(e.da)}</b> paga l’affitto {aOppureAd(nome(e.a))} <b>{nome(e.a)}</b>
           </>
         ),
         dettaglio: nomeCasella(e.casella),
@@ -280,7 +282,7 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
             <b>{nome(e.giocatore)}</b> fa bancarotta
           </>
         ),
-        dettaglio: e.erede ? `I beni vanno a ${nome(e.erede)}` : 'Le sue proprietà tornano alla banca',
+        dettaglio: e.erede ? `I beni vanno ${preposizioneA(nome(e.erede))}` : 'Le sue proprietà tornano alla banca',
       };
     case 'rimozione':
       return {

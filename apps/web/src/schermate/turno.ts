@@ -9,6 +9,7 @@ import {
   acquistoInSospeso,
   destinazione,
   euro,
+  preposizioneA,
   proprietabile,
   tabellone,
   TENTATIVI_PRIGIONE,
@@ -86,7 +87,7 @@ function fraseMomento(partita: Stato, mio: boolean, momento: Momento, fase: Stat
       if (momento.affitto) {
         const id = partita.proprieta[momento.casella]?.proprietario;
         const chi = partita.giocatori.find((g) => g.id === id)?.nome;
-        if (chi) return mio ? `Paghi l’affitto a ${chi}` : `paga l’affitto a ${chi}`;
+        if (chi) return mio ? `Paghi l’affitto ${preposizioneA(chi)}` : `paga l’affitto ${preposizioneA(chi)}`;
         return mio ? 'Paghi l’affitto' : 'paga l’affitto';
       }
       return mio ? `Sei ${destinazione(c)}` : `è ${destinazione(c)}`;

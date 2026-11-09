@@ -17,6 +17,7 @@ import {
   PACCHETTO_VUOTO,
   pacchettoVuoto,
   possedute,
+  preposizioneA,
   problemiScambio,
   proprietabile,
   regioneConEdifici,
@@ -104,8 +105,8 @@ function titoloScambio(partita: Stato, sc: Scambio, io: IdGiocatore | null): str
   const a = nomeDi(partita, sc.a);
   const n = sc.trattativa;
   if (sc.a === io) return n > 0 ? `Controproposta di ${da} · ${n}ª` : `${da} ti propone uno scambio`;
-  if (sc.da === io) return n > 0 ? `La tua controproposta a ${a} · ${n}ª` : `La tua proposta a ${a}`;
-  return n > 0 ? `Controproposta di ${da} a ${a} · ${n}ª` : `${da} propone a ${a}`;
+  if (sc.da === io) return n > 0 ? `La tua controproposta ${preposizioneA(a)} · ${n}ª` : `La tua proposta ${preposizioneA(a)}`;
+  return n > 0 ? `Controproposta di ${da} ${preposizioneA(a)} · ${n}ª` : `${da} propone ${preposizioneA(a)}`;
 }
 
 /** Una voce di un pacchetto nei riassunti. */
@@ -393,7 +394,7 @@ function Lato({
               <CampoSoldi
                 valore={p.soldi}
                 massimo={massimo}
-                etichetta={mio ? 'Soldi che dai, in euro' : `Soldi che chiedi a ${g.nome}, in euro`}
+                etichetta={mio ? 'Soldi che dai, in euro' : `Soldi che chiedi ${preposizioneA(g.nome)}, in euro`}
                 onCambia={soldi}
               />
               <span className="lato__saldo">
@@ -785,7 +786,11 @@ export function EditorScambio({
   // Chi nel frattempo è uscito dalla partita non si può più scegliere.
   const lui = con ? altri.find((g) => g.id === con) : undefined;
   const modifica = base !== undefined && base.da === io;
-  const titolo = !base ? 'Nuovo scambio' : modifica ? `Modifica la proposta a ${lui?.nome ?? ''}` : `Controproposta a ${lui?.nome ?? ''}`;
+  const titolo = !base
+    ? 'Nuovo scambio'
+    : modifica
+      ? `Modifica la proposta ${preposizioneA(lui?.nome ?? '')}`
+      : `Controproposta ${preposizioneA(lui?.nome ?? '')}`;
   if (!me) return null;
 
   const proposta: Proposta | null = lui

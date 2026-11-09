@@ -7,7 +7,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { TENTATIVI_PRIGIONE, type Attivita, type IdGiocatore, type Mossa, type Stato } from '@poordown/engine';
+import { aOppureAd, TENTATIVI_PRIGIONE, type Attivita, type IdGiocatore, type Mossa, type Stato } from '@poordown/engine';
 import { Pedina } from '../ui/comuni';
 import { iniziale, variabili } from '../ui/utili';
 import { useTempoTurno } from './tempo';
@@ -65,6 +65,8 @@ export function CartelloTurno({
   const corrente = partita.giocatori.find((g) => g.id === partita.turno.giocatore);
   if (!corrente) return null;
   const mio = corrente.id === io;
+  // «Tocca a Bruno», «Tocca ad Anna»: il nome va in grassetto, la preposizione resta col resto del titolo.
+  const tocca = `Tocca ${aOppureAd(corrente.nome)} `;
   const assente = vivo.giocatori.find((g) => g.id === corrente.id)?.offlineDa != null;
   const fase = fraseTurno({ partita, io, attivita: attivita[corrente.id], assente, occupata, momento });
   // Il tempo è quello della partita aggiornata: si mostra solo quando parla dello stesso turno.
@@ -83,7 +85,7 @@ export function CartelloTurno({
       className={classi}
       data-giocatore={corrente.id}
       style={variabili({ '--colore': `var(--p${corrente.colore})` })}
-      aria-label={mio ? `Tocca a te. ${fase}` : `Tocca a ${corrente.nome}. ${maiuscola(fase)}`}
+      aria-label={mio ? `Tocca a te. ${fase}` : `${tocca}${corrente.nome}. ${maiuscola(fase)}`}
       aria-live="polite"
     >
       <span className={inPrigione ? 'cartello-turno__pedina in-prigione' : 'cartello-turno__pedina'}>
@@ -95,9 +97,9 @@ export function CartelloTurno({
             <Lettere testo="Tocca a te" />
           ) : (
             <>
-              <Lettere testo="Tocca a " />
+              <Lettere testo={tocca} />
               <b>
-                <Lettere testo={corrente.nome} da={8} />
+                <Lettere testo={corrente.nome} da={tocca.length} />
               </b>
             </>
           )}

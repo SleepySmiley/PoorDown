@@ -6,6 +6,7 @@ import {
   alleati,
   euro,
   LIVELLO_ALBERGO,
+  preposizioneA,
   proprietabile,
   tabellone,
   TEMPI,
@@ -264,7 +265,7 @@ export function SchedaProprieta({
         {onChiedi && p && (
           <button type="button" className="pulsante pulsante--piccolo pulsante--secondario pulsante--largo scheda__chiedi" onClick={onChiedi}>
             <Icona nome="scambio" />
-            Chiedila a {p.proprietario.nome}
+            Chiedila {preposizioneA(p.proprietario.nome)}
           </button>
         )}
       </div>

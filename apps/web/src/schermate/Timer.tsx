@@ -6,7 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { verifica, type Azione, type IdGiocatore, type Mossa, type Stato } from '@poordown/engine';
+import { preposizioneA, verifica, type Azione, type IdGiocatore, type Mossa, type Stato } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
 import { useBattito } from '../ui/battito';
 import { Palette } from '../ui/comuni';
@@ -27,7 +27,7 @@ export function CifreTempo({ vista }: { vista: TempoDelTurno }): ReactNode {
     ? `Tempo del turno fermo durante l’asta: ${minutiSecondi(tempo.rimasto)}`
     : assente
       ? `${corrente.nome} ha perso il collegamento: il turno passa tra ${minutiSecondi(tempo.rimasto)}`
-      : `Tempo rimasto a ${corrente.nome}: ${minutiSecondi(tempo.rimasto)}`;
+      : `Tempo rimasto ${preposizioneA(corrente.nome)}: ${minutiSecondi(tempo.rimasto)}`;
   const classi = ['cifre-tempo', vista.rosso ? 'cifre-tempo--poco' : '', tempo.fermo ? 'cifre-tempo--fermo' : '']
     .filter(Boolean)
     .join(' ');
@@ -93,7 +93,7 @@ export function AzioneTempo({
       <button
         type="button"
         className={t.richiesta ? 'pulsante pulsante--piccolo pulsante--ambra' : 'pulsante pulsante--piccolo pulsante--secondario'}
-        title={`Dai a ${corrente.nome} un minuto in più`}
+        title={`Dai ${preposizioneA(corrente.nome)} un minuto in più`}
         onClick={() => onMossa({ tipo: 'regala_tempo' })}
       >
         <Icona nome="piu" />1 min

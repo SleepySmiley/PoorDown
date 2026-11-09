@@ -4,7 +4,7 @@
  * tutti, se chi esce non è in rosso; altrimenti solo il contante che avanza dopo i debiti (anche quelli verso la banca).
  */
 
-import type { EventoStanza, Giocatore, Stato, VoceRegistro } from '@poordown/engine';
+import { preposizioneA, type EventoStanza, type Giocatore, type Stato, type VoceRegistro } from '@poordown/engine';
 
 /**
  * A squadre, il compagno che raccoglie i beni di `g` se esce: il primo della sua squadra ancora in gioco
@@ -22,8 +22,8 @@ export function destinoDeiBeni(partita: Stato, g: Giocatore, tu: boolean): strin
   const compagno = erede(partita, g);
   const suoi = tu ? 'le tue' : 'le sue';
   if (!compagno) return `${tu ? 'Le tue' : 'Le sue'} proprietà tornano alla banca.`;
-  if (g.saldo >= 0) return `Contanti, proprietà e Carte Grazia passano a ${compagno.nome}, ${tu ? 'tuo' : 'suo'} compagno di squadra.`;
-  return `I beni pagano i debiti (anche verso la banca), quello che avanza va in contanti a ${compagno.nome} e ${suoi} proprietà tornano alla banca.`;
+  if (g.saldo >= 0) return `Contanti, proprietà e Carte Grazia passano ${preposizioneA(compagno.nome)}, ${tu ? 'tuo' : 'suo'} compagno di squadra.`;
+  return `I beni pagano i debiti (anche verso la banca), quello che avanza va in contanti ${preposizioneA(compagno.nome)} e ${suoi} proprietà tornano alla banca.`;
 }
 
 type Uscita = Extract<EventoStanza, { tipo: 'rimozione' | 'bancarotta' }>;
@@ -44,14 +44,14 @@ export function destinoDeiMieiBeni(partita: Stato, g: Giocatore, registro: reado
     (v): v is VoceRegistro & { evento: Eredita } => v.evento.tipo === 'eredita' && v.evento.da === g.id,
   )?.evento;
 
-  if (uscita?.erede) return `Contanti, proprietà e Carte Grazia sono passati a ${nome(uscita.erede)}, tuo compagno di squadra.`;
+  if (uscita?.erede) return `Contanti, proprietà e Carte Grazia sono passati ${preposizioneA(nome(uscita.erede))}, tuo compagno di squadra.`;
   if (eredita) {
-    const resto = eredita.soldi > 0 ? `, quello che avanzava è andato in contanti a ${nome(eredita.a)}` : '';
+    const resto = eredita.soldi > 0 ? `, quello che avanzava è andato in contanti ${preposizioneA(nome(eredita.a))}` : '';
     return `I tuoi beni hanno pagato i debiti${resto} e le tue proprietà sono tornate alla banca.`;
   }
   if (uscita) return 'Le tue proprietà sono tornate alla banca.';
   const compagno = erede(partita, g);
   return compagno
-    ? `Le tue proprietà sono passate a ${compagno.nome}, tuo compagno di squadra.`
+    ? `Le tue proprietà sono passate ${preposizioneA(compagno.nome)}, tuo compagno di squadra.`
     : 'Le tue proprietà sono tornate alla banca.';
 }

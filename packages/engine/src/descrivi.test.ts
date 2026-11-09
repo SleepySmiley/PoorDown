@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { descrivi, descriviVoce, euro } from './descrivi';
+import { aOppureAd, descrivi, descriviVoce, euro, preposizioneA } from './descrivi';
 import { dadi, esegui, partitaASquadre, partitaDiProva, primaCarta } from './prove';
 
 describe('descrivi', () => {
@@ -27,6 +27,15 @@ describe('descrivi', () => {
     expect(verso(5)).toBe('Anna va alla Stazione Nord.');
     expect(verso(8)).toBe('Anna va alla casella Cartolina.');
     expect(verso(10)).toBe('Anna va in visita alla Prigione.');
+  });
+
+  it('«ad» davanti ai nomi che cominciano per a, anche per l’interfaccia', () => {
+    expect(preposizioneA('Anna')).toBe('ad Anna');
+    expect(preposizioneA('Bruno')).toBe('a Bruno');
+    expect(preposizioneA('aquile')).toBe('ad aquile');
+    expect(preposizioneA('Elena')).toBe('a Elena');
+    expect(aOppureAd('Anna')).toBe('ad');
+    expect(aOppureAd('Carla')).toBe('a');
   });
 
   it('riporta il testo della carta', () => {

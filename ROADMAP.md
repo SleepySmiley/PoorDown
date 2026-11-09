@@ -163,7 +163,7 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
     - biglietto delle proposte di scambio con il timbro dell'esito, «Chiedila a…» dalla scheda della città;
     - il cartello del turno racconta la scena.
   - **Turno tra bot:** in media il 4% più breve di prima.
-- [ ] Giro di verifica finale con due persone vere: assenze e voto, debito e bancarotta, scambi, controllo visivo di tutte le schermate a 1440 e 1920
+- [x] Giro di verifica finale con due persone vere: assenze e voto, debito e bancarotta, scambi, controllo visivo di tutte le schermate a 1440 e 1920. Tutto funziona; corretti le impostazioni bloccate che andavano a capo e «a»/«ad» davanti ai nomi («Tocca ad Anna»). Non provata dal vivo la Vacanza
 
 ### Fase 9 — Rifinitura · M
 - [ ] Suoni originali o liberi da diritti, con volume salvato

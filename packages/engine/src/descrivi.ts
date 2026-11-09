@@ -202,10 +202,17 @@ export function descriviVoce(evento: EventoStanza, partita: Stato | null): strin
   }
 }
 
-/** "a Siena", "ad Aosta". */
-function a(nome: string): string {
-  return `${/^a/i.test(nome) ? 'ad' : 'a'} ${nome}`;
+/** La preposizione «a» davanti a `parola`: «ad» (con la d eufonica) se anche la parola comincia per a. */
+export function aOppureAd(parola: string): 'a' | 'ad' {
+  return /^a/i.test(parola) ? 'ad' : 'a';
 }
+
+/** "a Siena", "ad Aosta", "ad Anna". */
+export function preposizioneA(nome: string): string {
+  return `${aOppureAd(nome)} ${nome}`;
+}
+
+const a = preposizioneA;
 
 /** "Siena, Pisa, la Carta Grazia e 100 €", oppure "" se il pacchetto è vuoto. */
 export function contenuto(p: Pacchetto, casella: (i: number) => string): string {

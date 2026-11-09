@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { CHAT_MAX, type IdGiocatore, type MessaggioChat, type VistaStanza } from '@poordown/engine';
+import { CHAT_MAX, preposizioneA, type IdGiocatore, type MessaggioChat, type VistaStanza } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
 import { silenzia, useSilenziati } from '../rete/silenziati';
 import { avvisa } from '../ui/avvisi';
@@ -175,7 +175,7 @@ export function Chat({
           <input
             id="chat-campo"
             type="text"
-            placeholder={soloSquadra ? `Scrivi a ${nomeSquadra}…` : 'Scrivi un messaggio…'}
+            placeholder={soloSquadra ? `Scrivi ${preposizioneA(nomeSquadra)}…` : 'Scrivi un messaggio…'}
             maxLength={CHAT_MAX}
             autoComplete="off"
             value={testo}

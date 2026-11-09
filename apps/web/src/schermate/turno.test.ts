@@ -85,6 +85,14 @@ describe('fraseTurno', () => {
     expect(frase(conAffitto, 'a', { occupata, momento: { tipo: 'arrivo', casella: citta, affitto: true } })).toBe(
       'Paghi l’affitto a Bruno',
     );
+    // Davanti a un nome che comincia per a, «ad» come nel registro.
+    const adAnna = partita((x) => {
+      x.proprieta[citta] = { proprietario: 'a', livello: 0, ipotecata: false };
+      x.turno.giocatore = 'b';
+    });
+    expect(frase(adAnna, 'a', { occupata, momento: { tipo: 'arrivo', casella: citta, affitto: true } })).toBe(
+      'paga l’affitto ad Anna',
+    );
     expect(frase(s, 'b', { occupata, momento: { tipo: 'arrivo', casella: citta, affitto: false } })).toMatch(
       new RegExp(`^è ad? ${nomeCitta}$`),
     );
