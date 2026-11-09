@@ -1,2 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
 # Gli script di Windows vogliono gli a capo di Windows.
 *.cmd text eol=crlf
