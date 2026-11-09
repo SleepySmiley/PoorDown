@@ -114,6 +114,16 @@ export interface Istantanea {
 }
 
 /** Una riga di "Tutte le stanze" (solo stanze pubbliche). */
+/**
+ * Un posto lasciato in una partita in corso (scheda chiusa, «Torna alla home»): si può ancora rientrare.
+ * `resta`: i ms prima di perderlo (non un'ora assoluta: l'orologio del browser può essere sfasato rispetto a
+ * quello del server); `null` se la partita è ferma ad aspettare che qualcuno torni.
+ */
+export interface PostoInPartita {
+  codice: string;
+  resta: number | null;
+}
+
 export interface StanzaInElenco {
   codice: string;
   fase: FaseStanza;
@@ -163,6 +173,8 @@ type Vuoto = Record<string, never>;
 export interface Comandi {
   /** Stanze pubbliche aperte sul server, con almeno una persona seduta. */
   elenco_stanze: { dati: Vuoto; risposta: StanzaInElenco[] };
+  /** Il posto di questo browser in una partita in corso, se lo tiene ancora: la home offre di rientrare. */
+  posto_tenuto: { dati: Vuoto; risposta: PostoInPartita | null };
   /** Crea una stanza vuota: chi la crea ci deve poi entrare e sedersi come gli altri. Al più 5 al minuto. */
   crea_stanza: { dati: { privata: boolean }; risposta: { codice: string } };
   /** La prima stanza pubblica in attesa con un posto libero (o occupato da un bot), o una nuova. */

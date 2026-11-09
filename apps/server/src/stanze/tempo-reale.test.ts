@@ -321,6 +321,20 @@ describe('ingresso e identità', () => {
     expect(ancoraBruno.stanza!.partita!.giocatori.map((g) => g.id)).toContain(idBruno);
   });
 
+  it('chi ha chiuso la scheda in partita trova il posto tenuto dalla home', async () => {
+    const { anna, bruno, codice, browser } = await lobbyADue();
+    expect(await bruno.ok('posto_tenuto', {})).toBeNull();
+    await anna.ok('avvia', {});
+    bruno.presa.disconnect();
+    await vi.waitFor(() => expect(anna.stanza!.partecipanti[1]!.connesso).toBe(false));
+    // La home di Bruno, in una scheda nuova: non segue nessuna stanza.
+    const home = await browser(TOKEN.bruno);
+    expect(await home.ok('posto_tenuto', {})).toMatchObject({ codice, resta: expect.any(Number) });
+    // Chi guarda soltanto non ha posti.
+    const carla = await browser(TOKEN.carla);
+    expect(await carla.ok('posto_tenuto', {})).toBeNull();
+  });
+
   it('a partita iniziata chi arriva guarda soltanto', async () => {
     const { anna, codice, browser } = await lobbyADue();
     await anna.ok('avvia', {});

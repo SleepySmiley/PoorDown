@@ -138,6 +138,17 @@ export const postoTenuto = {
   dimentica(codice: string): void {
     if (posto?.codice === codice) cambiaPosto(null);
   },
+  /**
+   * Chiede al server se questo browser tiene ancora un posto in una partita in corso: dopo una scheda chiusa
+   * il ricordo della scheda non c'è più, ma il posto (legato al token del browser) sì.
+   */
+  async cerca(): Promise<void> {
+    if (posto) return;
+    const r = await collegamento.comando('posto_tenuto', {});
+    if (!r.ok || !r.dati || posto) return;
+    const { codice, resta } = r.dati;
+    cambiaPosto({ codice, fino: resta === null ? null : Date.now() + resta });
+  },
   leggi(): PostoTenuto | null {
     return posto;
   },

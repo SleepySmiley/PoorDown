@@ -185,6 +185,8 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
 
     comando('elenco_stanze', () => si(gestore.elenco()));
 
+    comando('posto_tenuto', () => si(gestore.postoTenuto(token)));
+
     comando('crea_stanza', (dati) => {
       const privata = booleano(dati, 'privata');
       if (privata === null) return NON_VALIDA;

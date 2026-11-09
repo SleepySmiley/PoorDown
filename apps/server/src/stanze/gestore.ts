@@ -3,10 +3,11 @@
 import {
   IMPOSTAZIONI_PREDEFINITE,
   LUNGHEZZA_CODICE,
+  type PostoInPartita,
   type StanzaInElenco,
 } from '@poordown/engine';
 import type { Ambiente } from './ambiente';
-import { Stanza, type DatiStanza } from './stanza';
+import { Stanza, type DatiStanza, type Token } from './stanza';
 
 /** Niente 0/o, 1/l/i: il codice si detta a voce senza equivoci. */
 const ALFABETO = 'abcdefghjkmnpqrstuvwxyz23456789';
@@ -52,6 +53,15 @@ export class GestoreStanze {
   trova(codice: string): Stanza | undefined {
     const normale = normalizzaCodice(codice);
     return normale ? this.stanze.get(normale) : undefined;
+  }
+
+  /** Il posto di `token` in una partita in corso, se lo tiene ancora (vedi `Stanza.postoTenuto`). */
+  postoTenuto(token: Token): PostoInPartita | null {
+    for (const stanza of this.stanze.values()) {
+      const posto = stanza.postoTenuto(token);
+      if (posto) return posto;
+    }
+    return null;
   }
 
   /** Stanze pubbliche non finite con almeno una persona seduta: prima quelle in attesa, e tra queste le più piene. */

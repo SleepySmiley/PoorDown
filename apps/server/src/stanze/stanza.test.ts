@@ -406,6 +406,27 @@ describe('tempo, assenze e moderazione', () => {
     expect(stanza.vista()).toMatchObject({ fase: 'finita', partita: { vincitore: id[0] } });
   });
 
+  it('chi ha chiuso la scheda ritrova il posto tenuto dalla home, fino alla scadenza', () => {
+    const { amb, stanza } = partitaA(['anna', 'bruno', 'carla'], { timerTurno: false });
+    // Con la scheda aperta non serve rientrare; chi non è seduto non ha posto.
+    expect(stanza.postoTenuto(TOKEN.bruno)).toBeNull();
+    expect(stanza.postoTenuto('sconosciuto')).toBeNull();
+    stanza.scollega('conn-bruno');
+    expect(stanza.postoTenuto(TOKEN.bruno)).toEqual({ codice: stanza.codice, resta: ASSENZA_MS });
+    amb.avanza(30_000);
+    expect(stanza.postoTenuto(TOKEN.bruno)?.resta).toBe(ASSENZA_MS - 30_000);
+    // Se escono tutti la partita si ferma e il posto aspetta.
+    stanza.scollega('conn-anna');
+    stanza.scollega('conn-carla');
+    expect(stanza.postoTenuto(TOKEN.bruno)).toEqual({ codice: stanza.codice, resta: null });
+    // Torna Anna: l'orologio di Bruno riparte da dove era; finito il tempo il posto è perso.
+    stanza.collega('conn-anna-2', TOKEN.anna);
+    expect(stanza.postoTenuto(TOKEN.bruno)?.resta).toBe(ASSENZA_MS - 30_000);
+    amb.avanza(ASSENZA_MS - 30_000);
+    stanza.manutenzione();
+    expect(stanza.postoTenuto(TOKEN.bruno)).toBeNull();
+  });
+
   it('chi torna prima dei due minuti riprende il suo posto', () => {
     const { amb, stanza } = partitaA(['anna', 'bruno'], { timerTurno: false });
     stanza.scollega('conn-bruno');

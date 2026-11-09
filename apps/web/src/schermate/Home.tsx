@@ -11,7 +11,8 @@ import {
   type StanzaInElenco,
 } from '@poordown/engine';
 import { vai, vaiAllaStanza } from '../navigazione';
-import { collegamento, preferenze, usePostoTenuto, type PostoTenuto } from '../rete/sessione';
+import { collegamento, postoTenuto, preferenze, usePostoTenuto, type PostoTenuto } from '../rete/sessione';
+import { useCollegamento } from '../rete/useCollegamento';
 import { avvisa } from '../ui/avvisi';
 import { Palette, Pedina, PulsanteIcona } from '../ui/comuni';
 import { Icona, type NomeIcona } from '../ui/icone';
@@ -91,7 +92,7 @@ function Rientro({ posto }: { posto: PostoTenuto }): ReactNode {
       </p>
       <button
         type="button"
-        className="pulsante pulsante--ambra pulsante--largo rientro__pulsante"
+        className="pulsante pulsante--primario pulsante--largo rientro__pulsante"
         onClick={() => vaiAllaStanza(posto.codice, { dallaHome: true })}
       >
         <Icona nome="avanti" />
@@ -361,6 +362,11 @@ export function Home({ invito, onEntra }: { invito?: string; onEntra?: () => voi
   const [giro, setGiro] = useState(0);
   const { occupato, esegui } = useVaiInStanza();
   const posto = usePostoTenuto();
+  const { rete } = useCollegamento(collegamento);
+  // Anche dopo una scheda chiusa: il server sa se questo browser ha ancora un posto in una partita.
+  useEffect(() => {
+    if (rete === 'attivo' && !invito) void postoTenuto.cerca();
+  }, [rete, invito]);
 
   const cambiaNome = (valore: string) => {
     setNome(valore);

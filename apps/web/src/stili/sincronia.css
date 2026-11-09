@@ -1,4 +1,4 @@
-/* ---------- Home: rientro nella partita lasciata (un biglietto ambra: tocca a te tornare) ---------- */
+/* ---------- Home: rientro nella partita lasciata (un biglietto blu, come le azioni: l'ambra resta a «tocca a te») ---------- */
 
 .ingresso .rientro {
   display: grid;
@@ -7,10 +7,10 @@
   margin-bottom: var(--s-3);
   padding: var(--s-3) var(--s-4) var(--s-4);
   border-radius: var(--r-2);
-  background: var(--ambra-velo);
+  background: var(--segnale-velo);
   box-shadow:
-    inset 3px 0 0 var(--ambra),
-    inset 0 0 0 1px rgb(255 184 28 / 0.22);
+    inset 3px 0 0 var(--segnale),
+    inset 0 0 0 1px color-mix(in srgb, var(--segnale) 35%, transparent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -27,7 +27,7 @@
 
 .rientro .rientro__etichetta {
   margin-right: auto;
-  color: var(--ambra-testo);
+  color: var(--link);
   font: var(--t-etichetta);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -38,7 +38,7 @@
   align-items: center;
   gap: var(--s-1);
   margin-left: var(--s-2);
-  color: var(--ambra-testo);
+  color: var(--link);
 }
 
 .rientro__tempo .icona {

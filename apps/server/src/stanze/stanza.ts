@@ -7,6 +7,7 @@
 import {
   applica,
   applicaScadenze,
+  ASSENZA_MS,
   BANCA_INIZIALE_MS,
   CHAT_CRONOLOGIA,
   CHAT_MAX,
@@ -46,6 +47,7 @@ import {
   type Istantanea,
   type MessaggioChat,
   type Mossa,
+  type PostoInPartita,
   type Risposta,
   type Stato,
   type VistaStanza,
@@ -610,6 +612,19 @@ export class Stanza {
       if (this.prossimaMossaBot !== null) tempi.push(this.prossimaMossaBot);
     }
     return tempi.length === 0 ? null : Math.max(0, Math.min(...tempi) - this.amb.adesso());
+  }
+
+  /**
+   * Il posto di `token` in questa partita, se lo tiene ancora e nessuna sua scheda è dentro: la home offre di
+   * rientrare anche dopo una scheda chiusa. Si perde ASSENZA_MS dopo l'uscita, salvo che la partita sia ferma.
+   */
+  postoTenuto(token: Token): PostoInPartita | null {
+    if (this.fase !== 'partita' || this.partita?.fase !== 'in_corso' || this.collegato(token)) return null;
+    const posto = this.postoDi(token);
+    const g = posto && !posto.bot ? this.partita.giocatori.find((x) => x.id === posto.id) : undefined;
+    if (!g || g.eliminato) return null;
+    if (this.pausaDa !== null || g.offlineDa === null) return { codice: this.codice, resta: null };
+    return { codice: this.codice, resta: Math.max(0, g.offlineDa + ASSENZA_MS - this.amb.adesso()) };
   }
 
   /** La partita è ferma perché nessun giocatore in gioco è collegato. */
