@@ -64,7 +64,7 @@ import {
 } from './Scambi';
 import { SchedaProprieta, Tabellone } from './Tabellone';
 import { ESITO_USCITA, righeRegistro } from './testi';
-import { eventoCorrente, tentativoPrigione, useTitoloScheda, useVariazioniSaldo } from './turno';
+import { eventoCorrente, momentoScena, tentativoPrigione, useTitoloScheda, useVariazioniSaldo } from './turno';
 
 /** `null` se la mossa si può fare adesso, altrimenti il motivo (per il suggerimento del pulsante). */
 function motivo(partita: Stato, io: IdGiocatore, mossa: Mossa): string | null {
@@ -432,6 +432,7 @@ export function Gioco({
           io={giocoIo}
           attivita={attivita}
           occupata={scena.occupata}
+          momento={momentoScena(scena, corrente.id)}
           inviando={inviando}
           onMossa={mossa}
         />

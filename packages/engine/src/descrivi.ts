@@ -219,7 +219,7 @@ export function contenuto(p: Pacchetto, casella: (i: number) => string): string 
 }
 
 /** "a Napoli", "ad Aosta", "alla Stazione Nord", "all’Acquedotto", "alla casella Busta"… */
-function destinazione(c: Casella): string {
+export function destinazione(c: Casella): string {
   const vocale = /^[AEIOUÀÈÉÌÒÙ]/i.test(c.nome);
   switch (c.tipo) {
     case 'citta':

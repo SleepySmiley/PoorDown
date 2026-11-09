@@ -77,7 +77,7 @@ export function Asta({
 
           <div className="asta__tempo">
             <p className={secondi <= 3 ? 'asta__scadenza asta__scadenza--poco' : 'asta__scadenza'} aria-live="off">
-              {migliore ? `Aggiudicata tra ${secondi}…` : `Finisce tra ${secondi}…`}
+              {migliore ? `Aggiudicata tra ${secondi} s` : `Finisce tra ${secondi} s`}
               <Icona nome="martelletto" />
             </p>
             <div className="asta__barra" role="presentation">

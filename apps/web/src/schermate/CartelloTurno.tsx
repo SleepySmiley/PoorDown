@@ -12,7 +12,7 @@ import { Pedina } from '../ui/comuni';
 import { iniziale, variabili } from '../ui/utili';
 import { useTempoTurno } from './tempo';
 import { AzioneTempo, CifreTempo } from './Timer';
-import { fraseTurno, maiuscola } from './turno';
+import { fraseTurno, maiuscola, type Momento } from './turno';
 
 /** Un testo lettera per lettera: ognuna gira al suo posto poco dopo quella prima (`--i`). */
 function Lettere({ testo, da = 0 }: { testo: string; da?: number }): ReactNode {
@@ -43,6 +43,7 @@ export function CartelloTurno({
   io,
   attivita,
   occupata,
+  momento,
   inviando,
   onMossa,
 }: {
@@ -55,6 +56,8 @@ export function CartelloTurno({
   attivita: Record<IdGiocatore, Attivita>;
   /** Una scena è in corso (dadi, pedina che cammina). */
   occupata: boolean;
+  /** Cosa mostra la scena in corso: il cartello lo racconta. */
+  momento: Momento | null;
   inviando: boolean;
   onMossa: (m: Mossa) => void;
 }): ReactNode {
@@ -63,7 +66,7 @@ export function CartelloTurno({
   if (!corrente) return null;
   const mio = corrente.id === io;
   const assente = vivo.giocatori.find((g) => g.id === corrente.id)?.offlineDa != null;
-  const fase = fraseTurno({ partita, io, attivita: attivita[corrente.id], assente, occupata });
+  const fase = fraseTurno({ partita, io, attivita: attivita[corrente.id], assente, occupata, momento });
   // Il tempo è quello della partita aggiornata: si mostra solo quando parla dello stesso turno.
   const tempo = vista && vista.corrente.id === corrente.id ? vista : null;
   const inPrigione = partita.turno.fase === 'prigione' && !occupata;

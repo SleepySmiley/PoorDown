@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import {
   acquistoInSospeso,
+  destinazione,
   euro,
   proprietabile,
   tabellone,
@@ -14,9 +15,11 @@ import {
   type Attivita,
   type Giocatore,
   type IdGiocatore,
+  type NomeMazzo,
   type Stato,
   type VoceRegistro,
 } from '@poordown/engine';
+import type { Scena } from './regia';
 
 /** «sta decidendo…» → «Sta decidendo…». */
 export function maiuscola(testo: string): string {
@@ -37,6 +40,60 @@ export function cosaFa(attivita: Attivita | undefined): string | null {
   }
 }
 
+/** Cosa mostra la scena in corso, per la frase del cartello mentre i pulsanti aspettano. */
+export type Momento =
+  | { tipo: 'dadi' }
+  | { tipo: 'viaggio'; casella: number }
+  | { tipo: 'arrivo'; casella: number; affitto: boolean }
+  | { tipo: 'carta'; mazzo: NomeMazzo }
+  | { tipo: 'prigione' };
+
+/** Il momento della scena di chi gioca, dal più vistoso: carta, volo in prigione, dadi, viaggio, arrivo. */
+export function momentoScena(
+  scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'>,
+  giocatore: IdGiocatore,
+): Momento | null {
+  if (scena.carta?.giocatore === giocatore) return { tipo: 'carta', mazzo: scena.carta.mazzo };
+  if (scena.voli[giocatore]) return { tipo: 'prigione' };
+  if (scena.rotola) return { tipo: 'dadi' };
+  if (scena.meta?.giocatore === giocatore) return { tipo: 'viaggio', casella: scena.meta.casella };
+  if (scena.arrivo) return { tipo: 'arrivo', casella: scena.arrivo.casella, affitto: scena.arrivo.tono === 'affitto' };
+  return null;
+}
+
+/** La frase del momento in scena; `null` se non c'è niente da dire (resta la frase della fase). */
+function fraseMomento(partita: Stato, mio: boolean, momento: Momento, fase: Stato['turno']['fase']): string | null {
+  const tab = tabellone(partita.mappa);
+  switch (momento.tipo) {
+    case 'carta': {
+      const quale = momento.mazzo === 'busta' ? 'una Busta' : 'una Cartolina';
+      return mio ? `Peschi ${quale}` : `pesca ${quale}`;
+    }
+    case 'prigione':
+      return mio ? 'Vai in prigione' : 'va in prigione';
+    case 'dadi':
+      return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
+    case 'viaggio': {
+      const c = tab.caselle[momento.casella];
+      return c ? (mio ? `Vai ${destinazione(c)}…` : `va ${destinazione(c)}…`) : null;
+    }
+    case 'arrivo': {
+      // L'arrivo resta acceso fino a fine turno: parla solo finché la partita mostrata è quella di prima del tiro
+      // (anche il secondo tiro dopo un doppio, quando la partita mostrata dice ancora «tira ancora»).
+      if (fase === 'dopo_lancio' && !partita.turno.rilancio) return null;
+      const c = tab.caselle[momento.casella];
+      if (!c) return null;
+      if (momento.affitto) {
+        const id = partita.proprieta[momento.casella]?.proprietario;
+        const chi = partita.giocatori.find((g) => g.id === id)?.nome;
+        if (chi) return mio ? `Paghi l’affitto a ${chi}` : `paga l’affitto a ${chi}`;
+        return mio ? 'Paghi l’affitto' : 'paga l’affitto';
+      }
+      return mio ? `Sei ${destinazione(c)}` : `è ${destinazione(c)}`;
+    }
+  }
+}
+
 /** Il tentativo di uscire di prigione che sta per fare (da 1 a 3). */
 export function tentativoPrigione(g: Giocatore): number {
   return Math.min((g.prigione ?? 0) + 1, TENTATIVI_PRIGIONE);
@@ -47,6 +104,7 @@ export function tentativoPrigione(g: Giocatore): number {
  * A me parla in seconda persona («Tira i dadi»), per gli altri descrive («deve tirare i dadi»).
  * @param assente chi gioca ha perso il collegamento.
  * @param occupata una scena è in corso (dadi che rotolano, pedina che cammina): la partita mostrata è ancora quella di prima.
+ * @param momento cosa mostra la scena in corso (`momentoScena`): il cartello lo racconta mentre accade.
  */
 export function fraseTurno({
   partita,
@@ -54,18 +112,24 @@ export function fraseTurno({
   attivita,
   assente,
   occupata,
+  momento,
 }: {
   partita: Stato;
   io: IdGiocatore | null;
   attivita?: Attivita;
   assente: boolean;
   occupata: boolean;
+  momento?: Momento | null;
 }): string {
   const t = partita.turno;
   const g = partita.giocatori.find((x) => x.id === t.giocatore);
   if (!g) return '';
   const mio = g.id === io;
   if (assente && !mio) return 'ha perso il collegamento: il turno passa da solo';
+  if (occupata && momento) {
+    const frase = fraseMomento(partita, mio, momento, t.fase);
+    if (frase) return frase;
+  }
   if (occupata && (t.fase === 'lancio' || t.fase === 'prigione')) return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
 
   if (t.fase === 'prigione') {

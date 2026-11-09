@@ -41,7 +41,7 @@ export {
   VALORE_GRAZIA,
 } from './conti';
 export { acquistoInSospeso, ASTA_MS, RILANCI } from './economia';
-export { descrivi, descriviVoce, euro } from './descrivi';
+export { descrivi, descriviVoce, destinazione, euro } from './descrivi';
 export {
   GIOCATORI_MAX,
   GIOCATORI_MIN,

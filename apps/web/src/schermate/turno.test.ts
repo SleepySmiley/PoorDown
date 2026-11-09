@@ -8,7 +8,7 @@ import {
   type Stato,
   type VoceRegistro,
 } from '@poordown/engine';
-import { aggiornaSaldi, eventoCorrente, fraseTurno, saldiIniziali, titoloScheda } from './turno';
+import { aggiornaSaldi, eventoCorrente, fraseTurno, momentoScena, saldiIniziali, titoloScheda } from './turno';
 
 /** Anna gioca il turno, Bruno aspetta. */
 function partita(modifica?: (s: Stato) => void): Stato {
@@ -30,6 +30,25 @@ function frase(s: Stato, io: string | null, extra: Partial<Parameters<typeof fra
   return fraseTurno({ partita: s, io, assente: false, occupata: false, ...extra });
 }
 
+describe('momentoScena', () => {
+  const vuota = { carta: null, voli: {}, rotola: false, meta: null, arrivo: null };
+  it('sceglie il momento più vistoso di chi gioca', () => {
+    expect(momentoScena(vuota, 'a')).toBeNull();
+    expect(momentoScena({ ...vuota, rotola: true }, 'a')).toEqual({ tipo: 'dadi' });
+    expect(momentoScena({ ...vuota, meta: { giocatore: 'a', casella: 7 } }, 'a')).toEqual({ tipo: 'viaggio', casella: 7 });
+    // La pedina di un altro (es. mandata in prigione da una carta) non è il viaggio di chi gioca.
+    expect(momentoScena({ ...vuota, meta: { giocatore: 'b', casella: 7 } }, 'a')).toBeNull();
+    expect(momentoScena({ ...vuota, rotola: true, voli: { a: true } }, 'a')).toEqual({ tipo: 'prigione' });
+    const carta = { n: 1, giocatore: 'a', mazzo: 'busta' as const, carta: 0, testo: '', casella: 2 };
+    expect(momentoScena({ ...vuota, carta, voli: { a: true } }, 'a')).toEqual({ tipo: 'carta', mazzo: 'busta' });
+    expect(momentoScena({ ...vuota, arrivo: { casella: 3, tono: 'affitto' } }, 'a')).toEqual({
+      tipo: 'arrivo',
+      casella: 3,
+      affitto: true,
+    });
+  });
+});
+
 describe('fraseTurno', () => {
   it('a me parla in seconda persona, per gli altri descrive', () => {
     const s = partita();
@@ -43,6 +62,50 @@ describe('fraseTurno', () => {
     const s = partita();
     expect(frase(s, 'a', { occupata: true })).toBe('Tiro in corso…');
     expect(frase(s, 'b', { occupata: true })).toBe('sta tirando i dadi…');
+  });
+
+  it('durante la scena racconta il momento: viaggio, carta, prigione, affitto', () => {
+    const s = partita();
+    const tab = tabellone(s.mappa);
+    const busta = tab.caselle.findIndex((c) => c.tipo === 'carta');
+    const citta = tab.caselle.findIndex((c) => c.tipo === 'citta');
+    const nomeCitta = tab.caselle[citta]!.nome;
+    const occupata = true;
+    expect(frase(s, 'a', { occupata, momento: { tipo: 'viaggio', casella: busta } })).toBe(
+      `Vai alla casella ${tab.caselle[busta]!.nome}…`,
+    );
+    expect(frase(s, 'b', { occupata, momento: { tipo: 'carta', mazzo: 'busta' } })).toBe('pesca una Busta');
+    expect(frase(s, 'a', { occupata, momento: { tipo: 'carta', mazzo: 'cartolina' } })).toBe('Peschi una Cartolina');
+    expect(frase(s, 'b', { occupata, momento: { tipo: 'prigione' } })).toBe('va in prigione');
+    expect(frase(s, 'a', { occupata, momento: { tipo: 'dadi' } })).toBe('Tiro in corso…');
+
+    const conAffitto = partita((x) => {
+      x.proprieta[citta] = { proprietario: 'b', livello: 0, ipotecata: false };
+    });
+    expect(frase(conAffitto, 'a', { occupata, momento: { tipo: 'arrivo', casella: citta, affitto: true } })).toBe(
+      'Paghi l’affitto a Bruno',
+    );
+    expect(frase(s, 'b', { occupata, momento: { tipo: 'arrivo', casella: citta, affitto: false } })).toMatch(
+      new RegExp(`^è ad? ${nomeCitta}$`),
+    );
+    // Fuori scena il momento non conta.
+    expect(frase(s, 'a', { momento: { tipo: 'prigione' } })).toBe('Tira i dadi');
+  });
+
+  it('l’arrivo parla solo finché la partita mostrata è quella di prima del tiro', () => {
+    const s = partita((x) => {
+      x.turno.fase = 'dopo_lancio';
+    });
+    const citta = tabellone(s.mappa).caselle.findIndex((c) => c.tipo === 'citta');
+    const arrivo = { tipo: 'arrivo', casella: citta, affitto: false } as const;
+    expect(frase(s, 'a', { occupata: true, momento: arrivo })).not.toMatch(/^Sei /);
+    // Secondo tiro dopo un doppio: la partita mostrata dice ancora «tira ancora», ma la pedina è già arrivata.
+    const doppio = partita((x) => {
+      x.turno.fase = 'dopo_lancio';
+      x.turno.rilancio = true;
+    });
+    expect(frase(doppio, 'a', { occupata: true, momento: arrivo })).toMatch(/^Sei ad? /);
+    expect(frase(doppio, 'a', { occupata: false, momento: arrivo })).toBe('Doppio! Tira ancora');
   });
 
   it('chi ha perso il collegamento', () => {
