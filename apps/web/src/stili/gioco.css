@@ -40,6 +40,76 @@
   inset: 0 auto 0 0;
   width: calc(var(--k) * 6);
   background: var(--colore);
+  transform-origin: 50% 0;
+}
+
+/* Il turno cambia: il cartello rinasce (key per turno). Arriva dall'alto, la fascia del colore scende, le lettere
+   del titolo girano una dopo l'altra come palette, poi compare la frase. Quando tocca a me il bordo lampeggia due volte. */
+.cartello-turno__titolo {
+  perspective: calc(var(--k) * 400);
+}
+
+.cartello-turno .lettera {
+  display: inline-block;
+  white-space: pre;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cartello-turno {
+    animation: cartello-arriva var(--d-entrata) var(--c-arrivo) both;
+  }
+
+  .cartello-turno::before {
+    animation: fascia-scende var(--d-timbro) var(--c-arrivo) both;
+  }
+
+  .cartello-turno .lettera {
+    animation: lettera-gira var(--d-entrata) var(--c-arrivo) calc(var(--d-rapida) / 2 + var(--i, 0) * var(--d-rapida) / 5) both;
+  }
+
+  .cartello-turno__fase {
+    animation: sale var(--d-entrata) var(--c-arrivo) var(--d-timbro) both;
+  }
+
+  .cartello-turno.cartello-turno--mio {
+    animation:
+      cartello-arriva var(--d-entrata) var(--c-arrivo) both,
+      cartello-mio var(--d-lenta) var(--c-viaggio) var(--d-entrata) 2;
+  }
+}
+
+@keyframes cartello-arriva {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--k) * -10));
+  }
+}
+
+@keyframes fascia-scende {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes lettera-gira {
+  from {
+    opacity: 0;
+    transform: rotateX(-90deg);
+  }
+
+  60% {
+    opacity: 1;
+    transform: rotateX(12deg);
+  }
+}
+
+@keyframes cartello-mio {
+  50% {
+    box-shadow:
+      inset 0 0 0 calc(var(--k) * 2) var(--ambra),
+      0 0 0 calc(var(--k) * 5) color-mix(in srgb, var(--ambra) 45%, transparent),
+      0 calc(var(--k) * 8) calc(var(--k) * 28) color-mix(in srgb, var(--ambra) 25%, transparent);
+  }
 }
 
 /* Tocca a me: il cartello si accende d'ambra. */
@@ -243,14 +313,59 @@
   filter: grayscale(1);
 }
 
+/* Il rotolamento dura quanto la scena (--rotola, dalle facce di TEMPI): le facce rallentano, i dadi si posano. */
 @media (prefers-reduced-motion: no-preference) {
   .centro-gioco__dadi--rotola .dado:first-child {
-    animation: dado-tumbla 0.7s cubic-bezier(0.3, 0.6, 0.3, 1) both;
+    animation: dado-tumbla var(--rotola, 580ms) var(--c-arrivo) both;
   }
 
   .centro-gioco__dadi--rotola .dado:last-child {
-    animation: dado-tumbla-2 0.7s cubic-bezier(0.3, 0.6, 0.3, 1) both;
+    animation: dado-tumbla-2 var(--rotola, 580ms) var(--c-arrivo) both;
   }
+
+  /* Fermi: un piccolo schiacciamento, come dadi che toccano il tavolo. */
+  .centro-gioco__dadi--atterra {
+    animation: dadi-atterra var(--d-timbro) var(--c-molla);
+  }
+
+  .centro-gioco__doppio {
+    animation: timbro-etichetta var(--d-timbro) var(--c-timbro) both;
+  }
+
+  .centro-gioco__totale {
+    animation: compare var(--d-entrata) var(--c-arrivo) both;
+  }
+}
+
+@keyframes dadi-atterra {
+  from {
+    transform: scale(1.06, 0.88);
+  }
+}
+
+@keyframes timbro-etichetta {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.6) rotate(-4deg);
+  }
+}
+
+/* Il totale dei dadi a palette, accanto ai dadi; ambra con il doppio. */
+.centro-gioco__totale {
+  position: absolute;
+  top: calc(var(--k) * 30);
+  bottom: 0;
+  left: calc(100% + var(--k) * 18);
+  display: flex;
+  align-items: center;
+}
+
+.centro-gioco__totale .palette {
+  font-size: calc(var(--k) * 30);
+}
+
+.centro-gioco__totale--doppio .paletta {
+  color: var(--ambra);
 }
 
 @keyframes dado-tumbla {
@@ -310,6 +425,18 @@
 @media (prefers-reduced-motion: no-preference) {
   .centro-gioco__azioni > * {
     animation: compare var(--d-entrata) var(--c-arrivo) both;
+  }
+
+  /* L'azione che si aspetta adesso arriva con un colpo di timbro. */
+  .centro-gioco__azioni > .pulsante--ambra {
+    animation: pulsante-timbro var(--d-timbro) var(--c-timbro) both;
+  }
+}
+
+@keyframes pulsante-timbro {
+  from {
+    opacity: 0;
+    transform: scale(1.18);
   }
 }
 
@@ -744,4 +871,175 @@ button.mie__voce--aperta:hover {
 
 .pulsante-icona.pulsante-icona--azione.pulsante-icona--pericolo:hover:not(:disabled) {
   background: var(--rosso-velo);
+}
+
+/* =====================================================================
+   Animazioni della partita sopra il tabellone (Gioco.tsx, dalla regia)
+   ===================================================================== */
+
+/* ---------- La carta pescata: esce dalla casella, si legge al centro ---------- */
+
+.carta-velo {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  border-radius: calc(var(--k) * 16);
+  background: radial-gradient(ellipse 62% 56% at 50% 46%, rgb(8 10 13 / 0.35), rgb(8 10 13 / 0.62));
+  pointer-events: none;
+}
+
+.carta-pescata {
+  position: absolute;
+  z-index: 19;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k) * 14);
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.carta-pescata .carta {
+  --carta-u: calc(var(--k) * 1.35);
+}
+
+.carta-pescata__chi {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--k) * 8);
+  padding: calc(var(--k) * 6) calc(var(--k) * 14);
+  border-radius: var(--r-tondo);
+  background: var(--sup-2);
+  color: var(--tab-testo);
+  font: 600 calc(var(--k) * 17) / 1 var(--stretto);
+  white-space: nowrap;
+  box-shadow:
+    inset 0 0 0 1px var(--linea-forte),
+    var(--e2);
+}
+
+.carta-pescata__chi .pedina--mini {
+  width: calc(var(--k) * 11);
+  height: calc(var(--k) * 11);
+}
+
+/* ---------- Tocca a me: il bordo del tabellone si accende per un attimo ---------- */
+
+.alone-turno {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: calc(var(--k) * 16);
+  box-shadow:
+    0 0 0 calc(var(--k) * 3) var(--ambra),
+    0 0 calc(var(--k) * 44) calc(var(--k) * 8) color-mix(in srgb, var(--ambra) 40%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .alone-turno {
+    animation: alone-turno calc(var(--d-timbro) * 2) var(--c-viaggio);
+  }
+}
+
+@keyframes alone-turno {
+  35% {
+    opacity: 1;
+  }
+}
+
+/* ---------- Esito di uno scambio, timbrato sul tabellone ---------- */
+
+.timbro-scambio {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 17;
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--k) * 10);
+  min-width: calc(var(--k) * 320);
+  padding: calc(var(--k) * 18) calc(var(--k) * 28) calc(var(--k) * 22);
+  border-radius: var(--r-3);
+  background: var(--sup-1);
+  box-shadow:
+    inset 0 0 0 1px var(--linea-forte),
+    var(--e3);
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.timbro-scambio__coppia {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--k) * 10);
+}
+
+.timbro-scambio__freccia {
+  width: calc(var(--k) * 22);
+  height: calc(var(--k) * 22);
+  color: var(--testo-2);
+}
+
+.timbro-scambio__titolo {
+  color: var(--testo-1);
+  font: 600 calc(var(--k) * 18) / 1.2 var(--stretto);
+  text-align: center;
+}
+
+.timbro-scambio__timbro {
+  display: inline-block;
+  padding: calc(var(--k) * 5) calc(var(--k) * 16);
+  border: calc(var(--k) * 3) solid currentColor;
+  border-radius: var(--r-1);
+  color: var(--verde-testo);
+  font: 700 calc(var(--k) * 30) / 1 var(--stretto);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 calc(var(--k) * 1) color-mix(in srgb, currentColor 40%, transparent);
+}
+
+.timbro-scambio--rifiutato .timbro-scambio__timbro {
+  color: var(--rosso-testo);
+}
+
+/* ---------- Gettoni che volano (ui/Gettone.tsx): sopra tutta la pagina, non bloccano i clic ---------- */
+
+.gettoni {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gettone-volo {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Un gettone d'ottone con l'importo: lo stesso metallo del sigillo delle carte. */
+.gettone {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.75rem;
+  height: 1.75rem;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-tondo);
+  background: radial-gradient(
+    circle at 35% 28%,
+    color-mix(in srgb, var(--ambra) 55%, #fff) 0%,
+    var(--ambra) 45%,
+    color-mix(in srgb, var(--ambra) 62%, #5a3000) 100%
+  );
+  color: var(--su-ambra);
+  font: 700 0.9375rem/1 var(--stretto);
+  white-space: nowrap;
+  translate: -50% -50%;
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--ambra) 75%, #7a4500),
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    0 6px 14px rgb(0 0 0 / 0.45);
 }

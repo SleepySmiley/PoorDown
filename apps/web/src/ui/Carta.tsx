@@ -1,5 +1,8 @@
 import '../stili/carte.css';
-import { useId, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { motion } from 'motion/react';
+import { TEMPI } from '@poordown/engine';
+import { CURVA } from './movimento';
 import { variabili } from './utili';
 
 /**
@@ -146,5 +149,51 @@ function DorsoCartolina({ id }: { id: string }): ReactNode {
         PoorDown
       </span>
     </span>
+  );
+}
+
+/**
+ * La carta appena pescata, sul tabellone: esce chiusa dalla casella, vola al centro girandosi e resta lì il tempo
+ * di leggerla; poi rimpicciolisce verso la scheda dell'ultimo evento (uscita con AnimatePresence).
+ * Va nel livello sopra il tabellone; `da` è il centro della casella, in percentuale del tabellone.
+ * I tempi sono quelli della scena (TEMPI.cartaEntra, TEMPI.cartaEsce): la regia aspetta esattamente questi.
+ */
+export function CartaPescata({
+  mazzo,
+  testo,
+  regione,
+  da,
+  didascalia,
+}: {
+  mazzo: 'busta' | 'cartolina';
+  testo: string;
+  regione?: number;
+  da: { x: number; y: number };
+  /** Sotto la carta: chi l'ha pescata. */
+  didascalia?: ReactNode;
+}): ReactNode {
+  // Parte chiusa e si gira mentre vola (la rotazione è la transizione CSS di .carta__giro, lunga quanto il volo).
+  const [lato, setLato] = useState<'dorso' | 'fronte'>('dorso');
+  useEffect(() => {
+    const giro = requestAnimationFrame(() => setLato('fronte'));
+    return () => cancelAnimationFrame(giro);
+  }, []);
+  return (
+    <motion.div
+      className="carta-pescata"
+      initial={{ left: `${da.x}%`, top: `${da.y}%`, scale: 0.28, rotate: -10, opacity: 0.6 }}
+      animate={{
+        left: '50%',
+        top: '46%',
+        scale: 1,
+        rotate: 0,
+        opacity: 1,
+        transition: { duration: TEMPI.cartaEntra / 1000, ease: CURVA.arrivo },
+      }}
+      exit={{ top: '80%', scale: 0.32, opacity: 0, transition: { duration: TEMPI.cartaEsce / 1000, ease: CURVA.partenza } }}
+    >
+      <Carta mazzo={mazzo} testo={testo} regione={regione} lato={lato} />
+      {didascalia && <p className="carta-pescata__chi">{didascalia}</p>}
+    </motion.div>
   );
 }

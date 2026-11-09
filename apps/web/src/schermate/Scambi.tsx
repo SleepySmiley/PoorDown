@@ -1147,3 +1147,54 @@ export function esitoScambio(partita: Stato, io: IdGiocatore | null, evento: Eve
       return null;
   }
 }
+
+/**
+ * L'esito di uno scambio timbrato sul tabellone, per un attimo e senza bloccare niente: le due pedine, chi con chi,
+ * e il timbro «Accettato» (verde) o «Rifiutato» (rosso) che cade con un colpo. Lo decide la regia (Scena.timbro):
+ * va nel livello sopra il tabellone, dentro un <AnimatePresence>.
+ */
+export function TimbroScambio({
+  partita,
+  io,
+  tipo,
+  da,
+  a,
+}: {
+  partita: Stato;
+  io: IdGiocatore | null;
+  tipo: 'accettato' | 'rifiutato';
+  da: IdGiocatore;
+  a: IdGiocatore;
+}): ReactNode {
+  const chiPropone = trova(partita, da);
+  const chiRisponde = trova(partita, a);
+  if (!chiPropone || !chiRisponde) return null;
+  const nome = (g: Giocatore) => (g.id === io ? 'te' : g.nome);
+  const titolo =
+    tipo === 'accettato'
+      ? `Scambio tra ${chiPropone.id === io ? 'te' : chiPropone.nome} e ${nome(chiRisponde)}`
+      : `${chiRisponde.id === io ? 'Hai rifiutato' : `${chiRisponde.nome} ha rifiutato`} lo scambio`;
+  return (
+    <motion.aside
+      className={`timbro-scambio timbro-scambio--${tipo}`}
+      aria-live="polite"
+      initial={{ opacity: 0, scale: 0.94, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: DURATA.entrata, ease: CURVA.arrivo } }}
+      exit={{ opacity: 0, scale: 0.97, y: 6, transition: { duration: DURATA.uscita, ease: CURVA.partenza } }}
+    >
+      <span className="timbro-scambio__coppia" aria-hidden="true">
+        <Pedina colore={chiPropone.colore} iniziale={inizialeNome(chiPropone.nome)} className="pedina--media" />
+        <Icona nome="scambio" className="timbro-scambio__freccia" />
+        <Pedina colore={chiRisponde.colore} iniziale={inizialeNome(chiRisponde.nome)} className="pedina--media" />
+      </span>
+      <p className="timbro-scambio__titolo">{titolo}</p>
+      <motion.span
+        className="timbro-scambio__timbro"
+        initial={{ opacity: 0, scale: 1.7, rotate: -6 }}
+        animate={{ opacity: 1, scale: 1, rotate: -6, transition: { duration: DURATA.timbro, ease: CURVA.timbro, delay: DURATA.entrata } }}
+      >
+        {tipo === 'accettato' ? 'Accettato' : 'Rifiutato'}
+      </motion.span>
+    </motion.aside>
+  );
+}

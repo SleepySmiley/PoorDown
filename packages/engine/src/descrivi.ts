@@ -28,7 +28,7 @@ function minuti(ms: number): string {
 
 /**
  * Riga del registro per un evento, oppure `null` per gli eventi che servono solo alle animazioni
- * (inizio turno, dadi: il tiro compare già nella riga dello spostamento).
+ * (inizio turno, dadi: il tiro compare già nella riga dello spostamento; trasferimenti: la carta dice già quanto si paga).
  */
 export function descrivi(evento: Evento, stato: Stato): string | null {
   const tab = tabellone(stato.mappa);
@@ -42,6 +42,7 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
         : 'La partita comincia.';
     case 'turno':
     case 'dadi':
+    case 'trasferimento':
       return null;
     case 'turno_saltato':
       return `${nome(evento.giocatore)} è in vacanza e salta il turno.`;

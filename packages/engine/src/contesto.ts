@@ -77,6 +77,14 @@ export function paga(ctx: Contesto, da: Giocatore, a: IdGiocatore, importo: numb
 }
 
 /**
+ * Segna un movimento di denaro che nessun altro evento racconta (quelli delle carte), per i gettoni che volano
+ * nei browser. Non sposta soldi: va chiamata accanto a `accredita`, `paga` o `pagaBanca`. `null` è la banca.
+ */
+export function segnaTrasferimento(ctx: Contesto, da: IdGiocatore | null, a: IdGiocatore | null, importo: number): void {
+  if (importo > 0) ctx.eventi.push({ tipo: 'trasferimento', da, a, importo });
+}
+
+/**
  * Pagamento alla banca. Tasse, carte e riparazioni vanno nella cassa della Vacanza, se la regola è attiva:
  * subito solo il contante disponibile, il resto quando il rosso si rimborsa (`accredita`).
  */

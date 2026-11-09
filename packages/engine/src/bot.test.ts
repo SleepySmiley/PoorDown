@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DADI_MS, TEMPI } from './tempi';
+import { DADI_MS, durataCarta, passiPedina, TEMPI } from './tempi';
 import { durataScena, guadagnoScambio, mossaBot, mosseDeiBot, riserva, TURNI_TRA_PROPOSTE_BOT, valoreCasella } from './bot';
 import { casoDaSeme } from './caso';
 import { IMPOSTAZIONI_PREDEFINITE, SOLDI_INIZIALI_POSSIBILI } from './impostazioni';
@@ -325,8 +325,29 @@ describe('decisioni dei bot', () => {
 
   it('la durata della scena segue le animazioni dei browser', () => {
     const s = partitaDiProva(2);
+    // Sette passi: i primi due e gli ultimi due lenti, i tre in mezzo svelti.
     expect(durataScena(s, [{ tipo: 'dadi', giocatore: 'a', dadi: [3, 4] }, { tipo: 'movimento', giocatore: 'a', da: 0, a: 7, dadi: [3, 4] }])).toBe(
-      DADI_MS + TEMPI.margineDadi + 7 * TEMPI.passo + TEMPI.fineMovimento,
+      DADI_MS + TEMPI.margineDadi + 4 * TEMPI.passoLento + 3 * TEMPI.passoSvelto + TEMPI.fineMovimento,
     );
+    // Passando dalla Partenza il gettone parte mentre la pedina cammina: nessuna pausa. Fermandocisi, sì.
+    expect(durataScena(s, [{ tipo: 'partenza', giocatore: 'a', importo: 200, arrivo: false }])).toBe(0);
+    expect(durataScena(s, [{ tipo: 'partenza', giocatore: 'a', importo: 300, arrivo: true }])).toBe(TEMPI.pausaSoldi);
+    // I trasferimenti delle carte vanno in parallelo: non fermano il gioco.
+    expect(durataScena(s, [{ tipo: 'trasferimento', da: 'a', a: null, importo: 50 }])).toBe(0);
+  });
+
+  it('la pedina non viaggia mai più di viaggioMax, e accelera solo in mezzo', () => {
+    expect(passiPedina(3)).toEqual([TEMPI.passoLento, TEMPI.passoLento, TEMPI.passoLento]);
+    const lungo = passiPedina(28);
+    expect(lungo.reduce((t, ms) => t + ms, 0)).toBeLessThanOrEqual(TEMPI.viaggioMax);
+    expect(lungo.slice(0, 2)).toEqual([TEMPI.passoLento, TEMPI.passoLento]);
+    expect(lungo.slice(-2)).toEqual([TEMPI.passoLento, TEMPI.passoLento]);
+    expect(Math.max(...lungo.slice(2, -2))).toBeLessThan(TEMPI.passoSvelto);
+  });
+
+  it('la carta resta in vista il tempo di leggerla, tra un minimo e un massimo', () => {
+    const fuori = TEMPI.cartaEntra + TEMPI.cartaEsce;
+    expect(durataCarta('Torna alla Partenza.')).toBe(fuori + TEMPI.cartaMin);
+    expect(durataCarta('x'.repeat(500))).toBe(fuori + TEMPI.cartaMax);
   });
 });

@@ -3,8 +3,11 @@ import {
   applica,
   casoDaSeme,
   creaPartita,
+  DADI_MS,
+  durataCarta,
   durataScena,
   IMPOSTAZIONI_PREDEFINITE,
+  mosseDeiBot,
   TEMPI,
   vistaPartita,
   type Evento,
@@ -13,7 +16,7 @@ import {
   type VoceRegistro,
 } from '@poordown/engine';
 import type { Collegamento, StatoCollegamento } from '../rete/collegamento';
-import { Regia } from './regia';
+import { arrivoDelTurno, movimentiSoldi, Regia, VOLO_GETTONE_MS } from './regia';
 
 /** Finto collegamento: basta leggere lo stato e avvisare chi ascolta. */
 class CollegamentoFinto {
@@ -97,11 +100,15 @@ describe('Regia della partita', () => {
     expect(regia.leggi().registroFino).toBe(1);
     expect(regia.leggi().partita?.giocatori[0]?.posizione).toBe(0);
 
-    // Finito il rotolamento, la pedina comincia a camminare una casella alla volta.
-    await vi.advanceTimersByTimeAsync(7 * 95 + 150 + 1);
+    // I dadi si fermano: la casella d'arrivo si accende prima che la pedina parta.
+    await vi.advanceTimersByTimeAsync(DADI_MS - TEMPI.dadiFermi + 1);
+    expect(regia.leggi()).toMatchObject({ rotola: false, meta: { giocatore: 'a', casella: movimento.a } });
     expect(regia.leggi().dadi).toEqual(lancio.stato.turno.dadi);
+    // Poi la pedina comincia a camminare una casella alla volta.
+    await vi.advanceTimersByTimeAsync(TEMPI.dadiFermi);
     expect(regia.leggi().posizioni.a).toEqual({ casella: 1, prigione: false });
-    await vi.advanceTimersByTimeAsync(180);
+    expect(regia.leggi().passoMs.a).toBe(TEMPI.passoLento);
+    await vi.advanceTimersByTimeAsync(TEMPI.passoLento);
     expect(regia.leggi().posizioni.a).toEqual({ casella: 2, prigione: false });
 
     // A fine scena si vede la partita nuova e il registro completo.
@@ -234,13 +241,19 @@ describe('Regia della partita', () => {
 
   it('la scena dura quanto dice durataScena: browser e bot leggono gli stessi tempi', async () => {
     const prima = partitaIniziale();
-    // Una scena con tutti i tipi di attesa: dadi, passi, una pausa, una carta, la prigione.
+    // Una scena con tutti i tipi di attesa: dadi, passi (anche oltre la Partenza, con il gettone che parte
+    // durante i passi), una pausa con soldi, una carta con il suo trasferimento, la prigione, la bancarotta e la fine.
     const eventi: Evento[] = [
-      { tipo: 'dadi', giocatore: 'a', dadi: [2, 3] },
-      { tipo: 'movimento', giocatore: 'a', da: 0, a: 5, dadi: [2, 3] },
-      { tipo: 'acquisto', giocatore: 'a', casella: 5, prezzo: 200 },
+      { tipo: 'dadi', giocatore: 'a', dadi: [5, 6] },
+      { tipo: 'movimento', giocatore: 'a', da: 35, a: 6, dadi: [5, 6] },
+      { tipo: 'partenza', giocatore: 'a', importo: 200, arrivo: false },
+      { tipo: 'acquisto', giocatore: 'a', casella: 6, prezzo: 100 },
       { tipo: 'carta', giocatore: 'a', mazzo: 'busta', carta: 0, testo: 'Prova' },
+      { tipo: 'trasferimento', da: 'a', a: null, importo: 50 },
       { tipo: 'prigione', giocatore: 'a', motivo: 'carta' },
+      { tipo: 'vacanza', giocatore: 'b', incasso: 0 },
+      { tipo: 'bancarotta', giocatore: 'b', recuperi: [] },
+      { tipo: 'fine', vincitore: 'a' },
     ];
     const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
     const regia = new Regia(coll as unknown as Collegamento);
@@ -255,5 +268,228 @@ describe('Regia della partita', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(regia.leggi().occupata).toBe(false);
     regia.ferma();
+  });
+});
+
+/** Partite intere tra bot, una mossa alla volta, con lo stato prima e dopo e gli eventi di ogni mossa. */
+function* partiteTraBot(): Generator<{ prima: Stato; dopo: Stato; eventi: Evento[] }> {
+  const prove: { squadre: boolean; seme: number }[] = [
+    { squadre: false, seme: 1 },
+    { squadre: false, seme: 2 },
+    { squadre: false, seme: 3 },
+    { squadre: true, seme: 4 },
+    { squadre: true, seme: 5 },
+  ];
+  for (const { squadre, seme } of prove) {
+    const caso = casoDaSeme(seme);
+    const giocatori = ['a', 'b', 'c', 'd'].map((id, i) => ({ id, nome: `Bot ${id}`, colore: i + 1, ...(squadre ? { squadra: i % 2 } : {}) }));
+    const creata = creaPartita(
+      giocatori,
+      {
+        ...IMPOSTAZIONI_PREDEFINITE,
+        soldiIniziali: 500,
+        cassaVacanza: true,
+        ipoteche: true,
+        affittoDoppioSetCompleto: true,
+        squadre,
+        timerTurno: false,
+      },
+      caso,
+    );
+    if (!creata.ok) throw new Error(creata.messaggio);
+    let s = creata.stato;
+    for (let passo = 0; passo < 3000 && s.fase === 'in_corso'; passo++) {
+      const mosse = mosseDeiBot(
+        s,
+        giocatori.map((g) => g.id),
+        () => passo % 7 === 0,
+      );
+      const m = mosse[passo % Math.max(1, mosse.length)];
+      if (!m) break;
+      const r = applica(s, m.azione, caso, 0);
+      if (!r.ok) break;
+      yield { prima: s, dopo: r.stato, eventi: r.eventi };
+      s = r.stato;
+    }
+  }
+}
+
+describe('soldi che passano di mano', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('i movimenti degli eventi spiegano ogni cambio dei saldi (tranne quello di chi esce)', () => {
+    const visti = new Set<string>();
+    let mosse = 0;
+    for (const { prima, dopo, eventi } of partiteTraBot()) {
+      mosse++;
+      const atteso = new Map(prima.giocatori.map((g) => [g.id, g.saldo]));
+      for (const e of eventi) {
+        for (const m of movimentiSoldi(e, prima)) {
+          visti.add(e.tipo);
+          if (m.da !== null && m.addebita) atteso.set(m.da, atteso.get(m.da)! - m.importo);
+          if (m.a !== null && m.gettone) atteso.set(m.a, atteso.get(m.a)! + m.importo);
+        }
+      }
+      for (const g of dopo.giocatori) {
+        if (g.eliminato) continue;
+        expect({ giocatore: g.id, saldo: atteso.get(g.id), eventi: eventi.map((e) => e.tipo) }).toEqual({
+          giocatore: g.id,
+          saldo: g.saldo,
+          eventi: eventi.map((e) => e.tipo),
+        });
+      }
+    }
+    expect(mosse).toBeGreaterThan(500);
+    // Le partite di prova passano davvero dai casi interessanti.
+    for (const tipo of ['affitto', 'acquisto', 'partenza', 'trasferimento', 'debito', 'rimborso', 'scambio_accettato', 'ipoteca']) {
+      expect(visti).toContain(tipo);
+    }
+  });
+
+  it('nella scena chi paga scende subito, chi incassa sale quando arriva il gettone', async () => {
+    const prima = partitaIniziale();
+    const dopo = structuredClone(prima);
+    dopo.giocatori[0]!.saldo -= 28;
+    dopo.giocatori[1]!.saldo += 28;
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    const saldo = (id: string) => regia.leggi().partita!.giocatori.find((g) => g.id === id)!.saldo;
+    coll.cambia({
+      stanza: stanzaCon(dopo, 2),
+      registro: voci([{ tipo: 'affitto', da: 'a', a: 'b', casella: 1, importo: 28 }], 1),
+    });
+    expect(regia.leggi().occupata).toBe(true);
+    expect(saldo('a')).toBe(prima.giocatori[0]!.saldo - 28);
+    expect(saldo('b')).toBe(prima.giocatori[1]!.saldo);
+    expect(regia.leggi().gettoni).toMatchObject([{ da: 'a', a: 'b', importo: 28 }]);
+    // La pausa dell'affitto finisce prima che il gettone arrivi: la partita si allinea, ma Bruno aspetta il gettone.
+    await vi.advanceTimersByTimeAsync(TEMPI.pausaSoldi);
+    expect(regia.leggi().occupata).toBe(false);
+    expect(saldo('b')).toBe(prima.giocatori[1]!.saldo);
+    await vi.advanceTimersByTimeAsync(VOLO_GETTONE_MS - TEMPI.pausaSoldi);
+    expect(saldo('b')).toBe(dopo.giocatori[1]!.saldo);
+    expect(saldo('a')).toBe(dopo.giocatori[0]!.saldo);
+    expect(regia.leggi().gettoni).toEqual([]);
+    regia.ferma();
+  });
+
+  it('fuori scena (uno scambio) il saldo di chi incassa resta indietro finché il gettone non arriva', async () => {
+    const prima = partitaIniziale();
+    const dopo = structuredClone(prima);
+    dopo.giocatori[0]!.saldo -= 100;
+    dopo.giocatori[1]!.saldo += 100;
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    const saldo = (id: string) => regia.leggi().partita!.giocatori.find((g) => g.id === id)!.saldo;
+    const vuoto = { soldi: 0, caselle: [], grazie: [] };
+    coll.cambia({
+      stanza: stanzaCon(dopo, 2),
+      registro: voci([{ tipo: 'scambio_accettato', scambio: 1, da: 'a', a: 'b', dare: { ...vuoto, soldi: 100 }, avere: vuoto }], 1),
+    });
+    expect(regia.leggi()).toMatchObject({ occupata: false, timbro: { tipo: 'accettato', da: 'a', a: 'b' } });
+    expect(saldo('a')).toBe(dopo.giocatori[0]!.saldo);
+    expect(saldo('b')).toBe(prima.giocatori[1]!.saldo);
+    await vi.advanceTimersByTimeAsync(VOLO_GETTONE_MS);
+    expect(saldo('b')).toBe(dopo.giocatori[1]!.saldo);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(regia.leggi()).toMatchObject({ gettoni: [], timbro: null, lampeggia: [] });
+    regia.ferma();
+  });
+
+  it('il debito: chi aspettava i soldi non vede mai il saldo scendere', async () => {
+    const prima = partitaIniziale();
+    const dopo = structuredClone(prima);
+    dopo.giocatori[0]!.saldo -= 50;
+    dopo.giocatori[1]!.saldo += 20;
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    const visti: number[] = [];
+    regia.iscrivi(() => visti.push(regia.leggi().partita!.giocatori[1]!.saldo));
+    coll.cambia({
+      stanza: stanzaCon(dopo, 2),
+      registro: voci(
+        [
+          { tipo: 'affitto', da: 'a', a: 'b', casella: 1, importo: 50 },
+          { tipo: 'debito', da: 'a', a: 'b', importo: 30 },
+        ],
+        1,
+      ),
+    });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(Math.min(...visti)).toBe(prima.giocatori[1]!.saldo);
+    expect(visti.at(-1)).toBe(dopo.giocatori[1]!.saldo);
+    regia.ferma();
+  });
+
+  it('passando dalla Partenza il gettone parte durante i passi, senza pause in più', async () => {
+    const prima = partitaIniziale();
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    coll.cambia({
+      stanza: stanzaCon(prima, 2),
+      registro: voci(
+        [
+          { tipo: 'movimento', giocatore: 'a', da: 38, a: 3 },
+          { tipo: 'partenza', giocatore: 'a', importo: 200, arrivo: false },
+        ],
+        1,
+      ),
+    });
+    // Due passi (38 → 39 → 0): il gettone della Partenza è già in volo.
+    await vi.advanceTimersByTimeAsync(2 * TEMPI.passoLento - 1);
+    expect(regia.leggi().posizioni.a?.casella).toBe(0);
+    expect(regia.leggi().gettoni).toMatchObject([{ da: null, a: 'a', importo: 200, casella: 0 }]);
+    regia.ferma();
+  });
+
+  it('la carta resta al centro il tempo di leggerla, poi lascia il posto al suo effetto', async () => {
+    const prima = partitaIniziale();
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    const testo = 'Aiuti un parente. Paga 50 €.';
+    coll.cambia({
+      stanza: stanzaCon(prima, 2),
+      registro: voci(
+        [
+          { tipo: 'carta', giocatore: 'a', mazzo: 'cartolina', carta: 13, testo },
+          { tipo: 'trasferimento', da: 'a', a: null, importo: 50 },
+        ],
+        1,
+      ),
+    });
+    expect(regia.leggi().carta).toMatchObject({ giocatore: 'a', mazzo: 'cartolina', testo });
+    await vi.advanceTimersByTimeAsync(durataCarta(testo) - TEMPI.cartaEsce);
+    expect(regia.leggi().carta).toBeNull();
+    expect(regia.leggi().gettoni).toEqual([]);
+    await vi.advanceTimersByTimeAsync(TEMPI.cartaEsce);
+    expect(regia.leggi().gettoni).toMatchObject([{ da: 'a', a: null, importo: 50 }]);
+    regia.ferma();
+  });
+});
+
+describe('casella d’arrivo', () => {
+  const voce = (n: number, evento: Evento): VoceRegistro => ({ n, quando: 0, evento });
+  const registro = [
+    voce(1, { tipo: 'turno', giocatore: 'a', numero: 1 }),
+    voce(2, { tipo: 'dadi', giocatore: 'a', dadi: [3, 4] }),
+    voce(3, { tipo: 'movimento', giocatore: 'a', da: 0, a: 7, dadi: [3, 4] }),
+    voce(4, { tipo: 'affitto', da: 'a', a: 'b', casella: 7, importo: 6 }),
+  ];
+
+  it('è dove si è fermato chi gioca, rossa se lì ha pagato l’affitto', () => {
+    expect(arrivoDelTurno(registro)).toEqual({ casella: 7, tono: 'affitto' });
+    expect(arrivoDelTurno(registro, 3)).toEqual({ casella: 7, tono: 'normale' });
+    expect(arrivoDelTurno(registro, 2)).toBeNull();
+  });
+
+  it('sparisce al turno dopo e quando si finisce in prigione', () => {
+    expect(arrivoDelTurno([...registro, voce(5, { tipo: 'turno', giocatore: 'b', numero: 2 })])).toBeNull();
+    expect(arrivoDelTurno([...registro, voce(5, { tipo: 'prigione', giocatore: 'a', motivo: 'casella' })])).toBeNull();
   });
 });

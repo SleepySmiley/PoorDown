@@ -671,9 +671,40 @@
   border-top: 1px solid var(--quadro-linea);
 }
 
-/* Chi gioca il turno: fascia ambra a sinistra e fondo ambra. */
+/* Chi gioca il turno: fascia ambra a sinistra e fondo ambra, che al cambio di turno si stende da sinistra. */
 .riga-giocatore--turno {
-  background: var(--ambra-velo);
+  background: linear-gradient(var(--ambra-velo), var(--ambra-velo)) no-repeat 0 0 / 100% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .riga-giocatore--turno {
+    animation: riga-turno var(--d-timbro) var(--c-arrivo);
+  }
+
+  /* Bancarotta: la riga trema e si tinge di rosso, il saldo gira in «Bancarotta». */
+  .riga-giocatore.riga-giocatore--bancarotta {
+    background: var(--rosso-velo);
+    animation: riga-trema var(--d-lenta) var(--c-viaggio) var(--d-rapida);
+  }
+}
+
+@keyframes riga-turno {
+  from {
+    background-size: 0% 100%;
+  }
+}
+
+@keyframes riga-trema {
+  15%,
+  55%,
+  95% {
+    translate: -4px 0;
+  }
+
+  35%,
+  75% {
+    translate: 4px 0;
+  }
 }
 
 .riga-giocatore::before {

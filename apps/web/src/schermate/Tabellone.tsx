@@ -1,5 +1,5 @@
 import '../stili/tabellone.css';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
   affitto,
@@ -8,6 +8,7 @@ import {
   LIVELLO_ALBERGO,
   proprietabile,
   tabellone,
+  TEMPI,
   type Giocatore,
   type IdGiocatore,
   type IdMappa,
@@ -19,8 +20,21 @@ import { caselleVista, type CasellaVista } from '../ui/caselle';
 import { Pedina, Soldi, Stemma } from '../ui/comuni';
 import { CORNICE, FASCIA_VISITA, FUGA, geometria, righeAffitto, type Geometria } from '../ui/geometria';
 import { Icona, IconaCasella } from '../ui/icone';
-import { COMPARSA } from '../ui/movimento';
+import { COMPARSA, CURVA, DURATA } from '../ui/movimento';
 import { iniziali, variabili } from '../ui/utili';
+
+/**
+ * Quando è comparso il tabellone. Blocchi e case che nascono insieme a lui (chi apre la pagina a metà partita)
+ * restano fermi; quelli che nascono dopo (un acquisto, una casa, un'ipoteca) entrano con la loro animazione.
+ */
+const NatoIl = createContext(0);
+const CALMA_INIZIALE_MS = 800;
+
+function useNuovo(): boolean {
+  const tabellone = useContext(NatoIl);
+  const [nato] = useState(() => performance.now());
+  return nato - tabellone > CALMA_INIZIALE_MS;
+}
 
 /** Chi possiede la casella, con edifici e ipoteca. */
 interface Possesso {
@@ -83,6 +97,32 @@ function Edifici({ livello, className }: { livello: number; className: string })
     <span className={`${className} edifici`}>
       {Array.from({ length: livello }, (_, i) => (
         <i key={i} className="edifici__casa" />
+      ))}
+    </span>
+  );
+}
+
+/** Una casa sul tabellone: quella appena costruita cade al suo posto con un rimbalzo. */
+function Casa(): ReactNode {
+  const nuova = useNuovo();
+  return <i className={nuova ? 'edifici__casa edifici__casa--nuova' : 'edifici__casa'} />;
+}
+
+/** Gli edifici sul tabellone: le case appena costruite cadono, l'albergo appena costruito arriva fondendo le case. */
+function EdificiCasella({ livello }: { livello: number }): ReactNode {
+  const nuovo = useNuovo();
+  if (livello === LIVELLO_ALBERGO) {
+    return (
+      <span className={nuovo ? 'casella__edifici edifici edifici--albergo edifici--nuovo' : 'casella__edifici edifici edifici--albergo'}>
+        Hotel
+      </span>
+    );
+  }
+  if (livello <= 0) return null;
+  return (
+    <span className="casella__edifici edifici">
+      {Array.from({ length: livello }, (_, i) => (
+        <Casa key={i} />
       ))}
     </span>
   );
@@ -269,17 +309,19 @@ function descriviEdifici(p: Possesso): string {
  * del prezzo, con la sua iniziale e le case da contare (o la piastrina HOTEL). Ipotecata: il blocco si spegne.
  */
 function Blocco({ p, iniziale }: { p: Possesso; iniziale: string }): ReactNode {
+  // Rinasce (key) quando cambia il proprietario o l'ipoteca: entra dal bordo esterno, o scende come una tendina.
+  const nuovo = useNuovo();
+  const classi = ['casella__blocco', p.ipotecata ? 'casella__blocco--ipotecata' : '', nuovo ? 'casella__blocco--nuovo' : '']
+    .filter(Boolean)
+    .join(' ');
   return (
-    <span
-      className={p.ipotecata ? 'casella__blocco casella__blocco--ipotecata' : 'casella__blocco'}
-      title={`${p.ipotecata ? 'Ipotecata, di' : 'Di'} ${p.proprietario.nome}${descriviEdifici(p)}`}
-    >
+    <span className={classi} title={`${p.ipotecata ? 'Ipotecata, di' : 'Di'} ${p.proprietario.nome}${descriviEdifici(p)}`}>
       {p.ipotecata ? (
         <span className="casella__ipotecata">Ipotecata</span>
       ) : (
         <>
           <span className="casella__iniziale">{iniziale}</span>
-          <Edifici livello={p.livello} className="casella__edifici" />
+          <EdificiCasella key={p.livello === LIVELLO_ALBERGO ? 'albergo' : 'case'} livello={p.livello} />
         </>
       )}
     </span>
@@ -300,7 +342,11 @@ interface StatoCasella {
   iniziale?: string;
   selezionata: boolean;
   arrivo?: 'normale' | 'affitto';
+  /** La pedina di chi gioca sta andando qui: contorno del suo colore (il numero del colore). */
+  meta?: number;
   lampeggia: boolean;
+  /** Bancarotta: il blocco si sfila; `sfila` è il suo posto nella fila. */
+  sfila?: number;
   /** Il mouse è su una città: quelle della stessa regione restano accese, le altre si spengono. */
   regione?: 'accesa' | 'spenta';
   /** Angoli: l'importo sotto il cartello (Partenza: quanto si incassa passando; Vacanza: la cassa). */
@@ -335,7 +381,9 @@ function CasellaTabellone({
     p?.ipotecata ? 'casella--ipotecata' : '',
     stato.selezionata ? 'casella--selezionata' : '',
     stato.arrivo ? `casella--arrivo casella--arrivo-${stato.arrivo}` : '',
+    stato.meta !== undefined ? 'casella--meta' : '',
     stato.lampeggia ? 'casella--lampeggia' : '',
+    stato.sfila !== undefined ? 'casella--sfila' : '',
     stato.regione ? `casella--${stato.regione}` : '',
   ]
     .filter(Boolean)
@@ -344,6 +392,8 @@ function CasellaTabellone({
     gridRow: riga,
     gridColumn: colonna,
     ...(p ? variabili({ '--proprietario': `var(--p${p.proprietario.colore})` }) : {}),
+    ...(stato.meta !== undefined ? variabili({ '--meta': `var(--p${stato.meta})` }) : {}),
+    ...(stato.sfila !== undefined ? variabili({ '--i': String(stato.sfila) }) : {}),
   };
 
   let corpo: ReactNode;
@@ -390,7 +440,7 @@ function CasellaTabellone({
         )}
         <span className={classeNome(nome)}>{nome}</span>
         {p ? (
-          <Blocco p={p} iniziale={stato.iniziale ?? ''} />
+          <Blocco key={`${p.proprietario.id}-${p.ipotecata}`} p={p} iniziale={stato.iniziale ?? ''} />
         ) : (
           c.prezzo !== undefined && <span className="casella__prezzo">{euro(c.prezzo)}</span>
         )}
@@ -400,7 +450,7 @@ function CasellaTabellone({
 
   if (!proprieta) {
     return (
-      <div className={classi} style={stile} title={c.breve ? c.nome : undefined}>
+      <div className={classi} style={stile} title={c.breve ? c.nome : undefined} data-casella={c.n}>
         {corpo}
       </div>
     );
@@ -413,6 +463,7 @@ function CasellaTabellone({
       type="button"
       className={classi}
       style={stile}
+      data-casella={c.n}
       onClick={() => onApri?.(c.n)}
       onMouseEnter={c.gruppo !== undefined ? () => onRegione(c.gruppo ?? null) : undefined}
       onMouseLeave={c.gruppo !== undefined ? () => onRegione(null) : undefined}
@@ -435,6 +486,14 @@ export interface Segnaposto {
   prigione?: boolean;
   /** Cambia a ogni passo: fa saltellare la pedina. */
   passo?: number;
+  /** Quanto dura il passo in corso: la pedina scivola e saltella in questo tempo. Senza, si riassesta con una molla. */
+  passoMs?: number;
+  /** Cresce a ogni arrivo: la pedina si schiaccia e manda un'onda del suo colore. */
+  arrivi?: number;
+  /** In volo verso la prigione: trema, si solleva, vola ad arco. */
+  volo?: boolean;
+  /** Bancarotta: sprofonda nel tabellone. */
+  sprofonda?: boolean;
   evidenziata?: boolean;
 }
 
@@ -568,6 +627,53 @@ function coordinatePedine(pedine: Segnaposto[], caselle: CasellaVista[], prigion
   return risultato;
 }
 
+/** Una pedina sul tabellone, con la sua ombra: saltella a ogni passo, si schiaccia all'arrivo, vola in prigione. */
+function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; sigla: string | undefined }): ReactNode {
+  const disco = useRef<HTMLSpanElement>(null);
+  const arrivi = useRef(p.arrivi);
+  // All'arrivo la pedina si schiaccia e torna su: con Web Animations, così niente rinasce e il salto non riparte.
+  useEffect(() => {
+    if (p.arrivi === arrivi.current) return;
+    arrivi.current = p.arrivi;
+    disco.current?.animate([{ transform: 'scale(1.14, 0.8)' }, { transform: 'scale(1)' }], {
+      duration: DURATA.timbro * 1000,
+      easing: `cubic-bezier(${CURVA.molla.join(',')})`,
+    });
+  }, [p.arrivi]);
+  const classi = [
+    'segnaposto',
+    p.evidenziata ? 'segnaposto--turno' : '',
+    p.passoMs !== undefined ? 'segnaposto--cammina' : '',
+    p.volo ? 'segnaposto--volo' : '',
+    p.sprofonda ? 'segnaposto--sprofonda' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <span
+      className={classi}
+      style={{
+        ...variabili({
+          '--x': `${posa.x}%`,
+          '--y': `${posa.y}%`,
+          '--s': String(posa.scala),
+          '--colore': `var(--p${p.colore})`,
+          ...(p.passoMs !== undefined ? { '--passo': `${p.passoMs}ms` } : {}),
+        }),
+        zIndex: p.evidenziata || p.volo ? 20 : posa.strato,
+      }}
+    >
+      <span className="segnaposto__ombra" key={`ombra-${p.passo ?? 0}`} />
+      {p.arrivi ? <span className="segnaposto__onda" key={`onda-${p.arrivi}`} /> : null}
+      <span className="segnaposto__salto" key={p.passo ?? 0}>
+        <span ref={disco} className={p.prigione ? 'segnaposto__disco segnaposto__disco--prigione' : 'segnaposto__disco'}>
+          <Pedina colore={p.colore} iniziale={sigla ?? p.iniziale} className="pedina--tabellone" />
+        </span>
+      </span>
+    </span>
+  );
+}
+
 /* ---------------- Tabellone ---------------- */
 
 /**
@@ -584,7 +690,10 @@ export function Tabellone({
   sfocato,
   selezionata,
   arrivo,
+  meta,
   lampeggia,
+  sbarre,
+  sfila,
   onApri,
 }: {
   mappa: IdMappa;
@@ -599,11 +708,18 @@ export function Tabellone({
   selezionata?: number;
   /** Casella d'arrivo del turno: contorno ambra, rosso (`tono: 'affitto'`) se si paga l'affitto. */
   arrivo?: { n: number; tono: 'normale' | 'affitto' };
+  /** Dove sta andando la pedina di chi gioca (dai dadi fermi all'arrivo): contorno del suo colore. */
+  meta?: { n: number; colore: number };
   /** Caselle da far lampeggiare nel colore del proprietario. */
-  lampeggia?: number[];
+  lampeggia?: readonly number[];
+  /** Le sbarre della prigione: scendono quando entra qualcuno, si alzano quando esce (`n` cambia a ogni movimento). */
+  sbarre?: { n: number; verso: 'giu' | 'su' } | null;
+  /** Caselle che tornano alla banca (bancarotta): i blocchi si sfilano uno dopo l'altro. */
+  sfila?: readonly number[];
   onApri?: (n: number) => void;
 }): ReactNode {
   const [regioneAccesa, setRegioneAccesa] = useState<number | null>(null);
+  const [natoIl] = useState(() => performance.now());
   const tab = tabellone(mappa);
   const caselle = caselleVista(mappa);
   const geo = geometria(caselle.length);
@@ -640,6 +756,7 @@ export function Tabellone({
     .join(' ');
 
   return (
+    <NatoIl.Provider value={natoIl}>
     <div
       className={geo.lato > 10 ? 'tabellone tabellone--13' : 'tabellone'}
       style={variabili({
@@ -648,6 +765,7 @@ export function Tabellone({
         '--fuga': String(FUGA),
         '--fascia': String(FASCIA_VISITA),
         '--targa': String(TARGA),
+        '--d-prigione': `${TEMPI.prigione}ms`,
       })}
     >
       <div className={classiGriglia} style={{ gridTemplateColumns: geo.tracce, gridTemplateRows: geo.tracce }}>
@@ -664,7 +782,9 @@ export function Tabellone({
                 iniziale: p ? (sigle?.get(p.proprietario.id) ?? p.proprietario.nome.slice(0, 1).toUpperCase()) : undefined,
                 selezionata: selezionata === c.n,
                 arrivo: arrivo?.n === c.n ? arrivo.tono : undefined,
+                meta: meta?.n === c.n ? meta.colore : undefined,
                 lampeggia: lampeggia?.includes(c.n) ?? false,
+                sfila: sfila?.includes(c.n) ? sfila.indexOf(c.n) : undefined,
                 regione: regioneAccesa === null ? undefined : c.gruppo === regioneAccesa ? 'accesa' : 'spenta',
                 valore: valoreAngolo(c),
               }}
@@ -677,30 +797,24 @@ export function Tabellone({
           {!sfocato && centro}
         </div>
         <div className="tabellone__pedine" aria-hidden="true">
-          {pedine.map((p) => {
-            const posa = coordinate.get(p.id) ?? { x: 0, y: 0, scala: 1, strato: 1 };
-            return (
-              <span
-                key={p.id}
-                className={p.evidenziata ? 'segnaposto segnaposto--turno' : 'segnaposto'}
-                style={{
-                  ...variabili({ '--x': `${posa.x}%`, '--y': `${posa.y}%`, '--s': String(posa.scala) }),
-                  zIndex: p.evidenziata ? 20 : posa.strato,
-                }}
-              >
-                <span className="segnaposto__salto" key={p.passo ?? 0}>
-                  <span className={p.prigione ? 'segnaposto__disco segnaposto__disco--prigione' : 'segnaposto__disco'}>
-                    <Pedina colore={p.colore} iniziale={sigle?.get(p.id) ?? p.iniziale} className="pedina--tabellone" />
-                  </span>
-                </span>
-              </span>
-            );
-          })}
-          <span className="tabellone__sbarre" style={cella} />
+          {pedine.map((p) => (
+            <SegnapostoTabellone
+              key={p.id}
+              p={p}
+              posa={coordinate.get(p.id) ?? { x: 0, y: 0, scala: 1, strato: 1 }}
+              sigla={sigle?.get(p.id)}
+            />
+          ))}
+          <span
+            key={sbarre ? `sbarre-${sbarre.n}` : 'sbarre'}
+            className={sbarre ? `tabellone__sbarre tabellone__sbarre--${sbarre.verso}` : 'tabellone__sbarre'}
+            style={cella}
+          />
         </div>
       </div>
       {sfocato && <div className="tabellone__velo">{centro}</div>}
       {sopra}
     </div>
+    </NatoIl.Provider>
   );
 }

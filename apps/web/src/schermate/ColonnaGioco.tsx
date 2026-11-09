@@ -279,6 +279,8 @@ export interface DatiGiocatore {
   squadra?: { indice: number; nome: string };
   /** L'ultimo cambio del saldo. */
   variazione?: Variazione;
+  /** Sta facendo bancarotta adesso: la riga trema e il saldo gira in «Bancarotta». */
+  bancarotta?: boolean;
 }
 
 const SPIEGA_BOT = 'Bot: gioca da solo. Compra, costruisce, offre alle aste e risponde agli scambi; in chat non scrive.';
@@ -314,6 +316,7 @@ export function RigaGiocatoreGioco({
     g.tu ? 'riga-giocatore--tu' : '',
     g.fuori ? 'riga-giocatore--fuori' : '',
     g.connesso ? '' : 'riga-giocatore--assente',
+    g.bancarotta ? 'riga-giocatore--bancarotta' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -349,6 +352,10 @@ export function RigaGiocatoreGioco({
       <div className="riga-giocatore__stato">
         {g.fuori ? (
           <span className="riga-giocatore__esito">{g.esito ?? 'Bancarotta'}</span>
+        ) : g.bancarotta ? (
+          <span className="riga-giocatore__soldi riga-giocatore__soldi--rosso riga-giocatore__soldi--bancarotta">
+            <Palette testo="BANCAROTTA" />
+          </span>
         ) : (
           <span className={g.saldo < 0 ? 'riga-giocatore__soldi riga-giocatore__soldi--rosso' : 'riga-giocatore__soldi'}>
             <Soldi valore={g.saldo} />

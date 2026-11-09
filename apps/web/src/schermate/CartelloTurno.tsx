@@ -1,8 +1,9 @@
 /*
  * Il cartello del turno, in cima al centro del tabellone: di chi è il turno («TOCCA A TE» in ambra,
  * oppure «Tocca a Bruno»), cosa deve fare adesso e quanto tempo gli resta.
- * Chi lo usa gli dà una `key` per turno (numero e giocatore): al cambio di turno il cartello rinasce
- * e la regia può animarne l'arrivo (classe .cartello-turno, .cartello-turno--mio quando tocca a me).
+ * Chi lo usa gli dà una `key` per turno (numero e giocatore): al cambio di turno il cartello rinasce e arriva
+ * come un cartello delle partenze, le lettere del titolo che girano una dopo l'altra (gioco.css); quando tocca
+ * a me il bordo ambra lampeggia due volte.
  */
 
 import type { ReactNode } from 'react';
@@ -12,6 +13,15 @@ import { iniziale, variabili } from '../ui/utili';
 import { useTempoTurno } from './tempo';
 import { AzioneTempo, CifreTempo } from './Timer';
 import { fraseTurno, maiuscola } from './turno';
+
+/** Un testo lettera per lettera: ognuna gira al suo posto poco dopo quella prima (`--i`). */
+function Lettere({ testo, da = 0 }: { testo: string; da?: number }): ReactNode {
+  return [...testo].map((c, i) => (
+    <span key={i} className="lettera" style={variabili({ '--i': String(da + i) })} aria-hidden="true">
+      {c}
+    </span>
+  ));
+}
 
 /** Tre pallini: i tentativi di uscire di prigione già falliti, quello che sta per fare e quelli che restano. */
 function Tentativi({ falliti }: { falliti: number }): ReactNode {
@@ -79,10 +89,13 @@ export function CartelloTurno({
       <div className="cartello-turno__testo">
         <p className="cartello-turno__titolo">
           {mio ? (
-            'Tocca a te'
+            <Lettere testo="Tocca a te" />
           ) : (
             <>
-              Tocca a <b>{corrente.nome}</b>
+              <Lettere testo="Tocca a " />
+              <b>
+                <Lettere testo={corrente.nome} da={8} />
+              </b>
             </>
           )}
         </p>

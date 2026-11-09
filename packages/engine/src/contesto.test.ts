@@ -1,7 +1,8 @@
 /* Movimenti di denaro: entrate, debiti, pagamenti alla banca e cassa della Vacanza. */
 
 import { describe, expect, it } from 'vitest';
-import { assegna, dadi, esegui, g, partitaDiProva, problemi } from './prove';
+import { descrivi } from './descrivi';
+import { assegna, dadi, esegui, g, partitaDiProva, primaCarta, problemi } from './prove';
 import type { Stato } from './tipi';
 
 const MILANO = 39;
@@ -53,5 +54,41 @@ describe('cassa della Vacanza', () => {
     r = esegui(r.stato, { tipo: 'vendi', giocatore: 'a', casella: MILANO });
     expect(g(r.stato, 'a').saldo).toBe(135);
     expect(r.stato.cassaVacanza).toBe(0);
+  });
+});
+
+describe('trasferimenti delle carte', () => {
+  it('«Paga 50 €»: dopo la carta, un trasferimento verso la banca', () => {
+    const s = primaCarta(partitaDiProva(), 'cartolina', 13);
+    const r = esegui(s, { tipo: 'lancia', giocatore: 'a' }, dadi([3, 5]));
+    const carta = r.eventi.findIndex((e) => e.tipo === 'carta');
+    const trasferimento = r.eventi.findIndex((e) => e.tipo === 'trasferimento');
+    expect(r.eventi[trasferimento]).toEqual({ tipo: 'trasferimento', da: 'a', a: null, importo: 50 });
+    expect(trasferimento).toBeGreaterThan(carta);
+    expect(descrivi(r.eventi[trasferimento]!, r.stato)).toBeNull();
+  });
+
+  it('«Ricevi 100 €»: dalla banca a chi pesca', () => {
+    const s = primaCarta(partitaDiProva(), 'cartolina', 10);
+    const r = esegui(s, { tipo: 'lancia', giocatore: 'a' }, dadi([3, 5]));
+    expect(r.eventi.filter((e) => e.tipo === 'trasferimento')).toEqual([{ tipo: 'trasferimento', da: null, a: 'a', importo: 100 }]);
+  });
+
+  it('il compleanno: un trasferimento da ogni avversario, e il debito subito dopo se il contante non basta', () => {
+    const s = primaCarta(partitaDiProva(3), 'busta', 13);
+    g(s, 'c').saldo = 20;
+    const r = esegui(s, { tipo: 'lancia', giocatore: 'a' }, dadi([1, 1]));
+    const soldi = r.eventi.filter((e) => e.tipo === 'trasferimento' || e.tipo === 'debito');
+    expect(soldi).toEqual([
+      { tipo: 'trasferimento', da: 'b', a: 'a', importo: 50 },
+      { tipo: 'trasferimento', da: 'c', a: 'a', importo: 50 },
+      { tipo: 'debito', da: 'c', a: 'a', importo: 30 },
+    ]);
+  });
+
+  it('le riparazioni senza case non muovono soldi', () => {
+    const s = primaCarta(partitaDiProva(), 'cartolina', 15);
+    const r = esegui(s, { tipo: 'lancia', giocatore: 'a' }, dadi([3, 5]));
+    expect(r.eventi.some((e) => e.tipo === 'trasferimento')).toBe(false);
   });
 });

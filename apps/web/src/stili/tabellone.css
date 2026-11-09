@@ -127,6 +127,43 @@ button.casella:hover {
   --arrivo: var(--rosso);
 }
 
+/* La meta della pedina che cammina (prop meta): contorno del colore di chi gioca, si accende appena i dadi si fermano
+   e respira finché la pedina non arriva. */
+.casella--meta {
+  z-index: 4;
+  box-shadow:
+    var(--tab-smalto),
+    0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+    0 0 0 calc(var(--k) * 4.5) var(--meta);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .casella--meta {
+    animation:
+      meta-accende var(--d-entrata) var(--c-arrivo),
+      meta-respira var(--d-viaggio) var(--c-viaggio) var(--d-entrata) infinite alternate;
+  }
+}
+
+@keyframes meta-accende {
+  from {
+    box-shadow:
+      var(--tab-smalto),
+      0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+      0 0 0 calc(var(--k) * 18) transparent;
+  }
+}
+
+@keyframes meta-respira {
+  to {
+    box-shadow:
+      var(--tab-smalto),
+      0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+      0 0 0 calc(var(--k) * 4.5) var(--meta),
+      0 0 calc(var(--k) * 16) calc(var(--k) * 4) color-mix(in srgb, var(--meta) 55%, transparent);
+  }
+}
+
 /* Caselle che lampeggiano nel colore del proprietario (prop lampeggia, per gli scambi). */
 .casella--lampeggia {
   --lampo: var(--proprietario, var(--tab-testo));
@@ -143,8 +180,9 @@ button.casella:hover {
     animation: arrivo-impulso 600ms var(--c-arrivo) 2;
   }
 
+  /* Scambio fatto: due lampi nel colore del nuovo proprietario. */
   .casella--lampeggia {
-    animation: lampeggia 1.1s var(--c-viaggio) infinite;
+    animation: lampeggia calc(var(--d-timbro) * 2) var(--c-viaggio) 2;
   }
 }
 
@@ -525,15 +563,55 @@ button.casella:hover {
     0 1px 0 rgb(0 0 0 / 0.45);
 }
 
+/* Il blocco cresce dal bordo esterno della casella (in alto per la fila in alto; nelle colonne il corpo è ruotato). */
+.casella__blocco {
+  transform-origin: 50% 100%;
+}
+
+.casella--alto .casella__blocco {
+  transform-origin: 50% 0;
+}
+
+/* Animano solo blocchi e case nati dopo il tabellone (Tabellone.tsx, useNuovo): chi apre la pagina a metà partita
+   trova il tabellone fermo. */
 @media (prefers-reduced-motion: no-preference) {
-  .casella__blocco {
-    animation: blocco-entra var(--d-lenta) var(--c-molla);
+  /* Acquisto o cambio di mano: il blocco esce dal bordo esterno con una molla, poi un riflesso lo attraversa. */
+  .casella__blocco--nuovo {
+    animation: blocco-entra var(--d-timbro) var(--c-molla);
   }
 
-  /* Una casa nuova (o l'albergo) cade al suo posto con un rimbalzo: si anima solo quella appena aggiunta. */
-  .casella__edifici .edifici__casa,
-  .casella__edifici.edifici--albergo {
-    animation: casa-entra var(--d-entrata) var(--c-molla) both;
+  .casella__blocco--nuovo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.6) 50%, transparent 62%) no-repeat;
+    background-size: 260% 100%;
+    pointer-events: none;
+    animation: riflesso var(--d-viaggio) var(--c-viaggio) var(--d-timbro) both;
+  }
+
+  /* Ipoteca: il blocco spento scende come una tendina. */
+  .casella__blocco--ipotecata.casella__blocco--nuovo {
+    animation: tendina var(--d-lenta) var(--c-arrivo);
+  }
+
+  .casella__blocco--ipotecata.casella__blocco--nuovo::after {
+    content: none;
+  }
+
+  /* Una casa nuova cade al suo posto con un rimbalzo; l'albergo arriva fondendo le case. */
+  .casella__edifici .edifici__casa--nuova {
+    animation: casa-entra var(--d-timbro) var(--c-molla) both;
+  }
+
+  .casella__edifici.edifici--albergo.edifici--nuovo {
+    animation: albergo-entra var(--d-timbro) var(--c-molla) both;
+  }
+
+  /* Bancarotta: i blocchi si sfilano uno dopo l'altro e la casella torna libera. */
+  .casella--sfila .casella__blocco {
+    animation: blocco-sfila var(--d-timbro) var(--c-partenza) calc(var(--d-lenta) + var(--i, 0) * var(--d-rapida) / 2) both;
   }
 }
 
@@ -543,13 +621,45 @@ button.casella:hover {
   }
 }
 
+@keyframes riflesso {
+  from {
+    background-position: 130% 0;
+  }
+
+  to {
+    background-position: -30% 0;
+  }
+}
+
+@keyframes tendina {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+
 @keyframes casa-entra {
   from {
-    scale: 0;
+    opacity: 0;
+    transform: translateY(-160%) scale(0.7);
   }
 
   60% {
-    scale: 1.15;
+    opacity: 1;
+    transform: translateY(12%) scale(1.06, 0.9);
+  }
+}
+
+@keyframes albergo-entra {
+  from {
+    opacity: 0;
+    transform: scaleX(0.3) scaleY(1.3);
+  }
+}
+
+@keyframes blocco-sfila {
+  to {
+    opacity: 0;
+    transform: scaleY(0);
   }
 }
 
@@ -773,21 +883,30 @@ button.casella:hover {
 
 /* ---------- Pedine: gettoni con corpo, nella corsia tra il nome e il bordo esterno ---------- */
 
+/* Sopra le caselle, anche quelle accese (selezionata, arrivo, meta: z-index 4), così la pedina non sparisce sotto. */
 .tabellone__pedine {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 5;
   pointer-events: none;
 }
 
+/* Fuori dai passi la pedina si riassesta con una molla: quando un'altra arriva sulla sua casella, le fa posto. */
 .segnaposto {
   position: absolute;
   left: var(--x);
   top: var(--y);
   transform: translate(-50%, -50%);
   transition:
-    left 0.17s cubic-bezier(0.3, 0.6, 0.4, 1),
-    top 0.17s cubic-bezier(0.3, 0.6, 0.4, 1);
+    left var(--d-timbro) var(--c-molla),
+    top var(--d-timbro) var(--c-molla);
+}
+
+/* Mentre cammina ogni passo dura --passo (dalla regia: lenti i primi e gli ultimi due, svelti quelli in mezzo). */
+.segnaposto--cammina {
+  transition:
+    left var(--passo) var(--c-viaggio),
+    top var(--passo) var(--c-viaggio);
 }
 
 .segnaposto__salto,
@@ -800,15 +919,168 @@ button.casella:hover {
   isolation: isolate;
 }
 
+/* L'ombra sul tabellone: resta giù mentre la pedina saltella, e si stringe quando la pedina è in alto. */
+.segnaposto__ombra {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--k) * var(--s, 1) * 30);
+  height: calc(var(--k) * var(--s, 1) * 11);
+  margin-top: calc(var(--k) * var(--s, 1) * 14);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(0 0 0 / 0.55), transparent);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* L'onda del colore della pedina quando arriva. */
+.segnaposto__onda {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--k) * var(--s, 1) * 30);
+  height: calc(var(--k) * var(--s, 1) * 30);
+  border-radius: 50%;
+  box-shadow: 0 0 0 calc(var(--k) * 3) var(--colore);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .segnaposto__salto {
-    animation: salto 0.17s ease-out;
+  .segnaposto--cammina .segnaposto__salto {
+    animation: salto var(--passo) var(--c-viaggio);
+  }
+
+  .segnaposto--cammina .segnaposto__ombra {
+    animation: ombra-salto var(--passo) var(--c-viaggio);
+  }
+
+  .segnaposto__onda {
+    animation: onda var(--d-lenta) var(--c-arrivo);
+  }
+
+  /* In prigione: trema, si solleva, vola ad arco fino alla cella e atterra; le sbarre scendono dopo. */
+  .segnaposto--volo {
+    transition:
+      left calc(var(--d-prigione) * 0.52) var(--c-viaggio) calc(var(--d-prigione) * 0.3),
+      top calc(var(--d-prigione) * 0.52) var(--c-viaggio) calc(var(--d-prigione) * 0.3);
+  }
+
+  .segnaposto--volo .segnaposto__salto {
+    animation: volo-prigione var(--d-prigione) linear;
+  }
+
+  /* Bancarotta: la pedina sprofonda nel tabellone. */
+  .segnaposto--sprofonda .segnaposto__disco {
+    animation: sprofonda var(--d-viaggio) var(--c-partenza) var(--d-lenta) both;
+  }
+
+  .tabellone__sbarre--giu {
+    animation: sbarre-giu var(--d-prigione) var(--c-arrivo) both;
+  }
+
+  .tabellone__sbarre--su {
+    animation: sbarre-su var(--d-lenta) var(--c-viaggio);
   }
 }
 
 @keyframes salto {
   50% {
-    transform: translateY(-40%) scale(1.1);
+    transform: translateY(-55%) scale(1.12);
+  }
+}
+
+@keyframes ombra-salto {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+}
+
+@keyframes onda {
+  from {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.6);
+  }
+}
+
+@keyframes volo-prigione {
+  0%,
+  17% {
+    transform: none;
+  }
+
+  4% {
+    transform: translateX(-8%) rotate(-7deg);
+  }
+
+  8% {
+    transform: translateX(8%) rotate(7deg);
+  }
+
+  12% {
+    transform: translateX(-6%) rotate(-5deg);
+  }
+
+  30% {
+    transform: translateY(-30%) scale(1.12);
+  }
+
+  56% {
+    transform: translateY(-130%) scale(1.3);
+  }
+
+  82% {
+    transform: none;
+  }
+
+  88% {
+    transform: scale(1.12, 0.84);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes sprofonda {
+  to {
+    opacity: 0;
+    filter: grayscale(1);
+    transform: translateY(30%) scale(0.2);
+  }
+}
+
+/* Le sbarre spariscono mentre la pedina vola e scendono quando è atterrata (l'ultimo quinto del volo). */
+@keyframes sbarre-giu {
+  0%,
+  81% {
+    opacity: 0;
+    transform: translateY(-55%);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sbarre-su {
+  45% {
+    opacity: 0.15;
+    transform: translateY(-55%);
   }
 }
 
@@ -863,6 +1135,34 @@ button.casella:hover {
 @media (prefers-reduced-motion: no-preference) {
   .segnaposto--turno .segnaposto__disco::before {
     animation: alone-respira 1.6s ease-in-out infinite alternate;
+  }
+
+  /* Al cambio di turno l'anello ambra della pedina pulsa due volte (sulla pedina che resta, non sul disco che rinasce). */
+  .segnaposto--turno::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--k) * var(--s, 1) * 34);
+    height: calc(var(--k) * var(--s, 1) * 34);
+    border-radius: 50%;
+    box-shadow: 0 0 0 calc(var(--k) * 3) var(--ambra);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: anello-turno calc(var(--d-lenta) + var(--d-rapida) / 2) var(--c-arrivo) 2;
+  }
+}
+
+@keyframes anello-turno {
+  from {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2);
   }
 }
 

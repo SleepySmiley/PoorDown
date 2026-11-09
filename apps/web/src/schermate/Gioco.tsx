@@ -12,11 +12,13 @@ import {
   proprietabile,
   rimborsoEdificio,
   tabellone,
+  TEMPI,
   valoreIpoteca,
   valoreVendita,
   verifica,
   type Attivita,
   type Azione,
+  type Evento,
   type Giocatore,
   type IdGiocatore,
   type MessaggioChat,
@@ -29,12 +31,14 @@ import { collegamento } from '../rete/sessione';
 import { avvisa } from '../ui/avvisi';
 import { destinoDeiBeni } from '../ui/beni';
 import { caselleVista } from '../ui/caselle';
-import { Dado, Stemma } from '../ui/comuni';
-import { iniziale } from '../ui/utili';
-import { stilePopover } from '../ui/geometria';
+import { CartaPescata } from '../ui/Carta';
+import { Dado, Palette, Pedina, Stemma } from '../ui/comuni';
+import { VoliGettoni } from '../ui/Gettone';
+import { iniziale, variabili } from '../ui/utili';
+import { geometria, stilePopover } from '../ui/geometria';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { Coriandoli } from '../ui/Coriandoli';
-import { SCORRE } from '../ui/movimento';
+import { DURATA, SCORRE, VELO } from '../ui/movimento';
 import { Pannello } from '../ui/Pannello';
 import { Pulsante } from '../ui/Pulsante';
 import { Asta } from './Asta';
@@ -48,7 +52,16 @@ import { Cronologia, EventoCorrente, RegistroCorto } from './EventoCorrente';
 import { FuoriDallaPartita, NotaVoto, VotoNellaRiga } from './Moderazione';
 import { useScena } from './regia';
 import { FinePartita, PannelloStatistiche, StatisticheComplete } from './FinePartita';
-import { EditorScambio, PannelloScambi, VediScambio, type BozzaProposta } from './Scambi';
+import {
+  BigliettoProposta,
+  EditorScambio,
+  esitoScambio,
+  PannelloScambi,
+  TimbroScambio,
+  VediScambio,
+  type BozzaProposta,
+  type RichiestaScambio,
+} from './Scambi';
 import { SchedaProprieta, Tabellone } from './Tabellone';
 import { ESITO_USCITA, righeRegistro } from './testi';
 import { eventoCorrente, tentativoPrigione, useTitoloScheda, useVariazioniSaldo } from './turno';
@@ -87,8 +100,11 @@ function AzioneScheda({
   );
 }
 
-/** Le finestre degli scambi: nuova proposta (o controproposta su `base`) oppure uno scambio da vedere. */
-type QualeFinestra = { tipo: 'crea'; base?: number } | { tipo: 'vedi'; id: number };
+/**
+ * Le finestre degli scambi: nuova proposta (o controproposta su `base`, o già pronta con `iniziale` da «Chiedila a…»)
+ * oppure uno scambio da vedere.
+ */
+type QualeFinestra = { tipo: 'crea'; base?: number; iniziale?: RichiestaScambio } | { tipo: 'vedi'; id: number };
 /** Con il numero del turno in cui si è aperta. */
 type FinestraScambio = QualeFinestra & { turno: number };
 
@@ -102,6 +118,11 @@ function attivitaDi(f: FinestraScambio | null): Attivita | null {
   if (f.tipo === 'vedi') return { tipo: 'guarda', scambio: f.id };
   return f.base === undefined ? { tipo: 'crea' } : { tipo: 'tratta', scambio: f.base };
 }
+
+/** I coriandoli partono quando il titolo della fine partita ha finito di timbrarsi, non prima. */
+const RITARDO_CORIANDOLI_MS = (DURATA.viaggio + DURATA.timbro / 2) * 1000;
+/** Il rotolamento dei dadi (le facce sempre più lente): l'animazione CSS dura quanto la scena. */
+const ROTOLA_MS = TEMPI.facceDado.reduce((t, ms) => t + ms, 0);
 
 /** I pulsanti del turno per chi gioca adesso. */
 function AzioniTurno({
@@ -241,9 +262,18 @@ export function Gioco({
   const [uscita, setUscita] = useState(false);
   const [statistiche, setStatistiche] = useState(false);
   const [cronologia, setCronologia] = useState(false);
-  // I coriandoli partono solo se la fine arriva mentre si guarda, non a chi ricarica la pagina dopo.
+  // I coriandoli partono solo se la fine arriva mentre si guarda, non a chi ricarica la pagina dopo,
+  // e solo quando il titolo della fine partita è arrivato.
   const [vistaInCorso] = useState(inCorso);
   const [festa, setFesta] = useState(true);
+  const [festaPronta, setFestaPronta] = useState(false);
+  useEffect(() => {
+    if (!vistaInCorso || inCorso) return;
+    const t = setTimeout(() => setFestaPronta(true), RITARDO_CORIANDOLI_MS);
+    return () => clearTimeout(t);
+  }, [vistaInCorso, inCorso]);
+  // Le proposte arrivate mentre era il mio turno (o avevo un'altra finestra aperta): il biglietto in cima al tabellone.
+  const [biglietti, setBiglietti] = useState<number[]>([]);
 
   // Asta e scambi seguono la partita aggiornata, senza aspettare le animazioni: lì conta ogni secondo.
   const vivo = stanza.partita ?? partita;
@@ -295,33 +325,49 @@ export function Gioco({
   useEffect(() => collegamento.segnalaAttivita(attivitaDi(finestraScambio)), [finestraScambio]);
   useEffect(() => () => collegamento.segnalaAttivita(null), []);
 
-  // Chi riceve una proposta la vede subito, a meno che non stia già preparando uno scambio (anche messo da parte).
-  const finestraAttuale = useRef(finestraAperta);
+  // Chi riceve una proposta la vede subito, ma solo se non è il suo turno e non ha altre finestre aperte (anche messe
+  // da parte): altrimenti arriva il biglietto, che non copre i pulsanti del turno.
+  const finestraAttuale = useRef<FinestraScambio | null>(finestraAperta);
+  const altraFinestra = useRef(false);
   useEffect(() => {
     finestraAttuale.current = finestraAperta;
-  }, [finestraAperta]);
+    altraFinestra.current = cronologia || vivo.asta !== null;
+  }, [finestraAperta, cronologia, vivo.asta]);
   useEffect(
     () =>
       collegamento.ascoltaVoci((voci) => {
+        const partitaOra = collegamento.leggi().stanza?.partita;
         for (const v of voci) {
           const e = v.evento;
-          if (e.tipo !== 'scambio_proposto' || e.a !== io) continue;
-          const partitaOra = collegamento.leggi().stanza?.partita;
-          if (finestraAttuale.current?.tipo === 'crea') {
-            const da = partitaOra?.giocatori.find((g) => g.id === e.da);
-            avvisa(`${da?.nome ?? 'Un giocatore'} ti ha proposto uno scambio: lo trovi in «Scambi».`);
-          } else {
-            setFinestraChiesta({ tipo: 'vedi', id: e.scambio, turno: partitaOra?.turno.numero ?? 0 });
+          if (e.tipo === 'scambio_proposto' && e.a === io) {
+            const mioTurno = partitaOra?.turno.giocatore === io;
+            if (!mioTurno && finestraAttuale.current === null && !altraFinestra.current) {
+              setFinestraChiesta({ tipo: 'vedi', id: e.scambio, turno: partitaOra?.turno.numero ?? 0 });
+            } else {
+              setBiglietti((x) => [...x.filter((id) => id !== e.scambio), e.scambio]);
+            }
+            continue;
           }
+          // Accettato, rifiutato, ritirato: lo dice un avviso a chi è coinvolto (le controproposte le mostra il biglietto).
+          const esito = partitaOra ? esitoScambio(partitaOra, io, e as Evento) : null;
+          if (esito) avvisa(esito.testo, esito.tipo);
         }
       }),
     [io],
   );
+  const daVedere = giocoIo ? biglietti.flatMap((id) => vivo.scambi.filter((x) => x.id === id && x.a === giocoIo)) : [];
 
   /** Chiude l'editor e scarta la sua bozza: dopo l'invio, o se lo chiudo io. */
   const chiudiEditor = (chiave: string) => {
     setFinestraChiesta(null);
     setBozze((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== chiave)));
+  };
+
+  /** «Chiedila a <nome>» dalla scheda di una proprietà altrui: l'editor si apre con lui e la proprietà in «Ricevi». */
+  const chiedi = (n: number, con: IdGiocatore) => {
+    setScheda(null);
+    setBozze((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== 'nuova')));
+    apriScambio({ tipo: 'crea', iniziale: { con, caselle: [n] } });
   };
 
 
@@ -353,7 +399,11 @@ export function Gioco({
   // Presenze e voti seguono la partita aggiornata, come il timer.
   const vivi = new Map(vivo.giocatori.map((g) => [g.id, g]));
   const righe = righeRegistro(registro, stanza, scena.registroFino);
-  const evento = inCorso ? eventoCorrente(registro, scena.registroFino) : null;
+  // La scheda dell'evento compare quando il suo evento va in scena (l'affitto mentre il gettone vola), non dopo;
+  // la carta no: è già grande al centro del tabellone.
+  const voceInCorso = scena.inCorso !== null ? registro.find((v) => v.n === scena.inCorso) : undefined;
+  const subito = voceInCorso && !['carta', 'dadi', 'movimento'].includes(voceInCorso.evento.tipo);
+  const evento = inCorso ? eventoCorrente(registro, subito ? voceInCorso.n : scena.registroFino) : null;
   const azioni =
     mioTurno && me && io && !scena.occupata ? (
       <AzioniTurno partita={partita} io={io} me={me} inviando={inviando} onMossa={mossa} />
@@ -361,8 +411,14 @@ export function Gioco({
 
   // I dadi restano spenti finché chi gioca non ha tirato: mostrano il tiro di prima, non il suo.
   const spenti = inCorso && !scena.occupata && partita.turno.dadi === null;
-  const doppio = inCorso && !spenti && !scena.rotola && scena.dadi[0] === scena.dadi[1];
-  const classiDadi = ['centro-gioco__dadi', scena.rotola ? 'centro-gioco__dadi--rotola' : '', spenti ? 'centro-gioco__dadi--spenti' : '']
+  const fermi = inCorso && !spenti && !scena.rotola;
+  const doppio = fermi && scena.dadi[0] === scena.dadi[1];
+  const classiDadi = [
+    'centro-gioco__dadi',
+    scena.rotola ? 'centro-gioco__dadi--rotola' : '',
+    spenti ? 'centro-gioco__dadi--spenti' : '',
+    fermi && scena.lanci > 0 ? 'centro-gioco__dadi--atterra' : '',
+  ]
     .filter(Boolean)
     .join(' ');
   const inRosso = me && me.saldo < 0 && inCorso && !scena.occupata;
@@ -386,10 +442,16 @@ export function Gioco({
             Doppio
           </span>
         )}
-        <div className={classiDadi} key={scena.lanci}>
-          <Dado valore={scena.dadi[0]} />
-          <Dado valore={scena.dadi[1]} />
+        <div className={classiDadi} key={scena.lanci} style={variabili({ '--rotola': `${ROTOLA_MS}ms` })}>
+          <Dado valore={scena.dadi[0]} doppio={doppio} />
+          <Dado valore={scena.dadi[1]} doppio={doppio} />
         </div>
+        {/* Il totale a palette, appena i dadi si fermano. */}
+        {fermi && (
+          <span className={doppio ? 'centro-gioco__totale centro-gioco__totale--doppio' : 'centro-gioco__totale'} key={`totale-${scena.lanci}`}>
+            <Palette testo={String(scena.dadi[0] + scena.dadi[1])} />
+          </span>
+        )}
       </div>
       {azioni}
       {inRosso && (
@@ -526,6 +588,7 @@ export function Gioco({
         io={giocoIo}
         base={baseTrattativa}
         bozza={bozze[chiave]}
+        iniziale={finestraScambio.iniziale}
         inviando={inviando}
         onBozza={(b) => setBozze((x) => ({ ...x, [chiave]: b }))}
         onInvia={(proposta) => mossa(proposta, () => chiudiEditor(chiave))}
@@ -535,6 +598,27 @@ export function Gioco({
   } else if (cronologia) {
     finestraSopra = <Cronologia key="cronologia" righe={righe} onChiudi={() => setCronologia(false)} />;
   }
+
+  /* ---------- Effetti della regia sul tabellone ---------- */
+
+  const proprietarioScheda = (() => {
+    if (popoverBordo === null || !giocoIo) return null;
+    const di = partita.proprieta[popoverBordo]?.proprietario ?? null;
+    // Si chiede solo a chi è ancora in gioco, e non a se stessi.
+    return di && di !== giocoIo && vivo.giocatori.some((g) => g.id === di && !g.eliminato) ? di : null;
+  })();
+  const coloreDi = (id: IdGiocatore) => partita.giocatori.find((g) => g.id === id)?.colore ?? 1;
+  const metaDadi = inCorso && scena.meta ? { n: scena.meta.casella, colore: coloreDi(scena.meta.giocatore) } : undefined;
+  const cartaInScena = inCorso ? scena.carta : null;
+  const chiPesca = cartaInScena ? partita.giocatori.find((g) => g.id === cartaInScena.giocatore) : undefined;
+  // La Cartolina che manda in una città ha il francobollo del colore della sua regione.
+  const regioneCarta = (() => {
+    if (!cartaInScena) return undefined;
+    const effetto = tab.mazzi[cartaInScena.mazzo][cartaInScena.carta]?.effetto;
+    const meta = effetto?.tipo === 'vai_a' ? tab.caselle[effetto.casella] : undefined;
+    return meta?.tipo === 'citta' ? tab.regioni[meta.regione]?.colore : undefined;
+  })();
+  const timbro = scena.timbro && (scena.timbro.tipo === 'accettato' || scena.timbro.da === io) ? scena.timbro : null;
 
   return (
     <>
@@ -575,6 +659,7 @@ export function Gioco({
                         assenteFino: inCorso && !g.eliminato && offlineDa !== null ? offlineDa + ASSENZA_MS : undefined,
                         squadra: g.squadra === null ? undefined : { indice: g.squadra, nome: partita.squadre[g.squadra] ?? '' },
                         variazione: variazioni[g.id],
+                        bancarotta: scena.bancarotta?.giocatore === g.id,
                       }}
                       puoTogliere={puoTogliere}
                       bloccoTogli={
@@ -613,11 +698,20 @@ export function Gioco({
                   posizione: mostrata?.casella ?? g.posizione,
                   prigione: mostrata?.prigione ?? g.prigione !== null,
                   passo: scena.passi[g.id],
+                  passoMs: scena.passoMs[g.id],
+                  arrivi: scena.arrivi[g.id],
+                  volo: scena.voli[g.id],
+                  sprofonda: scena.bancarotta?.giocatore === g.id,
                   evidenziata: inCorso && g.id === corrente?.id,
                 };
               })}
             centro={centro}
             selezionata={scheda ?? undefined}
+            arrivo={inCorso && scena.arrivo ? { n: scena.arrivo.casella, tono: scena.arrivo.tono } : undefined}
+            meta={metaDadi}
+            lampeggia={scena.lampeggia}
+            sbarre={scena.sbarre}
+            sfila={scena.bancarotta?.caselle}
             onApri={(n) => {
               setMia(null);
               setScheda((x) => (x === n ? null : n));
@@ -633,8 +727,56 @@ export function Gioco({
                       partita={partita}
                       n={popoverBordo}
                       onChiudi={() => setScheda(null)}
+                      onChiedi={
+                        proprietarioScheda ? () => chiedi(popoverBordo, proprietarioScheda) : undefined
+                      }
                       className={stilePopover(popoverBordo, tab.caselle.length).classe}
                       style={stilePopover(popoverBordo, tab.caselle.length).stile}
+                    />
+                  )}
+                </AnimatePresence>
+                {/* La carta pescata: esce dalla casella, si legge al centro, torna nella scheda dell'evento. */}
+                <AnimatePresence>
+                  {cartaInScena && <motion.div key={`velo-${cartaInScena.n}`} className="carta-velo" {...VELO} />}
+                  {cartaInScena && (
+                    <CartaPescata
+                      key={`carta-${cartaInScena.n}`}
+                      mazzo={cartaInScena.mazzo}
+                      testo={cartaInScena.testo}
+                      regione={regioneCarta}
+                      da={geometria(tab.caselle.length).centro(cartaInScena.casella)}
+                      didascalia={
+                        chiPesca && (
+                          <>
+                            <Pedina colore={chiPesca.colore} className="pedina--mini" />
+                            {chiPesca.id === io ? 'Peschi' : `${chiPesca.nome} pesca`} {cartaInScena.mazzo === 'busta' ? 'una Busta' : 'una Cartolina'}
+                          </>
+                        )
+                      }
+                    />
+                  )}
+                </AnimatePresence>
+                {/* Tocca a me: il bordo del tabellone si accende d'ambra per un attimo. */}
+                {mioTurno && <span key={`alone-${partita.turno.numero}`} className="alone-turno" aria-hidden="true" />}
+                {/* L'esito di uno scambio: accettato lo vedono tutti, rifiutato solo chi l'aveva proposto. */}
+                <AnimatePresence>
+                  {timbro && (
+                    <TimbroScambio key={`timbro-${timbro.n}`} partita={vivo} io={io} tipo={timbro.tipo} da={timbro.da} a={timbro.a} />
+                  )}
+                </AnimatePresence>
+                {/* Le proposte arrivate quando non potevano aprirsi da sole (dopo il timbro di un esito: una cosa alla volta). */}
+                <AnimatePresence>
+                  {giocoIo && daVedere.length > 0 && !finestraScambio && !timbro && (
+                    <BigliettoProposta
+                      key="biglietto"
+                      partita={vivo}
+                      io={giocoIo}
+                      scambi={daVedere}
+                      onVedi={(id) => {
+                        setBiglietti((x) => x.filter((y) => y !== id));
+                        apriScambio({ tipo: 'vedi', id });
+                      }}
+                      onDopo={() => setBiglietti([])}
                     />
                   )}
                 </AnimatePresence>
@@ -828,9 +970,11 @@ export function Gioco({
         {statistiche && !inCorso && <StatisticheComplete key="statistiche" partita={partita} onChiudi={() => setStatistiche(false)} />}
       </AnimatePresence>
 
-      {vistaInCorso && !inCorso && festa && io !== null && haVinto(partita, io) && (
+      {vistaInCorso && !inCorso && festa && festaPronta && io !== null && haVinto(partita, io) && (
         <Coriandoli onFine={() => setFesta(false)} />
       )}
+
+      <VoliGettoni gettoni={scena.gettoni} />
 
       <AnimatePresence>
         {bancarotta && inCorso && (

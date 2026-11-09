@@ -461,6 +461,12 @@ export type Evento =
   /** Parte di un debito saldata in automatico con un'entrata. */
   | { tipo: 'rimborso'; da: IdGiocatore; a: IdGiocatore; importo: number }
   /**
+   * Soldi che passano di mano per una carta («Paga 50 €», il compleanno, le riparazioni): gli altri movimenti di denaro
+   * hanno già il loro evento (affitto, tassa, acquisto…). `null` è la banca. Il registro non lo mostra: serve ai gettoni
+   * che volano da chi paga a chi incassa. Se chi paga non ha abbastanza contante, segue un evento `debito`.
+   */
+  | { tipo: 'trasferimento'; da: IdGiocatore | null; a: IdGiocatore | null; importo: number }
+  /**
    * `recuperi`: quanto la banca dà a ogni creditore, dal valore dei beni del fallito.
    * `automatica`: il tempo è scaduto mentre era in debito.
    */

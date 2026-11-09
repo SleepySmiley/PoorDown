@@ -3,7 +3,7 @@
  * Regole: entrate lente, uscite rapide; le animazioni semplici restano in CSS. Motion serve per
  * - le uscite (AnimatePresence attorno a ciò che compare e scompare: finestre, riquadri, popover, avvisi);
  * - le liste che non saltano (prop `layout` sulle righe);
- * - in futuro i voli da un punto all'altro (`animate`).
+ * - i voli da un punto all'altro (`animate`): i gettoni dei soldi (Gettone.tsx), la carta pescata (Carta.tsx).
  * Le durate delle scene di gioco (dadi, passi, pause) non stanno qui: sono nel motore, in TEMPI (packages/engine/src/tempi.ts).
  */
 

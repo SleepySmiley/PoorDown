@@ -1122,12 +1122,13 @@ button.voce-scambio[aria-pressed='true']:hover {
 }
 
 /* ---------- Biglietto: una proposta arrivata, in alto sul tabellone ----------
-   Sta nel livello sopra il tabellone (.tabellone): scende appena sotto la fila di caselle in alto
-   (gli angoli sono il 10–13% del lato). Chi lo mette altrove cambia --biglietto-alto. */
+   Sta nel livello sopra il tabellone (.tabellone): scende dall'alto e si ferma sotto il cartello del turno,
+   sopra i dadi. Chi lo mette altrove cambia --biglietto-alto. */
 
 .biglietto-proposta {
   position: absolute;
-  top: var(--biglietto-alto, 14.5%);
+  /* Sotto il cartello del turno (che dice «Tocca a te»), sopra i dadi: «Tira i dadi» resta libero. */
+  top: var(--biglietto-alto, 26.5%);
   left: 50%;
   z-index: 25;
   display: flex;

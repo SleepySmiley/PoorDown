@@ -418,8 +418,11 @@ export function durataScena(s: Stato, eventi: readonly Evento[]): number {
   return eventi.reduce((ms, e) => ms + durataEvento(e, caselle), 0);
 }
 
-/** Il tempo di "pensare" di un bot prima della prossima mossa, oltre alla scena. */
-export const PENSIERO_BOT_MS = 900;
+/**
+ * Il tempo di "pensare" di un bot prima della prossima mossa, oltre alla scena. Più breve di prima (900 ms):
+ * compensa le scene più ricche (carta al centro, volo in prigione), così una partita tra bot non rallenta.
+ */
+export const PENSIERO_BOT_MS = 700;
 
 /** Turni di partita che un bot lascia passare tra una proposta di scambio e la successiva. */
 export const TURNI_TRA_PROPOSTE_BOT = 8;

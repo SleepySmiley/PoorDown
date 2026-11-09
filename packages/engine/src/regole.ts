@@ -5,7 +5,7 @@
  */
 
 import { tiraDadi } from './caso';
-import { accredita, errore, paga, pagaBanca, type Contesto } from './contesto';
+import { accredita, errore, paga, pagaBanca, segnaTrasferimento, type Contesto } from './contesto';
 import {
   affitto,
   alleati,
@@ -535,16 +535,30 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
   const { s, tab } = ctx;
   const n = tab.caselle.length;
   switch (effetto.tipo) {
+    // Il trasferimento si segna prima del pagamento: se il contante non basta, il debito arriva subito dopo.
     case 'soldi':
-      if (effetto.importo >= 0) accredita(ctx, g, effetto.importo);
-      else pagaBanca(ctx, g, -effetto.importo, true);
+      if (effetto.importo >= 0) {
+        segnaTrasferimento(ctx, null, g.id, effetto.importo);
+        accredita(ctx, g, effetto.importo);
+      } else {
+        segnaTrasferimento(ctx, g.id, null, -effetto.importo);
+        pagaBanca(ctx, g, -effetto.importo, true);
+      }
       return;
     // Tra compagni di squadra non si paga: la carta riguarda solo gli avversari.
     case 'da_ognuno':
-      for (const altro of attivi(s)) if (altro.id !== g.id && !compagni(s, g.id, altro.id)) paga(ctx, altro, g.id, effetto.importo);
+      for (const altro of attivi(s)) {
+        if (altro.id === g.id || compagni(s, g.id, altro.id)) continue;
+        segnaTrasferimento(ctx, altro.id, g.id, effetto.importo);
+        paga(ctx, altro, g.id, effetto.importo);
+      }
       return;
     case 'a_ognuno':
-      for (const altro of attivi(s)) if (altro.id !== g.id && !compagni(s, g.id, altro.id)) paga(ctx, g, altro.id, effetto.importo);
+      for (const altro of attivi(s)) {
+        if (altro.id === g.id || compagni(s, g.id, altro.id)) continue;
+        segnaTrasferimento(ctx, g.id, altro.id, effetto.importo);
+        paga(ctx, g, altro.id, effetto.importo);
+      }
       return;
     case 'vai_a':
       muovi(ctx, g, (((effetto.casella - g.posizione) % n) + n) % n);
@@ -566,7 +580,9 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
       return;
     case 'riparazioni': {
       const e = edifici(s, g.id);
-      pagaBanca(ctx, g, e.case * effetto.casa + e.alberghi * effetto.albergo, true);
+      const importo = e.case * effetto.casa + e.alberghi * effetto.albergo;
+      segnaTrasferimento(ctx, g.id, null, importo);
+      pagaBanca(ctx, g, importo, true);
       return;
     }
   }
