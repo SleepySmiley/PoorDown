@@ -147,11 +147,27 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 ### Revisione dopo la Fase 8
 - [x] Giro di 10 agenti: 5 a caccia di bug (motore del turno, economia e bot, server, sincronizzazione del browser, partita vera) e 5 sulla qualità (chiarezza del turno, tabellone, animazioni, scambi e aste, direzione artistica)
 - [x] Corretti i bug trovati, ognuno con il suo test: il server non crolla più con un file delle stanze rovinato, soldi giusti a squadre e nella cassa della Vacanza, case vendibili a squadre, bot che valutano gli scambi in blocco e partite di soli bot che finiscono, offerte tardive all'asta rifiutate, riconnessione senza animazioni vecchie, espulsione e proposte viste anche dopo uno stacco, bozza dello scambio salva durante l'asta e a inizio turno, affitto giusto nella scheda della città, timer che non sfarfalla, rientro dalla home. Le regole cambiate sono nel §4
-- [ ] Migliorie di qualità approvate: turno chiaro, soldi visibili, nuova disposizione, fondamenta (sistema di colori, caratteri e componenti, animazioni con Motion), tabellone premium, pedine e dadi, carte ed eventi, scambi chiari, home/lobby/fine partita
+- [x] Migliorie di qualità approvate, in tre ondate:
+  - **Fondamenta:** token di colori, caratteri, spazi e durate (`stili/token.css`), componenti unici (pulsanti, pannelli, finestre, chip), cifre a palette vere, uscite animate con Motion, tempi delle scene in un posto solo (`engine/tempi.ts`, letti da regia e bot).
+  - **Grafica:**
+    - tabellone premium: blocchi del proprietario con case e albergo, corsia delle pedine, angoli che informano, dadi d'avorio, scheda della città come biglietto, carte Busta e Cartolina;
+    - nuova disposizione della partita, con il cartello del turno al centro e il timer dentro;
+    - variazioni dei saldi, evento corrente e registro corto;
+    - scambi letti dalla propria parte, con gli effetti sulle regioni e un editor più rapido;
+    - home come tabellone delle partenze, lobby compatta, fine partita come tabellone degli arrivi, marchio e favicon.
+  - **Animazioni:**
+    - gettoni che volano da chi paga a chi incassa;
+    - cambio di turno, carta pescata al centro, pedina con passi accelerati e casella d'arrivo;
+    - acquisti e case, prigione, bancarotta;
+    - dadi con il totale e «DOPPIO»;
+    - biglietto delle proposte di scambio con il timbro dell'esito, «Chiedila a…» dalla scheda della città;
+    - il cartello del turno racconta la scena.
+  - **Turno tra bot:** in media il 4% più breve di prima.
+- [ ] Giro di verifica finale con due persone vere: assenze e voto, debito e bancarotta, scambi, controllo visivo di tutte le schermate a 1440 e 1920
 
 ### Fase 9 — Rifinitura · M
 - [ ] Suoni originali o liberi da diritti, con volume salvato
-- [ ] Layout per telefono e tablet, accessibilità di base
+- ~~Layout per telefono e tablet, accessibilità di base~~ tolto: si gioca solo da PC e l'accessibilità non serve (decisione del 2026-11-08)
 - [ ] Test end-to-end con 4 browser, bilanciamento dopo le partite di prova
 - [ ] Avvio con doppio clic su Windows e guida per gli amici
 
@@ -225,3 +241,5 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 4. **Prezzi e affitti:** scala nostra, nella stessa tabella del tabellone.
 5. **Tabelloni alternativi:** Europa (città europee), Grandi aree (macroaree italiane), Colpo di fortuna (località turistiche italiane) ([docs/identita/tabelloni-alternativi.md](docs/identita/tabelloni-alternativi.md)).
 6. **Squadre:** le sceglie ognuno; l’host le rinomina, sposta i giocatori e le mescola.
+7. **Dispositivi:** solo PC e portatili (1440×900 e 1920×1080); niente layout per telefono né accessibilità.
+8. **Impaginazione:** libera. Non deve più ricalcare richup: conta che il gioco sia chiaro a colpo d'occhio, bello e animato.
