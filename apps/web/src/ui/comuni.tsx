@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { euro, type Regione } from '@poordown/engine';
 import { Icona, type NomeIcona } from './icone';
@@ -106,19 +106,32 @@ export function Pedina({
   );
 }
 
-/** Scudo della regione con la sigla: forma diversa dalle pedine, così non si confondono. */
+/** Il profilo dello scudo, nel riquadro 26×30. */
+const SCUDO = 'M3.5 2h19A1.5 1.5 0 0 1 24 3.5V13c0 7.4-5.2 12-11 14.8C7.2 25 2 20.4 2 13V3.5A1.5 1.5 0 0 1 3.5 2z';
+
+/**
+ * Scudo della regione con la sigla, smaltato: contorno scuro, filo crema, riflesso in alto.
+ * Forma diversa dalle pedine, così non si confondono.
+ */
 export function Stemma({ regione, className }: { regione: Regione | undefined; className?: string }): ReactNode {
+  // Un id per il riflesso di ogni scudo (useId ha caratteri che negli url() di SVG non servono).
+  const luce = `stemma-luce-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   if (!regione) return null;
   const tinta = regione.colore;
   return (
     <svg className={className ? `stemma ${className}` : 'stemma'} viewBox="0 0 26 30" role="img" aria-label={regione.nome}>
-      <path
-        d="M3.5 2h19A1.5 1.5 0 0 1 24 3.5V13c0 7.4-5.2 12-11 14.8C7.2 25 2 20.4 2 13V3.5A1.5 1.5 0 0 1 3.5 2z"
-        style={{ fill: `var(--g${tinta})` }}
-        stroke="#fff"
-        strokeWidth="2"
-      />
-      <text x="13" y="14.5" textAnchor="middle" dominantBaseline="middle" style={{ fill: `var(--su-g${tinta}, #fff)` }}>
+      <defs>
+        <linearGradient id={luce} x1="0" y1="0" x2="0.35" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.32" />
+          <stop offset="0.48" stopColor="#fff" stopOpacity="0.08" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
+          <stop offset="1" stopColor="#000" stopOpacity="0.14" />
+        </linearGradient>
+      </defs>
+      <path className="stemma__contorno" d={SCUDO} />
+      <path className="stemma__smalto" d={SCUDO} style={{ fill: `var(--g${tinta})` }} />
+      <path className="stemma__luce" d={SCUDO} fill={`url(#${luce})`} />
+      <text x="13" y="14" textAnchor="middle" dominantBaseline="middle" style={{ fill: `var(--su-g${tinta}, #fff)` }}>
         {regione.sigla}
       </text>
     </svg>
@@ -134,9 +147,15 @@ const PUNTI: Record<number, number[]> = {
   6: [1, 3, 4, 6, 7, 9],
 };
 
-export function Dado({ valore }: { valore: number }): ReactNode {
+/**
+ * Un dado d'avorio con i punti incavati. La materia (spessore, smusso, ombra di contatto) è tutta in partenze.css
+ * e scala con il lato del dado: le schermate gli danno solo misura e rotazione.
+ * `doppio`: contorno ambra, per i due dadi di un doppio.
+ */
+export function Dado({ valore, doppio, className }: { valore: number; doppio?: boolean; className?: string }): ReactNode {
+  const classi = ['dado', doppio ? 'dado--doppio' : '', className ?? ''].filter(Boolean).join(' ');
   return (
-    <div className="dado" role="img" aria-label={`Dado: ${valore}`}>
+    <div className={classi} role="img" aria-label={`Dado: ${valore}`} data-valore={valore}>
       {Array.from({ length: 9 }, (_, i) => (
         <span key={i} className={PUNTI[valore]?.includes(i + 1) ? 'punto' : undefined} />
       ))}

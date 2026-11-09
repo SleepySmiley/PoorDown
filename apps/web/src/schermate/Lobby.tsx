@@ -13,12 +13,14 @@ import {
 } from '@poordown/engine';
 import { collegamento, preferenze } from '../rete/sessione';
 import { avvisa } from '../ui/avvisi';
+import { Chip } from '../ui/Chip';
 import { Dado, Pedina, Registro } from '../ui/comuni';
 import { Icona } from '../ui/icone';
 import { COMPARSA } from '../ui/movimento';
 import { Pannello } from '../ui/Pannello';
 import { variabili, iniziale } from '../ui/utili';
-import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
+import { ColonnaSinistra, Finestra, RigaGiocatore, Tavolo } from './Colonne';
+import { ListaImpostazioni } from './Impostazioni';
 import { PannelloSquadre } from './Squadre';
 import { Tabellone } from './Tabellone';
 import { SceltaTabellone } from './Tabelloni';
@@ -217,7 +219,13 @@ export function Lobby({
           <>
             <section className="pannello pannello--scuro giocatori" aria-label="Giocatori">
               {stanza.partecipanti.length === 0 ? (
-                <p className="giocatori__vuoto">In attesa di giocatori…</p>
+                <div className="lobby-vuota" role="status">
+                  <Icona nome="persone" />
+                  <p>
+                    <b>Nessuno al tavolo, per ora</b>
+                    Chi apre il link della stanza si siede qui.
+                  </p>
+                </div>
               ) : stanza.impostazioni.squadre ? (
                 <PannelloSquadre
                   stanza={stanza}
@@ -266,8 +274,10 @@ export function Lobby({
             <Pannello titolo="Impostazioni di gioco" className="pannello--impostazioni">
               <div className="pannello__scorri">
                 {!sonoHost && (
-                  <p className="impostazioni__nota">
-                    {nomeHost ? `Solo ${nomeHost}, l’host della stanza, può cambiarle.` : 'Solo l’host della stanza può cambiarle.'}
+                  <p className="impostazioni__blocco">
+                    <Chip icona="lucchetto" title={nomeHost ? `L’host della stanza è ${nomeHost}` : undefined}>
+                      Solo l’host può cambiarle
+                    </Chip>
                   </p>
                 )}
                 <ListaImpostazioni

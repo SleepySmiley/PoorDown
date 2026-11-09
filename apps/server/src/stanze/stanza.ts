@@ -56,6 +56,59 @@ import { nuovoId, type Ambiente } from './ambiente';
 /** Segreto del browser: chi lo presenta ritrova il suo posto. Non va mai mandato agli altri. */
 export type Token = string;
 
+/**
+ * I colori delle pedine, uguali a --p1…--p12 di apps/web/src/stili/token.css: servono a scegliere il colore dei bot.
+ * A parità di distanza vince il primo di ORDINE_BOT (i colori che stanno meglio insieme).
+ */
+const COLORI_PEDINE = [
+  '#ff8f80', '#7ee0ae', '#ffb47a', '#8cb4ff', '#cfa2ff', '#f0e27a',
+  '#ff9fd0', '#74e0e4', '#c9a37e', '#bfe86e', '#ff6b9a', '#c9d1db',
+];
+const ORDINE_BOT = [4, 2, 6, 5, 11, 8, 1, 10, 3, 7, 9, 12];
+
+/** Un colore #rrggbb nello spazio OKLab, dove la distanza somiglia a quanto due colori sembrano diversi. */
+function oklab(esadecimale: string): [number, number, number] {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(esadecimale.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+/**
+ * Il colore per un bot che entra: tra quelli liberi, quello più lontano (in OKLab) dal colore più vicino già al tavolo,
+ * così le pedine non si confondono. `undefined` se sono tutti presi.
+ */
+export function coloreBot(usati: readonly number[]): number | undefined {
+  const liberi = Array.from({ length: COLORI }, (_, i) => i + 1)
+    .filter((c) => !usati.includes(c))
+    .sort((a, b) => (ORDINE_BOT.indexOf(a) + 1 || 99) - (ORDINE_BOT.indexOf(b) + 1 || 99));
+  const lab = (c: number) => oklab(COLORI_PEDINE[c - 1] ?? '#808080');
+  const tra = (a: number, b: number) => {
+    const [x, y] = [lab(a), lab(b)];
+    return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+  };
+  // Senza nessuno al tavolo la distanza è infinita per tutti: vince il primo dell'ordine.
+  const distanza = (c: number) => Math.min(Infinity, ...usati.map((u) => tra(c, u)));
+  let scelto: number | undefined;
+  let migliore = -1;
+  for (const c of liberi) {
+    const d = distanza(c);
+    if (d > migliore + 1e-9) {
+      scelto = c;
+      migliore = d;
+    }
+  }
+  return scelto;
+}
+
 /** In lobby, chi resta senza schede aperte sulla stanza per questo tempo perde il posto. */
 export const ATTESA_LOBBY_MS = 2 * 60_000;
 /** I bot entrano in lobby a ondate: uno ogni 2,5–6 secondi, finché ci sono posti liberi. */
@@ -688,17 +741,16 @@ export class Stanza {
     return this.posti.filter((p) => p.bot).map((p) => p.id);
   }
 
-  /** Un bot prende un posto libero: nome casuale "Sostantivo Aggettivo", un colore libero a caso. */
+  /** Un bot prende un posto libero: nome casuale "Sostantivo Aggettivo", il colore libero più diverso da quelli al tavolo. */
   private aggiungiBot(): void {
     if (!this.impostazioni.bot || !this.posti.some((p) => !p.bot) || this.posti.length >= this.impostazioni.giocatoriMax) {
       return;
     }
-    const liberi = Array.from({ length: COLORI }, (_, i) => i + 1).filter((c) => !this.posti.some((p) => p.colore === c));
-    if (liberi.length === 0) return;
+    const colore = coloreBot(this.posti.map((p) => p.colore));
+    if (colore === undefined) return;
     let nome = nomeCasuale(this.amb.caso);
     for (let i = 0; i < 10 && this.posti.some((p) => p.nome === nome); i++) nome = nomeCasuale(this.amb.caso);
     const id = this.idLibero();
-    const colore = liberi[this.amb.caso.intero(liberi.length)]!;
     this.posti.push({ id, token: `bot:${id}`, nome, colore, offlineDa: null, bot: true, squadra: this.squadraPerNuovo() });
     this.segna({ tipo: 'ingresso', giocatore: id, nome, colore });
   }

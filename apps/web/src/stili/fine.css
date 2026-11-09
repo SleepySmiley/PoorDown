@@ -1,4 +1,8 @@
-/* Fine della partita: velo sopra il tabellone, classifica, statistiche complete, grafico e coriandoli. */
+/*
+ * Fine della partita come un tabellone degli arrivi: velo su tutta la pagina con la classifica a palette,
+ * striscia sul tabellone quando il velo è chiuso, classifica nella colonna destra, statistiche a celle,
+ * grafico del patrimonio e coriandoli.
+ */
 
 .coriandoli {
   position: fixed;
@@ -9,469 +13,614 @@
   pointer-events: none;
 }
 
-/* ---------- Sopra il tabellone ---------- */
+/* =====================================================================
+   Il velo e il tabellone degli arrivi
+   ===================================================================== */
 
 .fine-partita {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 15;
+  z-index: 55;
   display: grid;
   place-items: center;
-  padding: calc(var(--k) * 40);
-  border-radius: calc(var(--k) * 10);
-  background: rgb(10 12 16 / 0.84);
-  backdrop-filter: blur(3px);
-  text-align: center;
+  overflow-y: auto;
+  padding: var(--s-6) var(--s-5);
+  background: rgb(8 10 13 / 0.8);
+  backdrop-filter: blur(6px) saturate(0.85);
 }
 
-.fine-partita__contenuto {
-  display: grid;
-  justify-items: center;
-  gap: calc(var(--k) * 12);
-  max-width: 100%;
-}
+.arrivi {
+  --colonne: 3rem minmax(0, 1fr) 5rem 12rem;
 
-.fine-partita__dadi {
-  display: flex;
-  gap: calc(var(--k) * 16);
-  margin-bottom: calc(var(--k) * 8);
-}
-
-.fine-partita__dadi .dado {
-  width: calc(var(--k) * 86);
-  height: calc(var(--k) * 86);
-  padding: calc(var(--k) * 15);
-  border-radius: calc(var(--k) * 13);
+  width: min(56rem, 100%);
+  overflow: hidden;
+  border-radius: var(--r-3);
+  background: var(--quadro);
+  color: var(--quadro-testo);
   box-shadow:
-    0 calc(var(--k) * 6) 0 #a7afbb,
-    0 calc(var(--k) * 16) calc(var(--k) * 30) rgb(0 0 0 / 0.5);
+    inset 0 0 0 1px var(--quadro-linea),
+    0 32px 80px rgb(0 0 0 / 0.6);
+  outline: none;
 }
 
-.fine-partita__dadi .dado .punto {
-  width: calc(var(--k) * 13);
-  height: calc(var(--k) * 13);
-}
-
-.fine-partita__dadi .dado:first-child {
-  transform: rotate(-12deg);
-}
-
-.fine-partita__dadi .dado:last-child {
-  transform: rotate(9deg) translateY(10%);
-}
-
-.fine-partita__titolo {
-  color: var(--ambra);
-  font: 700 calc(var(--k) * 124) / 0.95 var(--stretto);
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-}
-
-.fine-partita__annuncio {
-  margin-top: calc(var(--k) * 10);
-  color: var(--testo-1);
-  font: 500 calc(var(--k) * 30) / 1.1 var(--stretto);
-}
-
-.fine-partita__vincitore {
+.arrivi .arrivi__testa {
   display: flex;
   align-items: center;
-  gap: calc(var(--k) * 22);
-  max-width: 100%;
-  color: #fff;
-  font: 700 calc(var(--k) * 84) / 1.05 var(--stretto);
+  gap: var(--s-5);
+  padding: var(--s-3) var(--s-5);
+  border-bottom: 1px solid var(--quadro-linea);
 }
 
-.fine-partita__vincitore span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pedina.pedina--vincitore {
-  width: calc(var(--k) * 80);
-  height: calc(var(--k) * 80);
-  font-size: calc(var(--k) * 42);
-  box-shadow:
-    0 0 0 calc(var(--k) * 4) #fff,
-    0 0 0 calc(var(--k) * 7) rgb(0 0 0 / 0.55);
-}
-
-.fine-partita__azioni {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: calc(var(--k) * 26);
-}
-
-.fine-partita__nota {
-  max-width: 34em;
-  color: var(--testo-2);
-  font-size: 0.9375rem;
-  text-wrap: pretty;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .fine-partita {
-    animation: velo 0.35s ease-out both;
-  }
-
-  .fine-partita__dadi .dado:first-child {
-    animation: dado-arriva 0.7s 0.1s cubic-bezier(0.3, 0.6, 0.3, 1.2) both;
-  }
-
-  .fine-partita__dadi .dado:last-child {
-    animation: dado-arriva-2 0.7s 0.18s cubic-bezier(0.3, 0.6, 0.3, 1.2) both;
-  }
-
-  .fine-partita__titolo {
-    animation: titolo-fine 0.55s 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
-  }
-
-  .fine-partita__annuncio {
-    animation: sale 0.45s 0.75s ease-out both;
-  }
-
-  .fine-partita__vincitore {
-    animation: sale 0.55s 1.15s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
-  }
-
-  .fine-partita__azioni {
-    animation: sale 0.4s 1.5s ease-out both;
-  }
-}
-
-@keyframes dado-arriva {
-  from {
-    opacity: 0;
-    transform: translateY(-60%) rotate(-120deg) scale(0.7);
-  }
-}
-
-@keyframes dado-arriva-2 {
-  from {
-    opacity: 0;
-    transform: translateY(-80%) rotate(140deg) scale(0.7);
-  }
-}
-
-@keyframes titolo-fine {
-  from {
-    opacity: 0;
-    transform: scale(0.82);
-  }
-}
-
-
-
-/* ---------- Classifica nella colonna destra ---------- */
-
-.statistiche-fine__corpo {
-  display: grid;
-  gap: 18px;
-  padding: 14px 16px 18px;
-}
-
-.classifica {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9375rem;
-}
-
-.classifica caption {
-  padding-bottom: var(--s-2);
-  color: var(--testo-2);
-  font: var(--t-etichetta);
+.arrivi__testa .arrivi__insegna {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  font: var(--t-titolo-2);
   letter-spacing: 0.08em;
-  text-align: left;
   text-transform: uppercase;
 }
 
-.classifica thead th {
-  padding: 0 var(--s-2) 6px 0;
-  color: var(--testo-2);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-align: left;
-  white-space: nowrap;
+.arrivi__testa .arrivi__dati {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-4);
+  margin-right: auto;
+  color: var(--quadro-tenue);
+  font: var(--t-piccolo);
 }
 
-.classifica td,
-.classifica tbody th {
-  padding: 5px 8px 5px 0;
-  vertical-align: middle;
+.arrivi__dati > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
 }
 
-.classifica td:last-child,
-.classifica th:last-child {
-  width: 52%;
-  padding-right: 0;
+.arrivi__dati > span + span::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  margin-right: var(--s-2);
+  border-radius: 50%;
+  background: var(--quadro-anello);
 }
 
-.classifica .classifica__posto {
-  width: 1.4em;
-  color: var(--testo-2);
-  font-variant-numeric: tabular-nums;
+.arrivi__testa .arrivi__durata {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
 }
 
-.classifica .classifica__nome {
-  max-width: 0;
-  font-weight: 600;
-  text-align: left;
+.arrivi .arrivi__etichetta {
+  color: var(--quadro-tenue);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.classifica__nome {
-  white-space: nowrap;
+/* ---------- «Partita finita!» e il vincitore ---------- */
+
+.arrivi .arrivi__annuncio {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-3);
+  padding: var(--s-6) var(--s-5) var(--s-5);
+  text-align: center;
 }
 
-.classifica__nome .pedina {
-  margin-right: 8px;
-  vertical-align: 1px;
+.arrivi__annuncio .arrivi__titolo {
+  color: var(--ambra);
+  font: 700 5rem/0.95 var(--stretto);
+  letter-spacing: -0.005em;
+  text-wrap: balance;
 }
 
-.classifica__nome span {
-  display: inline-block;
-  max-width: calc(100% - 18px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
+/* Il vincitore compare quando la sua riga è arrivata: lo spazio è già tenuto, niente salti. */
+.arrivi__annuncio .arrivi__vince {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2) var(--s-3);
+  min-height: 2.75rem;
+  color: var(--quadro-tenue);
+  font: 500 1.5rem/1.1 var(--stretto);
+  opacity: 0;
 }
 
-.classifica .classifica__barra {
-  display: block;
-  width: var(--quota);
-  padding: 3px var(--s-2);
-  border-radius: var(--r-1);
-  background: var(--colore);
-  color: var(--inchiostro);
-  font: 600 0.9375rem/1.25 var(--stretto);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+.arrivi__vince.arrivi__vince--visibile {
+  opacity: 1;
+}
+
+.arrivi__vince b {
+  color: var(--quadro-testo);
+  font: var(--t-titolo-1);
+}
+
+.arrivi__vince .arrivi__corona {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--ambra);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .classifica .classifica__barra {
-    animation: barra-cresce 0.7s 0.3s var(--c-arrivo) both;
+  .arrivi__annuncio .arrivi__titolo {
+    animation: timbro-fine var(--d-viaggio) 120ms var(--c-timbro) both;
+  }
+
+  .arrivi__vince.arrivi__vince--visibile {
+    animation: timbro-fine var(--d-timbro) var(--c-timbro) both;
   }
 }
 
-@keyframes barra-cresce {
+@keyframes timbro-fine {
   from {
-    width: 0;
-    color: transparent;
+    opacity: 0;
+    transform: scale(1.18);
   }
 }
 
-/* ---------- Tutte le statistiche ---------- */
+/* ---------- Colonne e righe ---------- */
+
+.arrivi .arrivi__colonne,
+.arrivi .arrivo {
+  display: grid;
+  grid-template-columns: var(--colonne);
+  align-items: center;
+  gap: var(--s-4);
+  padding: 0 var(--s-5);
+}
+
+.arrivi .arrivi__colonne {
+  padding-block: var(--s-2);
+  border-block: 1px solid var(--quadro-linea);
+  color: var(--quadro-tenue);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.arrivi__colonne span:nth-child(n + 3) {
+  justify-self: end;
+}
+
+.arrivi .arrivi__righe {
+  max-height: min(28rem, 52vh);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--quadro-anello) transparent;
+}
+
+.arrivi__righe .arrivi__gruppo:nth-child(even) {
+  background: color-mix(in srgb, var(--quadro-hover) 35%, transparent);
+}
+
+.arrivi__righe .arrivi__gruppo--squadra + .arrivi__gruppo--squadra {
+  border-top: 1px solid var(--quadro-linea);
+}
+
+.arrivi .arrivo {
+  min-height: 3.5rem;
+}
+
+.arrivo .arrivo__posto {
+  color: var(--quadro-tenue);
+  font: var(--t-titolo-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.arrivo .arrivo__chi {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.arrivo .arrivo__nome {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--quadro-testo);
+  font: var(--t-titolo-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrivo .arrivo__corona {
+  width: 1.375rem;
+  height: 1.375rem;
+  color: var(--ambra);
+}
+
+.arrivo .arrivo__turni {
+  justify-self: end;
+  color: var(--quadro-tenue);
+  font: var(--t-nome);
+  font-variant-numeric: tabular-nums;
+}
+
+.arrivo .arrivo__valore {
+  justify-self: end;
+  display: inline-flex;
+}
+
+.arrivo .arrivo__esito {
+  color: var(--rosso-testo);
+  font: var(--t-etichetta);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Il vincitore: fondo ambra velato, barra ambra, cifre ambra. */
+.arrivi .arrivo--vincitore {
+  --flap-testo: var(--ambra-testo);
+
+  min-height: 4rem;
+  background: var(--ambra-velo);
+  box-shadow: inset 4px 0 0 var(--ambra);
+}
+
+.arrivo--vincitore .arrivo__posto {
+  color: var(--ambra);
+}
+
+.arrivo--fuori .arrivo__nome {
+  color: var(--quadro-tenue);
+}
+
+.arrivo--fuori .pedina {
+  opacity: 0.55;
+}
+
+/* A squadre: la riga della squadra, poi i suoi giocatori un po' rientrati. */
+.arrivi .arrivo--squadra .arrivo__nome {
+  font: var(--t-titolo-2);
+}
+
+.arrivi__gruppo--squadra .arrivo:not(.arrivo--squadra) {
+  min-height: 3rem;
+}
+
+.arrivi__gruppo--squadra .arrivo:not(.arrivo--squadra) .arrivo__chi {
+  padding-left: var(--s-6);
+}
+
+.arrivi__gruppo--squadra .arrivo:not(.arrivo--squadra) .arrivo__nome {
+  font: var(--t-nome);
+  font-size: 1.125rem;
+}
+
+/* Prima di arrivare la riga è vuota, ma tiene il suo posto. */
+.arrivi__blocco--attesa .arrivo--vuoto {
+  min-height: 3.5rem;
+}
+
+.arrivi__gruppo--squadra .arrivi__blocco--attesa .arrivo--vuoto + .arrivo--vuoto {
+  min-height: 3rem;
+}
+
+/* ---------- Azioni ---------- */
+
+.arrivi .arrivi__azioni {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-5);
+  border-top: 1px solid var(--quadro-linea);
+}
+
+.arrivi__azioni .arrivi__spazio {
+  flex: 1;
+}
+
+.arrivi__azioni .pulsante--fantasma {
+  --pulsante-testo: var(--quadro-tenue);
+  --pulsante-hover: var(--quadro-hover);
+}
+
+.arrivi__azioni .pulsante--fantasma:hover:not(:disabled) {
+  color: var(--quadro-testo);
+}
+
+.arrivi .arrivi__nota {
+  padding: 0 var(--s-5) var(--s-4);
+  color: var(--quadro-tenue);
+  font: var(--t-piccolo);
+}
+
+/* ---------- Striscia sul tabellone quando il velo è chiuso ---------- */
+
+/* Sta dentro il tabellone, appena sotto la fila di caselle in alto (--k è la scala del tabellone). */
+.fine-striscia {
+  position: absolute;
+  top: calc(var(--k, 1px) * 132);
+  left: 0;
+  right: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: max-content;
+  max-width: calc(100% - 2 * var(--s-4));
+  margin: 0 auto;
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--quadro);
+  color: var(--quadro-testo);
+  box-shadow:
+    inset 0 0 0 1px var(--quadro-linea),
+    0 8px 24px rgb(0 0 0 / 0.45);
+}
+
+.fine-striscia .fine-striscia__titolo {
+  color: var(--ambra-testo);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fine-striscia .fine-striscia__chi {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  color: var(--quadro-tenue);
+  font: var(--t-nome);
+  white-space: nowrap;
+}
+
+.fine-striscia__chi b {
+  overflow: hidden;
+  color: var(--quadro-testo);
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+/* =====================================================================
+   Classifica nella colonna destra
+   ===================================================================== */
+
+.classifica-fine .classifica-fine__righe {
+  display: grid;
+}
+
+.classifica-fine__righe .classifica-fine__riga {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 2.75rem;
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-4);
+}
+
+.classifica-fine__riga + .classifica-fine__riga {
+  border-top: 1px solid var(--quadro-linea);
+}
+
+.classifica-fine__righe .classifica-fine__riga--vincitore {
+  --flap-testo: var(--ambra-testo);
+
+  background: var(--ambra-velo);
+  box-shadow: inset 3px 0 0 var(--ambra);
+}
+
+.classifica-fine__riga .classifica-fine__posto {
+  flex: none;
+  width: 1.25rem;
+  color: var(--quadro-tenue);
+  font: var(--t-nome);
+  font-variant-numeric: tabular-nums;
+}
+
+.classifica-fine__riga--vincitore .classifica-fine__posto {
+  color: var(--ambra);
+}
+
+.classifica-fine__riga .classifica-fine__nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--quadro-testo);
+  font: var(--t-nome);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classifica-fine__riga .classifica-fine__valore {
+  flex: none;
+  display: inline-flex;
+}
+
+.classifica-fine__valore .classifica-fine__esito {
+  color: var(--rosso-testo);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.classifica-fine .classifica-fine__azioni {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  border-top: 1px solid var(--quadro-linea);
+}
+
+/* =====================================================================
+   Tutte le statistiche: celle da tabellone
+   ===================================================================== */
 
 .statistiche {
   position: fixed;
   inset: 0;
   z-index: 60;
   overflow-y: auto;
-  padding: 24px;
-  background: rgb(6 8 11 / 0.84);
+  padding: var(--s-6) var(--s-5);
+  background: rgb(8 10 13 / 0.86);
+  backdrop-filter: blur(6px);
 }
 
-.statistiche__griglia {
+.statistiche .statistiche__griglia {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   grid-template-areas:
-    'chiudi chiudi'
-    'vincitore grafico'
-    'numeri grafico'
-    'visitata prigione';
-  gap: 20px 24px;
-  width: min(1140px, 100%);
+    'testa testa'
+    'numeri numeri'
+    'grafico fatti';
+  gap: var(--s-3);
+  width: min(70rem, 100%);
   margin: 0 auto;
   outline: none;
 }
 
-.statistiche__chiudi.pulsante {
-  grid-area: chiudi;
-  justify-self: end;
-}
-
-.scheda-stat {
-  min-width: 0;
-  padding: 22px 26px;
-  border-radius: var(--r-2);
-  background: var(--sup-1);
-  box-shadow: var(--e2);
-}
-
-.scheda-stat--vincitore {
-  grid-area: vincitore;
-  position: relative;
+.statistiche__griglia .statistiche__testa {
+  grid-area: testa;
   display: flex;
   align-items: center;
-  gap: 22px;
-  overflow: hidden;
-  border-top: 6px solid var(--ambra);
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-2);
 }
 
-/* Qualche coriandolo fermo nell'angolo. */
-.scheda-stat--vincitore::after {
-  content: '';
-  position: absolute;
-  inset: 0 0 0 auto;
-  width: 46%;
-  background:
-    linear-gradient(28deg, transparent 30%, var(--ambra) 30% 70%, transparent 70%) 78% 22% / 12px 7px no-repeat,
-    linear-gradient(-35deg, transparent 30%, var(--link) 30% 70%, transparent 70%) 46% 62% / 11px 6px no-repeat,
-    linear-gradient(70deg, transparent 30%, var(--rosso) 30% 70%, transparent 70%) 90% 70% / 10px 6px no-repeat,
-    linear-gradient(-10deg, transparent 30%, var(--verde) 30% 70%, transparent 70%) 60% 18% / 9px 6px no-repeat,
-    linear-gradient(50deg, transparent 30%, var(--flap-testo) 30% 70%, transparent 70%) 30% 30% / 8px 5px no-repeat,
-    linear-gradient(-60deg, transparent 30%, var(--ambra) 30% 70%, transparent 70%) 24% 80% / 10px 6px no-repeat;
-  opacity: 0.85;
-  pointer-events: none;
+.statistiche__testa .statistiche__titolo {
+  color: var(--testo-1);
+  font: var(--t-titolo-1);
 }
 
-.scheda-stat__coppa.icona {
-  flex: none;
-  width: 58px;
-  height: 58px;
-  color: var(--ambra);
-  stroke-width: 1.5;
+.statistiche__griglia .statistiche__numeri {
+  grid-area: numeri;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
 }
 
-.scheda-stat__etichetta {
-  color: var(--testo-2);
-  font: 500 1rem/1.2 var(--normale);
+.statistiche__griglia .statistiche__fatti {
+  grid-area: fatti;
+  display: grid;
+  align-content: start;
+  gap: var(--s-3);
+  margin: 0;
 }
 
-.scheda-stat__chi {
+.statistiche__griglia .cella {
+  --flap-alto: #3d424c;
+  --flap-basso: #33373f;
+
+  min-width: 0;
+  margin: 0;
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-2);
+  background: var(--quadro);
+  color: var(--quadro-testo);
+  box-shadow: inset 0 0 0 1px var(--quadro-linea);
+}
+
+.cella .cella__etichetta {
+  color: var(--quadro-tenue);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cella .cella__valore {
+  display: flex;
+  margin: var(--s-3) 0 0;
+}
+
+.cella .cella__nota {
+  margin: var(--s-2) 0 0;
+  color: var(--quadro-tenue);
+  font: var(--t-piccolo);
+  text-wrap: pretty;
+}
+
+.cella .cella__chi {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
-  margin-top: 6px;
-  font: 600 1.375rem/1.2 var(--stretto);
-}
-
-.scheda-stat__chi--grande {
-  font-size: 2.125rem;
-}
-
-.scheda-stat__chi small {
-  color: var(--testo-2);
-  font: 500 0.9375rem/1.2 var(--normale);
-}
-
-.scheda-stat__persona {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.scheda-stat--numeri {
-  grid-area: numeri;
-}
-
-.numeri {
-  display: grid;
-  gap: 18px;
-  margin: 0;
-}
-
-.numero {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  column-gap: 16px;
-  align-items: center;
-}
-
-.numero .numero__icona {
-  grid-row: span 2;
-  width: 34px;
-  height: 34px;
-  padding: 6px;
-  border-radius: var(--r-1);
-  background: var(--cartello);
-  color: #fff;
-}
-
-.numero dt {
-  color: var(--testo-2);
-  font-size: 0.9375rem;
-}
-
-.numero dd {
-  margin: 0;
-  font: 600 1.375rem/1.15 var(--stretto);
-  font-variant-numeric: tabular-nums;
-}
-
-.scheda-stat--grafico {
-  grid-area: grafico;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.scheda-stat__titolo {
-  margin-bottom: var(--s-3);
-  color: var(--testo-1);
+  gap: var(--s-2) var(--s-3);
+  margin: var(--s-3) 0 0;
+  color: var(--quadro-testo);
   font: var(--t-titolo-3);
 }
 
-.scheda-stat--visitata {
-  grid-area: visitata;
+.cella .cella__chi--grande {
+  font: var(--t-titolo-2);
 }
 
-.scheda-stat--prigione {
-  grid-area: prigione;
+.cella .cella__corona {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--ambra);
 }
 
-.scheda-stat--riga {
-  display: flex;
+.cella .cella__icona {
+  width: 1.375rem;
+  height: 1.375rem;
+  color: var(--quadro-tenue);
+}
+
+.cella .cella__persona {
+  display: inline-flex;
   align-items: center;
-  gap: 20px;
+  gap: var(--s-2);
 }
 
-.scheda-stat .scheda-stat__icona {
-  flex: none;
-  width: 40px;
-  height: 40px;
-  color: var(--testo-2);
+/* Il vincitore: la barra ambra a sinistra. */
+.statistiche__griglia .cella--vincitore {
+  box-shadow:
+    inset 3px 0 0 var(--ambra),
+    inset 0 0 0 1px var(--quadro-linea);
 }
 
-.scheda-stat .scheda-stat__piccola {
-  width: 22px;
-  height: 22px;
-  color: var(--testo-2);
+.statistiche__griglia .cella--grafico {
+  grid-area: grafico;
+  display: grid;
+  align-content: start;
+  gap: var(--s-3);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .scheda-stat {
-    animation: sale 0.35s var(--c-arrivo) both;
+  .statistiche__griglia .cella {
+    animation: sale var(--d-lenta) var(--c-arrivo) both;
   }
 
-  .scheda-stat--numeri,
-  .scheda-stat--grafico {
-    animation-delay: 0.05s;
+  .statistiche__numeri .cella:nth-child(2) {
+    animation-delay: 40ms;
   }
 
-  .scheda-stat--visitata,
-  .scheda-stat--prigione {
-    animation-delay: 0.1s;
+  .statistiche__numeri .cella:nth-child(3) {
+    animation-delay: 80ms;
+  }
+
+  .statistiche__numeri .cella:nth-child(4) {
+    animation-delay: 120ms;
+  }
+
+  .statistiche__numeri .cella:nth-child(5) {
+    animation-delay: 160ms;
+  }
+
+  .statistiche__griglia .cella--grafico,
+  .statistiche__fatti .cella {
+    animation-delay: 200ms;
   }
 }
 
-@media (max-width: 900px) {
-  .statistiche__griglia {
+@media (max-width: 1000px) {
+  .statistiche .statistiche__griglia {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'chiudi' 'vincitore' 'grafico' 'numeri' 'visitata' 'prigione';
+    grid-template-areas: 'testa' 'numeri' 'grafico' 'fatti';
   }
 }
 
-/* ---------- Grafico del patrimonio ---------- */
+/* =====================================================================
+   Grafico del patrimonio (sul quadro nero)
+   ===================================================================== */
 
 .grafico {
   display: grid;
-  gap: 12px;
+  gap: var(--s-3);
 }
 
 .grafico__area {
@@ -486,18 +635,18 @@
 }
 
 .grafico__griglia {
-  stroke: var(--linea);
+  stroke: var(--quadro-linea);
   stroke-width: 1;
 }
 
 .grafico__zero {
-  stroke: var(--linea-forte);
+  stroke: var(--quadro-anello);
   stroke-width: 1;
 }
 
 .grafico__tacca,
 .grafico__asse {
-  fill: var(--testo-2);
+  fill: var(--quadro-tenue);
   font: 500 13px var(--normale);
   font-variant-numeric: tabular-nums;
 }
@@ -510,9 +659,14 @@
   stroke-linecap: round;
 }
 
+/* La linea di chi ha vinto è più spessa. */
+.grafico__serie--vincente .grafico__linea {
+  stroke-width: 3.2;
+}
+
 .grafico__fine {
   fill: currentColor;
-  stroke: var(--sup-1);
+  stroke: var(--quadro);
   stroke-width: 2;
 }
 
@@ -522,7 +676,7 @@
 }
 
 .grafico__serie {
-  transition: opacity 0.15s;
+  transition: opacity var(--d-rapida);
 }
 
 .grafico__serie--spenta {
@@ -530,13 +684,14 @@
 }
 
 .grafico__mirino {
-  stroke: var(--testo-2);
+  stroke: var(--quadro-tenue);
   stroke-width: 1;
+  stroke-dasharray: 3 3;
 }
 
 .grafico__punto {
   fill: currentColor;
-  stroke: var(--sup-1);
+  stroke: var(--quadro);
   stroke-width: 2;
 }
 
@@ -552,19 +707,18 @@
   min-width: 170px;
   padding: var(--s-2) 10px;
   border-radius: var(--r-2);
-  background: var(--quadro);
-  box-shadow:
-    inset 0 0 0 1px var(--quadro-linea),
-    0 8px 24px rgb(0 0 0 / 0.45);
-  font-size: 0.875rem;
+  background: var(--sup-2);
+  color: var(--testo-1);
+  box-shadow: var(--e2);
+  font: var(--t-piccolo);
   pointer-events: none;
 }
 
 .grafico__turno {
-  margin-bottom: 4px;
-  color: var(--ambra);
-  font: 700 0.9375rem/1.2 var(--stretto);
-  letter-spacing: 0.05em;
+  margin-bottom: var(--s-1);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -577,7 +731,7 @@
 .grafico__suggerimento li {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-2);
   padding: 2px 0;
 }
 
@@ -590,6 +744,7 @@
 }
 
 .grafico__suggerimento b {
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -601,7 +756,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px 12px;
+  gap: var(--s-1) var(--s-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -615,13 +770,13 @@
   border: 0;
   border-radius: var(--r-1);
   background: none;
-  color: var(--testo-1);
+  color: var(--quadro-testo);
   font: 500 0.9375rem/1.2 var(--normale);
 }
 
 .grafico__voce:hover,
 .grafico__voce:focus-visible {
-  background: var(--sup-3);
+  background: var(--quadro-hover);
 }
 
 .pedina.pedina--legenda {
@@ -631,10 +786,20 @@
   box-shadow: none;
 }
 
-.grafico__vuoto {
-  padding: var(--s-7) 0;
-  color: var(--testo-2);
+/* Grafico vuoto: lo stato vuoto con l'icona in alto. */
+.grafico .grafico__vuoto {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-3);
+  padding: var(--s-7) var(--s-4);
+  color: var(--quadro-tenue);
   text-align: center;
+}
+
+.grafico__vuoto .icona {
+  width: 2rem;
+  height: 2rem;
+  stroke-width: 1.5;
 }
 
 .nascosto {
@@ -646,48 +811,13 @@
   white-space: nowrap;
 }
 
-/* ---------- A squadre ---------- */
-
-.fine-partita .binario.binario--vincitore {
-  min-width: 44px;
-  height: 44px;
-  font-size: 1.75rem;
-  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.9);
-}
-
-.fine-partita .fine-partita__squadra {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px 14px;
-  font: 600 1.0625rem/1.2 var(--stretto);
-}
-
-.fine-partita__squadra .fine-partita__compagno {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.classifica__nome .binario.binario--riga {
-  display: inline-grid;
-  max-width: none;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-.classifica__nome .binario + .pedina + span {
-  max-width: calc(100% - 44px);
-}
-
 /* Grafico: Giocatori / Squadre */
 .grafico .grafico__vista {
   display: inline-flex;
   justify-self: start;
-  margin-bottom: 6px;
   padding: 3px;
   border-radius: var(--r-2);
-  background: var(--quadro);
+  background: var(--quadro-hover);
 }
 
 .grafico__vista .grafico__scelta {
@@ -695,7 +825,7 @@
   border: 0;
   border-radius: var(--r-1);
   background: transparent;
-  color: var(--testo-2);
+  color: var(--quadro-tenue);
   font: 600 0.9375rem/1.2 var(--stretto);
 }
 

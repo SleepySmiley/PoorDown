@@ -299,8 +299,10 @@ button {
 
 /* =====================================================================
    Pedine, stemmi, dadi
+   Oggetti fisici: qui (e solo qui) ombre vere e colori di materia (avorio, inchiostro dei punti).
    ===================================================================== */
 
+/* La pedina è un gettone: colore pieno con un po' di luce in alto a sinistra. */
 .pedina {
   display: inline-grid;
   place-items: center;
@@ -308,7 +310,7 @@ button {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--colore);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--colore) 72%, #fff) 0%, var(--colore) 55%);
   /* I colori delle pedine sono tutti chiari: il testo sopra è sempre scuro. */
   color: var(--inchiostro);
   font: 600 0.875rem/1 var(--stretto);
@@ -320,6 +322,7 @@ button {
 .pedina--mini {
   width: 10px;
   height: 10px;
+  background: var(--colore);
   box-shadow: none;
 }
 
@@ -355,9 +358,23 @@ button {
   background: repeating-linear-gradient(90deg, transparent 0 5px, rgb(20 20 24 / 0.8) 5px 7.5px);
 }
 
+/* Stemma smaltato (ui/comuni.tsx): contorno scuro, filo crema, riflesso, sigla. */
 .stemma {
   flex: none;
   overflow: visible;
+}
+
+.stemma__contorno {
+  fill: none;
+  stroke: var(--sfondo);
+  stroke-width: 3.4;
+  stroke-linejoin: round;
+}
+
+.stemma__smalto {
+  stroke: var(--quadro-testo);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
 }
 
 .stemma text {
@@ -365,16 +382,47 @@ button {
   letter-spacing: 0.02em;
 }
 
+/* Dado d'avorio con peso. Le schermate danno solo misura (width, height, padding dei punti) e rotazione:
+   tutto il resto scala con il dado (unità cq: il dado è un contenitore). Strati, dal basso:
+   ::before lo spessore e l'ombra di contatto, ::after la faccia smussata, sopra i punti incavati.
+   Lo spessore scende sotto la faccia più della vecchia ombra piatta (#a7afbb) che alcune schermate danno ancora al dado, e la copre. */
 .dado {
-  width: 54px;
-  height: 54px;
+  position: relative;
+  isolation: isolate;
+  container-type: size;
   display: grid;
   grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  width: 54px;
+  height: 54px;
   padding: 9px;
-  background: #fff;
-  color: var(--inchiostro);
-  border-radius: 7px;
-  box-shadow: 0 3px 0 #a7afbb;
+  border-radius: 22%;
+  background: transparent;
+  color: #0f1a2e;
+}
+
+.dado::before,
+.dado::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+.dado::before {
+  inset: 6% 0 -9%;
+  background: linear-gradient(180deg, #d9d2c2 0%, #bdb39f 60%, #a69d89 100%);
+  box-shadow:
+    0 7cqh 12cqh rgb(0 0 0 / 0.5),
+    0 2cqh 3cqh rgb(0 0 0 / 0.4);
+}
+
+.dado::after {
+  inset: 0;
+  background: radial-gradient(130% 100% at 30% 12%, #fffdf8 0%, #fbf8f1 38%, #e9e4d8 100%);
+  box-shadow:
+    inset 0 1.6cqh 1.4cqh rgb(255 255 255 / 0.95),
+    inset 0 -3.5cqh 4cqh rgb(120 100 70 / 0.3),
+    inset 0 0 0 0.7cqh rgb(255 255 255 / 0.4);
 }
 
 .dado .punto {
@@ -382,7 +430,16 @@ button {
   height: 9px;
   place-self: center;
   border-radius: 50%;
-  background: currentColor;
+  background: radial-gradient(circle at 50% 38%, #3a4660 0%, #0f1a2e 72%);
+  box-shadow:
+    inset 0 1.2cqh 1.2cqh rgb(0 0 0 / 0.6),
+    0 0.9cqh 0 rgb(255 255 255 / 0.9);
+}
+
+/* Doppio: i due dadi con il contorno ambra (è «adesso, tocca a te»: si tira ancora). */
+.dado--doppio {
+  outline: calc(var(--k, 1px) * 3) solid var(--ambra);
+  outline-offset: calc(var(--k, 1px) * 3);
 }
 
 /* =====================================================================

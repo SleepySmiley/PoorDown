@@ -5,8 +5,15 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 
-/** I colori dello stile Partenze: ambra, blu segnaletica, azzurro, carta, rosso e verde. */
-const COLORI = ['#ffb81c', '#2a64c8', '#8db4ff', '#f4f1e8', '#ef4b3f', '#2fbf71'];
+/** I colori dello stile Partenze, presi dai token: ambra, blu segnale, azzurro, carta, rosso e verde. */
+const TOKEN_COLORI = ['--ambra', '--segnale', '--link', '--flap-testo', '--rosso', '--verde'];
+/** Gli stessi valori, se i token non si leggono. */
+const RISERVA = ['#ffb81c', '#2a64c8', '#8db4ff', '#f4f1e8', '#ef4b3f', '#2fbf71'];
+
+function coloriDaiToken(): string[] {
+  const stile = getComputedStyle(document.documentElement);
+  return TOKEN_COLORI.map((t, i) => stile.getPropertyValue(t).trim() || RISERVA[i]!);
+}
 const PEZZI_PER_GETTO = 90;
 const DURATA_MAX_MS = 7_000;
 
@@ -32,7 +39,7 @@ function pocoMovimento(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
 
-function getto(da: 'sinistra' | 'destra', w: number, h: number): Pezzo[] {
+function getto(da: 'sinistra' | 'destra', w: number, h: number, colori: string[]): Pezzo[] {
   const verso = da === 'sinistra' ? 1 : -1;
   return Array.from({ length: PEZZI_PER_GETTO }, () => ({
     x: da === 'sinistra' ? -10 : w + 10,
@@ -47,7 +54,7 @@ function getto(da: 'sinistra' | 'destra', w: number, h: number): Pezzo[] {
     giro: (Math.random() - 0.5) * 0.3,
     fase: Math.random() * Math.PI * 2,
     velocitaFase: 0.08 + Math.random() * 0.12,
-    colore: COLORI[Math.floor(Math.random() * COLORI.length)]!,
+    colore: colori[Math.floor(Math.random() * colori.length)]!,
   }));
 }
 
@@ -74,7 +81,8 @@ export function Coriandoli({ onFine }: { onFine?: () => void }): ReactNode {
     misura();
     window.addEventListener('resize', misura);
 
-    const pezzi = [...getto('sinistra', w, h), ...getto('destra', w, h)];
+    const colori = coloriDaiToken();
+    const pezzi = [...getto('sinistra', w, h, colori), ...getto('destra', w, h, colori)];
     const inizio = performance.now();
     let ultimo = inizio;
     let richiesta = 0;

@@ -2,33 +2,35 @@ import '../stili/tavolo.css';
 import '../stili/squadre.css';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence } from 'motion/react';
-import {
-  euro,
-  GIOCATORI_MAX,
-  GIOCATORI_MIN,
-  SOLDI_INIZIALI_POSSIBILI,
-  tabellone,
-  type IdGiocatore,
-  type Impostazioni,
-  type MessaggioChat,
-  type VistaStanza,
-} from '@poordown/engine';
+import { type IdGiocatore, type MessaggioChat, type VistaStanza } from '@poordown/engine';
 import { CodiceQr } from '../CodiceQr';
 import { linkStanza, useInfoServer } from '../rete/sessione';
+import { copia } from '../ui/appunti';
 import { Chip } from '../ui/Chip';
-import { Interruttore, Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
+import { Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
 import { Finestra } from '../ui/Finestra';
 import { iniziale } from '../ui/utili';
-import { Icona, type NomeIcona } from '../ui/icone';
+import { Icona } from '../ui/icone';
 import { PassiDelGioco } from '../ui/Regole';
 import { BollaChat, Chat } from './Chat';
 import { ContoAllaRovescia } from './Timer';
 
 /* ---------------- Impaginazione a tre colonne ---------------- */
 
-export function Tavolo({ sinistra, centro, destra }: { sinistra: ReactNode; centro: ReactNode; destra: ReactNode }): ReactNode {
+export function Tavolo({
+  sinistra,
+  centro,
+  destra,
+  className,
+}: {
+  sinistra: ReactNode;
+  centro: ReactNode;
+  destra: ReactNode;
+  /** Variante (es. «tavolo--partita»). */
+  className?: string;
+}): ReactNode {
   return (
-    <div className="tavolo">
+    <div className={className ? `tavolo ${className}` : 'tavolo'}>
       <aside className="tavolo__colonna tavolo__colonna--sinistra">{sinistra}</aside>
       <main className="tavolo__centro">{centro}</main>
       <aside className="tavolo__colonna tavolo__colonna--destra">{destra}</aside>
@@ -42,29 +44,6 @@ export function Tavolo({ sinistra, centro, destra }: { sinistra: ReactNode; cent
 export { Finestra, RiquadroTabellone } from '../ui/Finestra';
 
 /* ---------------- Colonna sinistra ---------------- */
-
-/**
- * Copia negli appunti. Su http://192.168.x.x il browser non dà l'API degli appunti:
- * si seleziona il testo del campo e si usa il vecchio comando di copia.
- */
-async function copia(testo: string, campo: HTMLInputElement | null): Promise<boolean> {
-  try {
-    if (window.isSecureContext && navigator.clipboard) {
-      await navigator.clipboard.writeText(testo);
-      return true;
-    }
-  } catch {
-    // si prova con il metodo alternativo
-  }
-  if (!campo) return false;
-  campo.focus();
-  campo.select();
-  try {
-    return document.execCommand('copy');
-  } catch {
-    return false;
-  }
-}
 
 function Condividi({ link, onImpostazioni }: { link: string; onImpostazioni?: () => void }): ReactNode {
   const [esito, setEsito] = useState<'copiato' | 'seleziona' | null>(null);
@@ -323,232 +302,5 @@ export function RigaGiocatore({
           <PulsanteIcona icona="chiudi" etichetta={etichetta} onClick={onEspelli} />
         ))}
     </li>
-  );
-}
-
-/* ---------------- Impostazioni di gioco ---------------- */
-
-interface Voce {
-  chiave: keyof Impostazioni;
-  icona: NomeIcona;
-  nome: string;
-  descrizione: string;
-  /** Arriva in una fase successiva: si vede ma non si può ancora cambiare. */
-  presto?: boolean;
-}
-
-const STANZA: Voce[] = [
-  { chiave: 'giocatoriMax', icona: 'persone', nome: 'Giocatori massimi', descrizione: 'Quante persone possono entrare nella partita' },
-  {
-    chiave: 'stanzaPrivata',
-    icona: 'lucchetto',
-    nome: 'Stanza privata',
-    descrizione: 'Non compare tra le stanze aperte: si entra solo con il link',
-  },
-  {
-    chiave: 'bot',
-    icona: 'robot',
-    nome: 'Bot',
-    descrizione: 'Dei giocatori automatici occupano i posti liberi; chi arriva dopo prende il posto di un bot',
-  },
-  {
-    chiave: 'squadre',
-    icona: 'squadre',
-    nome: 'Squadre',
-    descrizione: 'I compagni non si pagano l’affitto, costruiscono sulle regioni della squadra e vincono insieme',
-  },
-  { chiave: 'mappa', icona: 'mappa', nome: 'Tabellone', descrizione: 'Caselle, città e mazzi della partita' },
-  {
-    chiave: 'timerTurno',
-    icona: 'orologio',
-    nome: 'Timer di turno',
-    descrizione: 'Ogni turno ha un tempo limite: allo scadere il gioco tira i dadi e finisce il turno',
-  },
-];
-
-const REGOLE: Voce[] = [
-  {
-    chiave: 'affittoDoppioSetCompleto',
-    icona: 'monete',
-    nome: 'Affitto doppio con la regione completa',
-    descrizione: 'Chi possiede tutte le città di una regione incassa il doppio dell’affitto base',
-  },
-  {
-    chiave: 'cassaVacanza',
-    icona: 'vacanza',
-    nome: 'Cassa della Vacanza',
-    descrizione: 'Chi si ferma in Vacanza incassa le tasse e i pagamenti fatti alla banca',
-  },
-  {
-    chiave: 'aste',
-    icona: 'martelletto',
-    nome: 'Aste',
-    descrizione: 'Se chi si ferma su una proprietà non la compra, va all’asta',
-  },
-  {
-    chiave: 'nienteAffittoInPrigione',
-    icona: 'ribasso',
-    nome: 'Niente affitto dalla prigione',
-    descrizione: 'Chi è in prigione non incassa gli affitti',
-  },
-  {
-    chiave: 'ipoteche',
-    icona: 'banca',
-    nome: 'Ipoteche',
-    descrizione: 'Ipoteca una proprietà per metà del suo prezzo; finché è ipotecata non incassi l’affitto',
-  },
-  {
-    chiave: 'costruzioneUniforme',
-    icona: 'uniforme',
-    nome: 'Costruzione uniforme',
-    descrizione: 'Case e alberghi si costruiscono e si vendono in modo uniforme nella regione',
-  },
-  { chiave: 'soldiIniziali', icona: 'banconota', nome: 'Soldi iniziali', descrizione: 'Con quanti soldi parte ogni giocatore' },
-  {
-    chiave: 'ordineCasuale',
-    icona: 'mescola',
-    nome: 'Ordine casuale',
-    descrizione: 'L’ordine dei turni viene estratto a sorte all’inizio della partita',
-  },
-];
-
-const NUMERI_GIOCATORI = Array.from({ length: GIOCATORI_MAX - GIOCATORI_MIN + 1 }, (_, i) => i + GIOCATORI_MIN);
-
-function Controllo({
-  voce,
-  imp,
-  modificabile,
-  onCambia,
-  onTabelloni,
-}: {
-  voce: Voce;
-  imp: Impostazioni;
-  modificabile: boolean;
-  onCambia: (modifiche: Partial<Impostazioni>) => void;
-  onTabelloni?: () => void;
-}): ReactNode {
-  const attivo = modificabile && !voce.presto;
-  switch (voce.chiave) {
-    case 'giocatoriMax':
-      return (
-        <select
-          className="scelta"
-          value={imp.giocatoriMax}
-          disabled={!attivo}
-          aria-label={voce.nome}
-          onChange={(e) => onCambia({ giocatoriMax: Number(e.target.value) })}
-        >
-          {NUMERI_GIOCATORI.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
-      );
-    case 'soldiIniziali':
-      return (
-        <select
-          className="scelta"
-          value={imp.soldiIniziali}
-          disabled={!attivo}
-          aria-label={voce.nome}
-          onChange={(e) => onCambia({ soldiIniziali: Number(e.target.value) })}
-        >
-          {SOLDI_INIZIALI_POSSIBILI.map((n) => (
-            <option key={n} value={n}>
-              {euro(n)}
-            </option>
-          ))}
-        </select>
-      );
-    case 'mappa':
-      return (
-        <span className="impostazione__tabellone">
-          <strong>{tabellone(imp.mappa).nome}</strong>
-          {onTabelloni && (
-            <button type="button" className="collegamento" onClick={onTabelloni}>
-              {modificabile ? 'Cambia tabellone' : 'Vedi i tabelloni'}
-              <Icona nome="avanti" />
-            </button>
-          )}
-        </span>
-      );
-    default: {
-      const chiave = voce.chiave;
-      const valore = imp[chiave];
-      return (
-        <Interruttore
-          acceso={valore === true}
-          disattivo={!attivo}
-          etichetta={voce.nome}
-          onCambia={(v) => onCambia({ [chiave]: v } as Partial<Impostazioni>)}
-        />
-      );
-    }
-  }
-}
-
-function RigaImpostazione(props: {
-  voce: Voce;
-  imp: Impostazioni;
-  modificabile: boolean;
-  onCambia: (modifiche: Partial<Impostazioni>) => void;
-  onTabelloni?: () => void;
-}): ReactNode {
-  const { voce } = props;
-  return (
-    <li className={voce.presto ? 'impostazione impostazione--presto' : 'impostazione'}>
-      <Icona nome={voce.icona} className="impostazione__icona" />
-      <div className="impostazione__testo">
-        <p className="impostazione__nome">
-          {voce.nome}
-          {voce.presto && (
-            <Chip tono="segnale" className="distintivo--prova" title="Arriva con un prossimo aggiornamento">
-              Presto
-            </Chip>
-          )}
-        </p>
-        <p className="impostazione__descrizione">{voce.descrizione}</p>
-      </div>
-      <div className="impostazione__controllo">
-        <Controllo {...props} />
-      </div>
-    </li>
-  );
-}
-
-export function ListaImpostazioni({
-  imp,
-  modificabile,
-  onCambia = () => {},
-  onTabelloni,
-}: {
-  imp: Impostazioni;
-  modificabile: boolean;
-  onCambia?: (modifiche: Partial<Impostazioni>) => void;
-  /** Apre la scelta dei tabelloni (in lobby). */
-  onTabelloni?: () => void;
-}): ReactNode {
-  return (
-    <>
-      <ul className="impostazioni">
-        {STANZA.map((voce) => (
-          <RigaImpostazione
-            key={voce.chiave}
-            voce={voce}
-            imp={imp}
-            modificabile={modificabile}
-            onCambia={onCambia}
-            onTabelloni={onTabelloni}
-          />
-        ))}
-      </ul>
-      <h3 className="impostazioni__sezione">Regole di gioco</h3>
-      <ul className="impostazioni">
-        {REGOLE.map((voce) => (
-          <RigaImpostazione key={voce.chiave} voce={voce} imp={imp} modificabile={modificabile} onCambia={onCambia} />
-        ))}
-      </ul>
-    </>
   );
 }

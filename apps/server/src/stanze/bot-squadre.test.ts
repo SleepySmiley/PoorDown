@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { IMPOSTAZIONI_PREDEFINITE } from '@poordown/engine';
 import { siedi, stanzaDiProva, TOKEN } from './prove';
-import { ARRIVO_BOT_MAX_MS, ARRIVO_BOT_MIN_MS, RIMPIAZZO_BOT_MS, Stanza, type DatiStanza } from './stanza';
+import { ARRIVO_BOT_MAX_MS, ARRIVO_BOT_MIN_MS, coloreBot, RIMPIAZZO_BOT_MS, Stanza, type DatiStanza } from './stanza';
 
 type Prova = ReturnType<typeof stanzaDiProva>;
 
@@ -92,6 +92,24 @@ describe('bot in lobby', () => {
     prova.stanza.cambiaImpostazioni(TOKEN.anna, { giocatoriMax: 4 });
     prova.stanza.esci('conn-anna');
     expect(prova.stanza.host).toBe(prova.stanza.posti.find((p) => !p.bot)!.id);
+  });
+
+  it('il bot prende il colore libero più diverso da quelli già al tavolo', () => {
+    // Anna è salmone (1): il bot non prende il rosa (11) né l'arancio (3), che gli somigliano.
+    const primo = coloreBot([1])!;
+    expect([1, 3, 11, 7]).not.toContain(primo);
+    // Con il menta (2) al tavolo, il ciano (8) è troppo vicino.
+    expect(coloreBot([1, 2])).not.toBe(8);
+    // Il risultato è sempre libero e, a tavolo vuoto, il primo dell'ordine (azzurro, 4).
+    expect(coloreBot([])).toBe(4);
+    const tutti = Array.from({ length: 11 }, (_, i) => i + 1);
+    expect(coloreBot(tutti)).toBe(12);
+    expect(coloreBot([...tutti, 12])).toBeUndefined();
+    // In stanza: quattro colori tutti diversi e lontani tra loro.
+    const { stanza } = conBot(4);
+    const colori = stanza.posti.map((p) => p.colore);
+    expect(new Set(colori).size).toBe(4);
+    expect(colori).not.toContain(11);
   });
 });
 

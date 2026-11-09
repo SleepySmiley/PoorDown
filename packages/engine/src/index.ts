@@ -74,13 +74,16 @@ export {
 } from './regole';
 export {
   caselleIpotecate,
+  effettiScambio,
   NOTA_MAX,
   PACCHETTO_VUOTO,
   pacchettoVuoto,
   problemiScambio,
   PROPOSTE_IN_ATTESA_MAX,
   SCAMBI_APERTI_MAX,
+  valorePacchetto,
   type BozzaScambio,
+  type EffettoScambio,
 } from './scambi';
 export {
   classifica,

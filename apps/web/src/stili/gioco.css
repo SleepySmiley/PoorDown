@@ -1,78 +1,232 @@
 /* Partita */
 
-/* Timer, dadi, azione e registro a distanze uguali: i dadi dominano. */
+/* ---------- Centro del tabellone ----------
+   In alto il cartello del turno, i dadi e i pulsanti; in fondo cosa è appena successo (scheda dell'evento e
+   ultime righe del registro). Le misure seguono la scala del tabellone (--k). */
 .centro-gioco {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: calc(var(--k) * 28);
+  gap: calc(var(--k) * 16);
   width: 100%;
   height: 100%;
   min-height: 0;
 }
 
-.centro-gioco__timer {
+/* ---------- Cartello del turno ---------- */
+
+.cartello-turno {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--k) * 14);
+  width: min(100%, calc(var(--k) * 520));
+  min-height: calc(var(--k) * 66);
+  padding: calc(var(--k) * 10) calc(var(--k) * 16) calc(var(--k) * 12) calc(var(--k) * 22);
+  overflow: hidden;
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+  box-shadow:
+    inset 0 0 0 1px var(--linea-forte),
+    0 calc(var(--k) * 8) calc(var(--k) * 24) rgb(0 0 0 / 0.35);
+  text-align: left;
+}
+
+/* La fascia del colore di chi gioca. */
+.cartello-turno::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--k) * 6);
+  background: var(--colore);
+}
+
+/* Tocca a me: il cartello si accende d'ambra. */
+.cartello-turno--mio {
+  background: color-mix(in srgb, var(--ambra) 9%, var(--sup-2));
+  box-shadow:
+    inset 0 0 0 calc(var(--k) * 2) var(--ambra),
+    0 calc(var(--k) * 8) calc(var(--k) * 28) rgb(255 184 28 / 0.12);
+}
+
+.cartello-turno__pedina {
+  flex: none;
+}
+
+.cartello-turno__pedina .pedina {
+  width: calc(var(--k) * 34);
+  height: calc(var(--k) * 34);
+  font-size: calc(var(--k) * 18);
+}
+
+.cartello-turno--assente .cartello-turno__pedina .pedina {
+  filter: grayscale(0.8);
+  opacity: 0.6;
+}
+
+.cartello-turno__testo {
+  flex: 1;
+  min-width: 0;
+}
+
+.cartello-turno__titolo {
+  overflow: hidden;
+  color: var(--tab-tenue);
+  font: 600 calc(var(--k) * 26) / 1.05 var(--stretto);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cartello-turno__titolo b {
+  color: var(--tab-testo);
+  font-weight: 700;
+}
+
+.cartello-turno--mio .cartello-turno__titolo {
+  color: var(--ambra);
+  font-size: calc(var(--k) * 30);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cartello-turno__fase {
   display: flex;
   align-items: center;
-  gap: var(--s-2);
-  min-height: calc(var(--k) * 42);
+  gap: calc(var(--k) * 8);
+  margin-top: calc(var(--k) * 4);
+  color: var(--tab-testo);
+  font: 500 calc(var(--k) * 15) / 1.25 var(--normale);
+  text-wrap: pretty;
 }
 
-.timer {
+.cartello-turno__tempo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--k) * 10);
+}
+
+.cartello-turno__tempo .pulsante {
+  min-height: calc(var(--k) * 30);
+  padding: 0 calc(var(--k) * 10);
+  font-size: calc(var(--k) * 15);
+}
+
+/* La barra del tempo, sul bordo basso: del colore di chi gioca, rossa negli ultimi secondi. */
+.cartello-turno__barra {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: calc(var(--k) * 6);
+  height: calc(var(--k) * 3);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.cartello-turno__barra > span {
+  display: block;
+  height: 100%;
+  background: var(--colore);
+  transform: scaleX(var(--quota, 1));
+  transform-origin: left;
+  transition:
+    transform 250ms linear,
+    background-color var(--d-timbro);
+}
+
+.cartello-turno--poco .cartello-turno__barra > span {
+  background: var(--rosso);
+}
+
+/* Le cifre del tempo: palette ferme, che non rifanno il giro a ogni secondo. */
+.cifre-tempo {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
-  padding: 5px var(--s-3) 5px 6px;
-  border-radius: var(--r-tondo);
-  background: var(--sup-1);
-  font-size: 1.0625rem;
-  box-shadow: 0 0 0 2px var(--linea-forte);
+  gap: calc(var(--k) * 6);
 }
 
-.timer__anello {
-  width: 28px;
-  height: 28px;
-  transform: rotate(-90deg);
+.cifre-tempo .palette {
+  font-size: calc(var(--k) * 22);
 }
 
-.timer__fondo,
-.timer__avanzamento {
-  fill: none;
-  stroke-width: 4;
+.cifre-tempo .paletta__lembo {
+  animation: none;
 }
 
-.timer__fondo {
-  stroke: var(--linea-forte);
+.cifre-tempo--poco .paletta,
+.cifre-tempo--poco .palette__separatore {
+  color: var(--rosso-testo);
 }
 
-/* Il tempo del turno è «adesso»: ambra, rosso negli ultimi secondi. */
-.timer__avanzamento {
-  stroke: var(--ambra);
-  stroke-linecap: round;
-  transition:
-    stroke-dashoffset 1s linear,
-    stroke var(--d-timbro);
+.cifre-tempo--fermo {
+  opacity: 0.55;
 }
 
-.timer--poco .timer__avanzamento {
-  stroke: var(--rosso);
+.cifre-tempo__assente {
+  width: calc(var(--k) * 18);
+  height: calc(var(--k) * 18);
+  color: var(--rosso);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .timer--poco {
-    animation: timer-batte 1s ease-in-out infinite;
-  }
+/* I tentativi di uscire di prigione: falliti pieni, quello di adesso ambra, gli altri vuoti. */
+.tentativi {
+  display: inline-flex;
+  flex: none;
+  gap: calc(var(--k) * 4);
 }
 
-@keyframes timer-batte {
-  50% {
-    box-shadow: 0 0 0 2px var(--rosso);
-  }
+.tentativi__punto {
+  width: calc(var(--k) * 10);
+  height: calc(var(--k) * 10);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 calc(var(--k) * 1.5) var(--tab-tenue);
+}
+
+.tentativi__punto--fallito {
+  background: var(--tab-tenue);
+}
+
+.tentativi__punto--adesso {
+  background: var(--ambra);
+  box-shadow: none;
+}
+
+/* ---------- Dadi ---------- */
+
+/* Lo spazio sopra i dadi è per l'etichetta «Doppio»: quando compare, niente si sposta. */
+.centro-gioco__lancio {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  padding-top: calc(var(--k) * 30);
+}
+
+.centro-gioco__doppio {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 1;
+  padding: calc(var(--k) * 3) calc(var(--k) * 10);
+  border-radius: var(--r-1);
+  background: var(--ambra);
+  color: var(--su-ambra);
+  font: 700 calc(var(--k) * 15) / 1 var(--stretto);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
 }
 
 .centro-gioco__dadi {
   display: flex;
   gap: calc(var(--k) * 24);
+}
+
+.centro-gioco__dadi .dado {
+  transition:
+    opacity var(--d-lenta),
+    filter var(--d-lenta);
 }
 
 .centro-gioco__dadi .dado:first-child {
@@ -81,6 +235,12 @@
 
 .centro-gioco__dadi .dado:last-child {
   transform: rotate(5deg) translateY(5%);
+}
+
+/* Finché chi gioca non ha tirato, i dadi mostrano il tiro di prima: spenti. */
+.centro-gioco__dadi--spenti .dado {
+  opacity: 0.35;
+  filter: grayscale(1);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -129,6 +289,8 @@
   }
 }
 
+/* ---------- Pulsanti del turno ---------- */
+
 .centro-gioco__azioni {
   display: flex;
   align-items: center;
@@ -151,33 +313,287 @@
   }
 }
 
-.sta-giocando {
+.centro-gioco .centro-gioco__nota {
+  max-width: 82%;
+  margin-top: calc(var(--k) * -6);
+}
+
+/* ---------- Cosa è appena successo ---------- */
+
+.centro-gioco__accaduto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k) * 10);
+  width: 100%;
+  min-height: 0;
+  margin-top: auto;
+}
+
+/* La scheda dell'ultimo evento importante. */
+.evento {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--k) * 12);
+  width: min(100%, calc(var(--k) * 440));
+  min-height: calc(var(--k) * 60);
+  padding: calc(var(--k) * 10) calc(var(--k) * 16) calc(var(--k) * 10) calc(var(--k) * 12);
+  border-radius: var(--r-2);
+  background: var(--sup-1);
+  box-shadow: inset 0 0 0 1px var(--linea-forte);
+  color: var(--tab-testo);
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .evento {
+    animation: compare var(--d-entrata) var(--c-arrivo) both;
+  }
+}
+
+/* Del turno prima: resta come promemoria, sbiadita. */
+.evento.evento--precedente {
+  opacity: 0.55;
+}
+
+.evento__pittogramma {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--k) * 38);
+  height: calc(var(--k) * 38);
+  border-radius: var(--r-1);
+  background: var(--cartello);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 calc(var(--k) * 2) var(--cartello),
+    inset 0 0 0 calc(var(--k) * 3.5) #fff;
+}
+
+.evento__pittogramma .icona {
+  width: calc(var(--k) * 20);
+  height: calc(var(--k) * 20);
+}
+
+.evento__stemma {
+  width: calc(var(--k) * 32);
+  height: calc(var(--k) * 37);
+  margin: 0 calc(var(--k) * 3);
+}
+
+.evento__coppia {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--k) * 4);
+  padding: 0 calc(var(--k) * 4);
+}
+
+.evento__pedina.pedina {
+  width: calc(var(--k) * 28);
+  height: calc(var(--k) * 28);
+  font-size: calc(var(--k) * 15);
+}
+
+.evento__freccia {
+  width: calc(var(--k) * 18);
+  height: calc(var(--k) * 18);
+  color: var(--tab-tenue);
+}
+
+.evento__testo {
+  flex: 1;
+  min-width: 0;
+}
+
+.evento__titolo {
   display: flex;
   align-items: center;
-  gap: var(--s-2);
-  font-size: 1.125rem;
+  gap: calc(var(--k) * 7);
+  font: 500 calc(var(--k) * 16) / 1.25 var(--normale);
+  text-wrap: pretty;
 }
 
-.sta-giocando b {
-  font: 600 1.25rem/1 var(--stretto);
+.evento__titolo b {
+  font-weight: 600;
 }
 
-.sta-giocando .pedina--mini {
-  width: 14px;
-  height: 14px;
+.evento__titolo .pedina--mini {
+  width: calc(var(--k) * 10);
+  height: calc(var(--k) * 10);
 }
 
-.centro-gioco .registro {
-  flex: 1;
+.evento__dettaglio {
+  margin-top: calc(var(--k) * 2);
+  color: var(--tab-tenue);
+  font: 400 calc(var(--k) * 14) / 1.3 var(--normale);
+}
+
+.evento__importo {
+  flex: none;
+  margin-left: auto;
+  font: 700 calc(var(--k) * 26) / 1 var(--stretto);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.evento__importo--paga {
+  color: var(--rosso-testo);
+}
+
+.evento__importo--incassa {
+  color: var(--verde-testo);
+}
+
+/* La carta pescata: testata con il mazzo, poi il testo della carta. */
+.evento.evento--carta {
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--k) * 6);
+  padding: calc(var(--k) * 10) calc(var(--k) * 16) calc(var(--k) * 12);
+  box-shadow:
+    inset 0 0 0 1px var(--linea-forte),
+    inset 0 calc(var(--k) * 3) 0 var(--ambra);
+}
+
+.evento__testata {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--k) * 6);
+  color: var(--ambra);
+}
+
+.evento__testata > .icona {
+  width: calc(var(--k) * 18);
+  height: calc(var(--k) * 18);
+}
+
+.evento__mazzo {
+  font: 700 calc(var(--k) * 14) / 1 var(--stretto);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.evento__chi {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--k) * 6);
+  margin-left: auto;
+  color: var(--tab-tenue);
+  font: 600 calc(var(--k) * 15) / 1 var(--stretto);
+}
+
+.evento__chi .pedina--mini {
+  width: calc(var(--k) * 10);
+  height: calc(var(--k) * 10);
+}
+
+.evento__testo-carta {
+  font: 500 calc(var(--k) * 17) / 1.3 var(--normale);
+  text-wrap: pretty;
+}
+
+/* Le ultime righe del registro, sotto la scheda. */
+.registro-corto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k) * 6);
+  width: 100%;
+  min-height: 0;
+}
+
+.registro-corto__righe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k) * 4);
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--tab-tenue);
+  font: 400 calc(var(--k) * 14) / 1.3 var(--normale);
+  text-align: center;
+}
+
+.registro-corto__riga {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--k) * 7);
+  max-width: 100%;
+}
+
+.registro-corto__riga > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.registro-corto__riga b {
+  color: var(--tab-testo);
+  font-weight: 500;
+}
+
+.registro-corto__riga:nth-child(3) {
+  opacity: 0.6;
+}
+
+.registro-corto__riga .pedina--mini {
+  width: calc(var(--k) * 8);
+  height: calc(var(--k) * 8);
+}
+
+.registro-corto__tutto.collegamento {
+  gap: calc(var(--k) * 5);
+  font-size: calc(var(--k) * 14);
+}
+
+.registro-corto__tutto .icona {
+  width: calc(var(--k) * 15);
+  height: calc(var(--k) * 15);
+}
+
+/* Il registro completo, nel riquadro sopra il tabellone. */
+.cronologia__righe {
+  padding: var(--s-2) 0 var(--s-3);
+}
+
+.cronologia__riga {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-5);
+  color: var(--testo-2);
+  font: var(--t-corpo);
+}
+
+.cronologia__riga + .cronologia__riga {
+  border-top: 1px solid var(--linea);
+}
+
+.cronologia__riga:first-child {
+  color: var(--testo-1);
+}
+
+.cronologia__riga b {
+  color: var(--testo-1);
+  font-weight: 600;
+}
+
+.cronologia__riga .pedina--mini {
+  transform: translateY(-1px);
+}
+
+.cronologia__vuota {
+  padding: var(--s-5);
+  color: var(--testo-2);
+  text-align: center;
 }
 
 /* ---------- Colonna destra ---------- */
-
-.bancarotta {
-  display: flex;
-  justify-content: flex-end;
-  margin: -4px 0;
-}
 
 /* Testata con un pulsante (vecchio nome «titolo al centro»): titolo a sinistra, pulsante a destra. */
 .pannello__testa--titolo-centro {
@@ -230,36 +646,9 @@
   padding: var(--s-2) var(--s-3) var(--s-3);
 }
 
-.scambio {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: var(--s-2) 10px;
-  border: 0;
-  border-radius: var(--r-1);
-  background: transparent;
-  font: 600 1.0625rem/1 var(--stretto);
-  box-shadow: inset 0 0 0 1px var(--linea-forte);
-  transition: background-color var(--d-rapida);
-}
 
-.scambio:hover {
-  background: var(--sup-2);
-}
 
-.scambio__freccia {
-  width: 16px;
-  height: 16px;
-  color: var(--testo-2);
-}
 
-.scambio__stato {
-  margin-left: auto;
-  color: var(--testo-2);
-  font: var(--t-piccolo);
-  font-weight: 500;
-}
 
 .mie {
   flex: 1;

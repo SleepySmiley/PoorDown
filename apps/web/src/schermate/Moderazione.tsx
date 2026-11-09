@@ -1,5 +1,5 @@
 /*
- * Moderazione in partita: il voto per far uscire chi sta giocando, l'avviso del voto al centro del tabellone
+ * Moderazione in partita: il voto per far uscire chi sta giocando (nella sua riga), l'avviso a chi è votato
  * e la finestra per chi è uscito per tempo, assenza o voto.
  */
 
@@ -23,7 +23,7 @@ import { Finestra } from './Colonne';
 import { ContoAllaRovescia } from './Timer';
 
 /**
- * Il pulsante del voto, accanto a «Bancarotta», per chi è in gioco e non sta giocando il turno.
+ * Il pulsante del voto, nella riga di chi gioca, per chi è in gioco e non sta giocando il turno.
  * Compare quando il voto è possibile, oppure quando ho già votato (per ritirare il voto).
  */
 export function PulsanteVoto({
@@ -58,6 +58,7 @@ export function PulsanteVoto({
       <button
         type="button"
         className={votato ? 'pulsante pulsante--piccolo pulsante--fantasma' : 'pulsante pulsante--piccolo pulsante--secondario'}
+        aria-label={`${votato ? 'Ritira il voto' : 'Vota l’uscita'} di ${corrente.nome}: ${v.voti.length} voti su ${servono}`}
         disabled={blocco !== null}
         onClick={() => onMossa(mossa)}
       >
@@ -68,27 +69,65 @@ export function PulsanteVoto({
   );
 }
 
-/** Al centro del tabellone, sotto i pulsanti: a che punto è il voto contro chi gioca. */
+/**
+ * Nella riga di chi sta giocando il turno: il voto per farlo uscire. Chi può votare vede il pulsante (con i voti
+ * già dati), gli altri solo il conto dei voti; senza timer di turno anche quanto manca all'uscita.
+ * Quando il voto è sempre possibile (partita senza timer) e nessuno ha ancora votato, il pulsante compare
+ * solo passando sulla riga: la classe .voto-riga--discreto.
+ */
+export function VotoNellaRiga({
+  partita,
+  io,
+  inviando,
+  onMossa,
+}: {
+  partita: Stato;
+  /** Il mio posto, se sono ancora in gioco. */
+  io: IdGiocatore | null;
+  inviando: boolean;
+  onMossa: (m: Mossa) => void;
+}): ReactNode {
+  const v = partita.turno.votazione;
+  const corrente = partita.giocatori.find((g) => g.id === partita.turno.giocatore);
+  if (partita.fase !== 'in_corso' || !corrente) return null;
+  const puoVotare = io !== null && io !== corrente.id && (v.voti.includes(io) || votoPossibile(partita) === null);
+  if (!puoVotare && v.voti.length === 0) return null;
+  const discreto = v.voti.length === 0 && !partita.impostazioni.timerTurno;
+  return (
+    <div className={discreto ? 'voto-riga voto-riga--discreto' : 'voto-riga'}>
+      {puoVotare && io ? (
+        <PulsanteVoto partita={partita} io={io} inviando={inviando} onMossa={onMossa} />
+      ) : (
+        <span className="voto-riga__conta">
+          Voti per l’uscita: {v.voti.length} di {votiNecessari(partita)}
+        </span>
+      )}
+      {v.scadenza !== null && v.voti.length > 0 && (
+        <span className="voto-riga__tempo">
+          esce tra <ContoAllaRovescia fino={v.scadenza} />
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Al centro del tabellone, sotto i pulsanti, per chi gioca il turno: quanti hanno votato per farlo uscire. */
 export function NotaVoto({ partita, io }: { partita: Stato; io: IdGiocatore | null }): ReactNode {
   const v = partita.turno.votazione;
   const corrente = partita.giocatori.find((g) => g.id === partita.turno.giocatore);
-  if (partita.fase !== 'in_corso' || !corrente || v.voti.length === 0) return null;
+  // Gli altri vedono il voto nella riga di chi gioca (VotoNellaRiga).
+  if (partita.fase !== 'in_corso' || !corrente || corrente.id !== io || v.voti.length === 0) return null;
   const servono = votiNecessari(partita);
-  const mio = corrente.id === io;
-  const tempo = v.scadenza !== null && (
-    <>
-      {' '}
-      Tra <ContoAllaRovescia fino={v.scadenza} /> {mio ? 'esci comunque, se non hai finito il turno.' : 'esce comunque, se il turno non è finito.'}
-    </>
-  );
-  return mio ? (
+  return (
     <p className="centro-gioco__nota centro-gioco__nota--rosso" role="alert">
       {v.voti.length} {v.voti.length === 1 ? 'giocatore ha' : 'giocatori hanno'} votato per farti uscire dalla partita (ne
-      servono {servono}). Finisci il turno per azzerare il voto.{tempo}
-    </p>
-  ) : (
-    <p className="centro-gioco__nota">
-      Voto per far uscire <b>{corrente.nome}</b>: {v.voti.length} di {servono}.{tempo}
+      servono {servono}). Finisci il turno per azzerare il voto.
+      {v.scadenza !== null && (
+        <>
+          {' '}
+          Tra <ContoAllaRovescia fino={v.scadenza} /> esci comunque, se non hai finito il turno.
+        </>
+      )}
     </p>
   );
 }

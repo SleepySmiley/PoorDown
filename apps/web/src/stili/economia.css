@@ -1,4 +1,4 @@
-/* Economia della partita: asta, finestra dello scambio, pannello degli scambi, ipoteca sulla scheda.
+/* Economia della partita: asta, finestre dello scambio, pannello degli scambi, biglietto della proposta, ipoteca sulla scheda.
    Le basi (riquadro sopra il tabellone, pulsanti, suggerimenti) sono in partenze.css. */
 
 /* Suggerimento su più righe: nome del pulsante, poi il motivo per cui è spento. */
@@ -250,107 +250,306 @@
   color: var(--testo-2);
 }
 
-.scambi__lista {
+.scambi .scambi__lista {
   display: grid;
-  gap: 6px;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3) var(--s-3);
 }
 
-.scambio__nome {
+/* Una riga: chi propone a chi e lo stato, sotto cosa c'è dentro, in fondo chi guarda o tratta. */
+.scambio-riga {
+  display: grid;
+  gap: var(--s-1);
+  width: 100%;
+  padding: var(--s-2) 10px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--testo-1);
+  text-align: left;
+  box-shadow: inset 0 0 0 1px var(--linea-forte);
+  transition:
+    background-color var(--d-rapida),
+    box-shadow var(--d-rapida);
+}
+
+.scambio-riga:hover {
+  background: var(--sup-2);
+}
+
+/* Proposta per me: adesso tocca a me rispondere, quindi ambra. */
+.scambio-riga.scambio-riga--per-me {
+  background: var(--ambra-velo);
+  box-shadow: inset 0 0 0 2px var(--ambra);
+}
+
+.scambio-riga__testa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font: var(--t-nome);
+}
+
+.scambio-riga__chi {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+  color: var(--testo-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Proposta per me: adesso tocca a me rispondere, quindi ambra. */
-.scambio--per-me {
-  box-shadow: inset 0 0 0 2px var(--ambra);
-}
-
-.scambio--per-me .scambio__stato {
-  color: var(--ambra);
+.scambio-riga__chi b {
+  color: var(--testo-1);
   font-weight: 600;
 }
 
-.scambio__occhi {
-  display: inline-flex;
+.scambio-riga__versione {
   flex: none;
-  align-items: center;
-  gap: 2px;
-  margin-left: auto;
-  color: var(--testo-2);
-  font: 500 0.8125rem/1 var(--normale);
+  color: var(--testo-3);
+  font: var(--t-etichetta);
 }
 
-.scambio__occhi .icona {
+.scambio-riga .chip {
+  flex: none;
+}
+
+.scambio-riga__contenuto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--s-3);
+  min-width: 0;
+  font: var(--t-piccolo);
+  font-size: 0.875rem;
+}
+
+.scambio-riga__parte {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.scambio-riga__verbo {
+  flex: none;
+  color: var(--testo-3);
+  font: var(--t-etichetta);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scambio-riga__piede {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
+}
+
+.scambio-riga__attivita {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.scambio-riga__attivita .icona,
+.scambio-finestra__attesa .icona {
+  flex: none;
   width: 15px;
   height: 15px;
 }
 
-.scambio__occhi + .scambio__stato {
-  margin-left: 6px;
+.scambio-riga__occhi {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
 }
 
-.scambio__stato {
-  flex: none;
+.scambio-riga__occhi .icona {
+  width: 15px;
+  height: 15px;
+}
+
+/* Riassunto di un pacchetto in una riga: «300 € · Napoli +1». */
+.riassunto {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  min-width: 0;
+  color: var(--testo-1);
+}
+
+.riassunto--niente {
+  color: var(--testo-3);
+}
+
+.riassunto__voce {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.riassunto__altre {
+  color: var(--testo-2);
+}
+
+.stemma.stemma--mini {
+  width: 12px;
+  height: 14px;
+}
+
+.stemma--mini text {
+  display: none;
+}
+
+/* La matita di chi sta scrivendo: un piccolo tratto avanti e indietro. */
+@media (prefers-reduced-motion: no-preference) {
+  .matita-che-scrive {
+    transform-origin: 20% 80%;
+    animation: matita-scrive calc(var(--d-timbro) * 3) var(--c-viaggio) infinite;
+  }
+}
+
+@keyframes matita-scrive {
+  0%,
+  100% {
+    transform: rotate(0) translateX(0);
+  }
+
+  25%,
+  75% {
+    transform: rotate(-10deg) translateX(1px);
+  }
+
+  50% {
+    transform: rotate(0) translateX(2px);
+  }
 }
 
 /* ---------- Finestra dello scambio ---------- */
 
-.scambio-finestra {
-  width: min(680px, 100%);
+/* In rem: 680 e 760 px a 1440, crescono con la pagina a 1920. */
+.sul-tabellone__riquadro.scambio-finestra {
+  width: min(42.5rem, 100%);
 }
 
-.scambio-finestra__scegli {
-  padding: var(--s-4) var(--s-5) var(--s-5);
+.sul-tabellone__riquadro.scambio-finestra--editor {
+  width: min(47.5rem, 100%);
 }
 
-.scambio-finestra__scegli > p {
-  margin-bottom: 10px;
-  color: var(--testo-2);
+/* Intestazione a cartello: smalto blu con il filetto bianco, titolo maiuscolo. */
+.scambio-finestra > .sul-tabellone__testa {
+  min-height: 4rem;
+  padding: var(--s-2) var(--s-4) var(--s-2) var(--s-5);
+  border-bottom: 0;
+  background: var(--cartello);
 }
 
-.scambio-finestra__scegli ul {
+.scambio-finestra > .sul-tabellone__testa::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 2px solid #fff;
+  border-radius: var(--r-2);
+  pointer-events: none;
+}
+
+.scambio-finestra > .sul-tabellone__testa h2 {
+  overflow: hidden;
+  color: #fff;
+  font: var(--t-titolo-2);
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.scambio-finestra > .sul-tabellone__testa .pulsante-icona {
+  position: relative;
+  color: #fff;
+}
+
+.scambio-finestra > .sul-tabellone__testa .pulsante-icona:hover:not(:disabled) {
+  background: var(--segnale-hover);
+}
+
+/* Con chi: le pastiglie dei giocatori, con saldo e numero di proprietà. */
+.scambio-finestra__con {
   display: grid;
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-4) 0;
 }
 
-.scambio-finestra__giocatore {
+.pastiglia-giocatore {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
+  min-width: 0;
+  padding: var(--s-2) var(--s-3);
   border: 0;
   border-radius: var(--r-2);
   background: var(--sup-2);
   color: var(--testo-1);
-  font: 600 1.25rem/1.1 var(--stretto);
   text-align: left;
-  transition: background-color var(--d-rapida);
+  box-shadow: inset 0 0 0 1px var(--linea-forte);
+  transition:
+    background-color var(--d-rapida),
+    box-shadow var(--d-rapida);
 }
 
-.scambio-finestra__giocatore:hover {
+.pastiglia-giocatore:hover {
   background: var(--sup-3);
 }
 
-.scambio-finestra__giocatore .palette {
-  margin-left: auto;
+/* Scelto: è un controllo acceso, quindi blu. */
+.pastiglia-giocatore[aria-pressed='true'] {
+  background: var(--segnale-velo);
+  box-shadow: inset 0 0 0 2px var(--segnale);
+}
+
+.pastiglia-giocatore__testo {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pastiglia-giocatore__testo b {
+  overflow: hidden;
+  font: var(--t-nome);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pastiglia-giocatore__testo small {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  color: var(--testo-2);
+  font: var(--t-piccolo);
+  white-space: nowrap;
 }
 
 .scambio-finestra__parti {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
-  gap: 10px;
-  padding: var(--s-4) var(--s-4) var(--s-1);
+  grid-template-columns: minmax(0, 1fr) 2rem minmax(0, 1fr);
+  gap: var(--s-2);
+  align-items: start;
+  padding: var(--s-4) var(--s-4) 0;
 }
 
 .scambio-finestra__freccia {
   display: grid;
-  place-items: start center;
-  padding-top: 10px;
-  border-radius: var(--r-2);
-  background: var(--sup-2);
+  place-items: center;
+  height: 2.75rem;
 }
 
 .scambio-finestra__freccia .icona {
@@ -359,113 +558,233 @@
   color: var(--testo-2);
 }
 
-.parte {
+/* ---------- Una parte: «Dai» a sinistra (rosso smorzato), «Ricevi» a destra (verde) ---------- */
+
+.lato {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   min-width: 0;
+  overflow: hidden;
+  border-radius: var(--r-2);
+  box-shadow: inset 0 0 0 1px var(--linea);
 }
 
-.parte__chi {
+.lato__testa {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-height: 2.75rem;
+  padding: var(--s-1) var(--s-3);
+  background: var(--sup-2);
 }
 
-.parte__nome {
-  display: grid;
-  min-width: 0;
+.lato__testa--dai {
+  background: var(--rosso-velo);
 }
 
-.parte__nome b {
+.lato__testa--ricevi {
+  background: var(--verde-velo);
+}
+
+.lato__verbo {
+  flex: none;
+  color: var(--testo-2);
+  font: var(--t-titolo-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lato__testa--dai .lato__verbo {
+  color: var(--rosso-testo);
+}
+
+.lato__testa--ricevi .lato__verbo {
+  color: var(--verde-testo);
+}
+
+.lato__chi {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  font: var(--t-nome);
+}
+
+.lato__chi b {
   overflow: hidden;
-  font: 700 1.25rem/1.1 var(--stretto);
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.parte__tu {
+.lato__tu {
+  flex: none;
   color: var(--testo-2);
   font-weight: 500;
 }
 
-.parte__nome small {
-  color: var(--testo-2);
-  font: var(--t-etichetta);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.lato__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--s-3);
 }
 
-.parte__cambia {
-  flex: none;
-  margin-left: auto;
-  padding: 2px 4px;
-  border: 0;
-  background: transparent;
-  color: var(--link);
-  font: 500 0.8125rem/1.2 var(--normale);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+/* Soldi da scegliere: campo a palette, saldo, tasti per aggiungere. */
+.lato__soldi-campo {
+  display: grid;
+  gap: var(--s-2);
 }
 
-.parte__cambia:hover {
-  color: var(--testo-1);
-}
-
-.parte__soldi input[type='range'] {
-  width: 100%;
-  accent-color: var(--segnale);
-}
-
-.parte__righello {
+.lato__soldi-riga {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  color: var(--testo-2);
-  font: var(--t-piccolo);
+  gap: var(--s-2);
 }
 
-.parte__importo {
+.lato__saldo {
+  color: var(--testo-2);
+  font: var(--t-piccolo);
+  text-align: right;
+}
+
+.lato__saldo b {
+  color: var(--testo-1);
+  font-weight: 600;
+}
+
+.lato__tasti {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.pulsante.lato__tasto {
+  min-height: 1.875rem;
+  padding: 0 var(--s-2);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Il campo dei soldi: un quadro nero con le palette; il campo vero, trasparente, sta sopra. */
+.campo-soldi {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--s-1);
-  color: var(--testo-1);
-  font: 600 1rem/1 var(--stretto);
-}
-
-/* Il campo dell'importo è una cifra del quadro nero. */
-.parte__importo input {
-  width: 84px;
-  padding: 3px 5px;
-  border: 1px solid var(--quadro-linea);
+  padding: var(--s-1) var(--s-2);
   border-radius: var(--r-1);
   background: var(--quadro);
+  box-shadow: inset 0 0 0 1px var(--quadro-linea);
+  cursor: text;
+  transition: box-shadow var(--d-rapida);
+}
+
+.campo-soldi:hover {
+  box-shadow: inset 0 0 0 1px var(--quadro-anello);
+}
+
+.campo-soldi:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--segnale),
+    0 0 0 3px var(--segnale-velo);
+}
+
+.campo-soldi__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: text;
+}
+
+.campo-soldi__unita {
   color: var(--quadro-testo);
-  font: 600 1.125rem/1.1 var(--stretto);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  transition:
-    border-color var(--d-rapida),
-    box-shadow var(--d-rapida);
+  font: 600 var(--palette-m) / 1 var(--stretto);
 }
 
-.parte__importo input:focus {
-  outline: none;
-  border-color: var(--segnale);
-  box-shadow: 0 0 0 3px var(--segnale-velo);
+.campo-soldi__cursore {
+  display: none;
+  width: 2px;
+  height: 1.25rem;
+  border-radius: 1px;
+  background: var(--link);
 }
 
-.parte__contanti {
-  font-size: 1.5rem;
+.campo-soldi:focus-within .campo-soldi__cursore {
+  display: block;
 }
 
-.parte__lista {
+@media (prefers-reduced-motion: no-preference) {
+  .campo-soldi:focus-within .campo-soldi__cursore {
+    animation: cursore-batte calc(var(--d-lenta) * 2.5) steps(1) infinite;
+  }
+}
+
+@keyframes cursore-batte {
+  50% {
+    opacity: 0;
+  }
+}
+
+.campo-soldi.campo-soldi--spento {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Soldi da leggere, con la cifra di prima barrata e la differenza. */
+.lato__soldi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) 0;
+  border-radius: var(--r-1);
+}
+
+.lato__prima {
+  color: var(--testo-3);
+  font: 600 1.0625rem/1 var(--stretto);
+  text-decoration-thickness: 2px;
+}
+
+.lato__lista {
   display: grid;
   gap: var(--s-1);
-  max-height: 240px;
+  max-height: 232px;
   overflow-y: auto;
+}
+
+.lato__niente {
+  color: var(--testo-3);
+  font: var(--t-piccolo);
+}
+
+/* Nessun giocatore scelto: la colonna di destra dice cosa fare. */
+.lato--vuoto {
+  min-height: 9rem;
+}
+
+.lato__scegli {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-5) var(--s-3);
+  color: var(--testo-2);
+  text-align: center;
+}
+
+.lato__scegli .icona {
+  width: 20px;
+  height: 20px;
+  color: var(--link);
 }
 
 .voce-scambio {
@@ -473,7 +792,8 @@
   align-items: center;
   gap: var(--s-2);
   width: 100%;
-  padding: 7px 10px;
+  min-height: 2.375rem;
+  padding: 6px 10px;
   border: 0;
   border-radius: var(--r-1);
   background: var(--sup-2);
@@ -489,7 +809,6 @@ button.voce-scambio:hover:not(:disabled) {
 
 /* Scelta in uno scambio: è un controllo acceso, quindi blu. */
 .voce-scambio[aria-pressed='true'],
-.voce-scambio--scelta,
 button.voce-scambio[aria-pressed='true']:hover {
   background: var(--segnale);
   color: #fff;
@@ -516,17 +835,137 @@ button.voce-scambio[aria-pressed='true']:hover {
 
 .voce-scambio__prezzo {
   flex: none;
+  min-width: 3.25rem;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.parte__niente {
+.voce-scambio .chip {
+  flex: none;
+}
+
+/* Le differenze con la versione precedente: aggiunte con il bordo ambra, tolte barrate e sbiadite. */
+.voce-scambio.voce-scambio--nuova {
+  box-shadow: inset 3px 0 0 var(--ambra);
+}
+
+.voce-scambio.voce-scambio--tolta {
+  opacity: 0.4;
+}
+
+.voce-scambio--tolta .voce-scambio__nome,
+.voce-scambio--tolta .voce-scambio__prezzo {
+  text-decoration: line-through;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .voce-scambio--nuova,
+  .lato__soldi--cambiati {
+    animation: lampeggia-ambra var(--d-timbro) ease-in-out 4 alternate;
+  }
+}
+
+@keyframes lampeggia-ambra {
+  to {
+    background-color: var(--ambra-velo);
+  }
+}
+
+/* I puntini della regione (componente PuntiRegione): uno per città, nel colore del proprietario. */
+.punti-regione {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.punti-regione__punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--colore);
+}
+
+.punti-regione__punto--libero {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.punti-regione__punto--questa {
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+
+.punti-regione__punto--libero.punti-regione__punto--questa {
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, currentColor 45%, transparent),
+    0 0 0 1.5px currentColor;
+}
+
+/* ---------- Sotto le due parti: effetti, nota, riepilogo, problemi ---------- */
+
+.effetti-scambio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  margin: var(--s-3) var(--s-4) 0;
+  padding: 10px var(--s-3);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+}
+
+.effetti-scambio__titolo {
+  flex: none;
+  width: 4rem;
+  padding-top: 3px;
+}
+
+.effetti-scambio ul {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.effetti-scambio__frase {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--testo-1);
+  font: var(--t-corpo);
+}
+
+.effetti-scambio__frase > .icona {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
   color: var(--testo-2);
-  font: var(--t-piccolo);
-  font-size: 0.875rem;
+}
+
+.effetti-scambio__frase--verde > .icona {
+  color: var(--verde);
+}
+
+.effetti-scambio__frase--verde {
+  color: var(--verde-testo);
+}
+
+.effetti-scambio__frase--rosso > .icona {
+  color: var(--rosso);
+}
+
+.effetti-scambio__frase--rosso {
+  color: var(--rosso-testo);
+}
+
+.effetti-scambio__regione {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
 }
 
 .scambio-finestra__nota-campo {
-  padding: 10px var(--s-4) 0;
+  padding: var(--s-3) var(--s-4) 0;
 }
 
 .scambio-finestra__nota-campo textarea {
@@ -541,6 +980,20 @@ button.voce-scambio[aria-pressed='true']:hover {
   margin-top: var(--s-1);
   color: var(--testo-2);
   font: var(--t-piccolo);
+}
+
+.scambio-finestra__collegamento {
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--link);
+  font: 500 0.8125rem/1.2 var(--normale);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.scambio-finestra__collegamento:hover {
+  color: var(--testo-1);
 }
 
 /* La nota di chi propone: un riquadro neutro con la barra a sinistra. */
@@ -560,6 +1013,47 @@ button.voce-scambio[aria-pressed='true']:hover {
   width: 18px;
   height: 18px;
   color: var(--testo-2);
+}
+
+/* Riepilogo: cosa do, cosa ricevo, la differenza a prezzo di listino. */
+.riepilogo-scambio {
+  display: grid;
+  gap: var(--s-1);
+  margin: var(--s-3) var(--s-4) 0;
+  padding: var(--s-3) var(--s-1) 0;
+  border-top: 1px solid var(--linea);
+}
+
+.riepilogo-scambio__righe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--s-5);
+  font: var(--t-corpo);
+}
+
+.riepilogo-scambio__parte b {
+  margin-right: var(--s-1);
+}
+
+.etichetta.riepilogo-scambio__dai {
+  color: var(--rosso-testo);
+}
+
+.etichetta.riepilogo-scambio__ricevi {
+  color: var(--verde-testo);
+}
+
+.riepilogo-scambio__bilancio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
+}
+
+.riepilogo-scambio__bilancio .icona {
+  width: 15px;
+  height: 15px;
 }
 
 .scambio-finestra__problemi {
@@ -599,20 +1093,132 @@ button.voce-scambio[aria-pressed='true']:hover {
   height: 16px;
 }
 
-.scambio-finestra .finestra__azioni {
+/* Pulsanti in basso a destra; a sinistra, se serve, una frase (cosa manca, chi aspetti). */
+.scambio-finestra .scambio-finestra__azioni {
   flex-wrap: wrap;
   align-items: center;
   margin-top: var(--s-4);
   padding: 0 var(--s-4) var(--s-4);
 }
 
-.scambio-finestra__risposta {
-  justify-content: center;
-}
-
-.scambio-finestra__attesa {
+.scambio-finestra__attesa,
+.scambio-finestra__suggerimento {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-right: auto;
   color: var(--testo-2);
+}
+
+.pulsante.scambio-finestra__accetta {
+  min-height: 3.25rem;
+  padding: 0 var(--s-5);
+  font-size: 1.375rem;
+}
+
+.pulsante.scambio-finestra__accetta .icona {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+/* ---------- Biglietto: una proposta arrivata, in alto sul tabellone ----------
+   Sta nel livello sopra il tabellone (.tabellone): scende appena sotto la fila di caselle in alto
+   (gli angoli sono il 10–13% del lato). Chi lo mette altrove cambia --biglietto-alto. */
+
+.biglietto-proposta {
+  position: absolute;
+  top: var(--biglietto-alto, 14.5%);
+  left: 50%;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: min(32rem, calc(100% - var(--s-6)));
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+  box-shadow:
+    inset 4px 0 0 var(--ambra),
+    var(--e2);
+  translate: -50% 0;
+}
+
+/* Più proposte: il bordo di un altro biglietto sotto. */
+.biglietto-proposta--pila::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: var(--s-3);
+  right: var(--s-3);
+  height: 6px;
+  border-radius: 0 0 var(--r-2) var(--r-2);
+  background: var(--sup-3);
+  box-shadow: var(--e1);
+}
+
+.biglietto-proposta__testo {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+
+.biglietto-proposta__titolo {
+  overflow: hidden;
+  color: var(--testo-2);
+  font: var(--t-nome);
+  font-size: 1.125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.biglietto-proposta__titolo b {
+  color: var(--testo-1);
+}
+
+.biglietto-proposta__riassunto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--s-3);
+  font: var(--t-piccolo);
+  font-size: 0.875rem;
+}
+
+.biglietto-proposta__parte {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.biglietto-proposta__verbo {
+  font: var(--t-etichetta);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.biglietto-proposta__verbo--ricevi {
+  color: var(--verde-testo);
+}
+
+.biglietto-proposta__verbo--dai {
+  color: var(--rosso-testo);
+}
+
+.biglietto-proposta__azioni {
+  display: flex;
+  flex: none;
+  gap: var(--s-1);
+}
+
+.chip.biglietto-proposta__conta {
+  --chip-fondo: var(--ambra);
+  --chip-testo: var(--su-ambra);
+
+  position: absolute;
+  top: -10px;
+  right: var(--s-3);
+  box-shadow: 0 0 0 2px var(--sup-1);
 }
 
 /* ---------- Scheda della proprietà: ipoteca e azioni ---------- */

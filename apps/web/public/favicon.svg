@@ -1,6 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect x="2" y="2" width="28" height="28" rx="7" fill="#1c1b19"/>
-  <circle cx="10.5" cy="10.5" r="3" fill="#f4f2ee"/>
-  <circle cx="16" cy="16" r="3" fill="#f4f2ee"/>
-  <circle cx="21.5" cy="21.5" r="3" fill="#f4f2ee"/>
+  <!-- Il pittogramma di PoorDown (ui/Marchio.tsx): cartello smaltato blu, filetto bianco, P sulla barra del binario. -->
+  <rect x="0.5" y="0.5" width="31" height="31" rx="5.5" fill="#2a64c8"/>
+  <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="3.6" fill="none" stroke="#fff" stroke-width="1.5"/>
+  <g fill="#fff">
+    <path fill-rule="evenodd" d="M11.5 6h5.25a3.8 4.6 0 0 1 0 9.2h-1.45v5.4h-3.8zm3.8 3.1v3h1.45a1.2 1.5 0 0 0 0-3z"/>
+    <rect x="8" y="22.6" width="16" height="2.6" rx="0.6"/>
+  </g>
 </svg>

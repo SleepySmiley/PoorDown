@@ -314,6 +314,12 @@ export interface Scambio {
   trattativa: number;
   /** Le caselle dello scambio già ipotecate quando è stato proposto: un'ipoteca nuova lo rende non valido. */
   ipotecate: number[];
+  /**
+   * Le due parti della proposta che questa ha sostituito, girate nel verso di questa (`dare` è sempre di chi
+   * propone adesso): servono a mostrare che cosa è cambiato. Manca nella proposta originale e negli scambi
+   * delle partite salvate prima che ci fosse.
+   */
+  precedente?: { dare: Pacchetto; avere: Pacchetto };
 }
 
 /** Un punto del grafico del patrimonio. */

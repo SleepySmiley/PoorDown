@@ -198,11 +198,6 @@
   text-transform: uppercase;
 }
 
-.impostazione--presto .impostazione__nome,
-.impostazione--presto .impostazione__descrizione,
-.impostazione--presto .impostazione__icona {
-  opacity: 0.6;
-}
 
 /* Doppia classe: deve vincere sul .come-si-gioca della home, che arriva dopo. */
 .finestra__scorri.come-si-gioca--finestra {
@@ -280,25 +275,7 @@
 
 /* ---------- Tempo, assenze e moderazione (Fase 6) ---------- */
 
-/* Durante l'asta l'orologio è fermo: il timer si spegne un po'. */
-.centro-gioco__timer .timer--fermo {
-  opacity: 0.6;
-}
-
-.centro-gioco__timer .timer__assente {
-  width: 18px;
-  height: 18px;
-  color: var(--rosso);
-}
-
-.centro-gioco__timer .pulsante {
-  white-space: nowrap;
-}
-
-.bancarotta.bancarotta {
-  flex-wrap: wrap;
-  gap: var(--s-2);
-}
+/* Il tempo del turno e il voto stanno nel cartello del turno e nella riga di chi gioca (gioco.css, tavolo.css). */
 
 .giocatore__nome .giocatore__assenza {
   display: inline-flex;

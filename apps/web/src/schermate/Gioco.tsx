@@ -11,7 +11,6 @@ import {
   possedute,
   proprietabile,
   rimborsoEdificio,
-  TENTATIVI_PRIGIONE,
   tabellone,
   valoreIpoteca,
   valoreVendita,
@@ -30,7 +29,7 @@ import { collegamento } from '../rete/sessione';
 import { avvisa } from '../ui/avvisi';
 import { destinoDeiBeni } from '../ui/beni';
 import { caselleVista } from '../ui/caselle';
-import { Dado, Pedina, Registro, Stemma } from '../ui/comuni';
+import { Dado, Stemma } from '../ui/comuni';
 import { iniziale } from '../ui/utili';
 import { stilePopover } from '../ui/geometria';
 import { Icona, type NomeIcona } from '../ui/icone';
@@ -39,14 +38,20 @@ import { SCORRE } from '../ui/movimento';
 import { Pannello } from '../ui/Pannello';
 import { Pulsante } from '../ui/Pulsante';
 import { Asta } from './Asta';
-import { ColonnaSinistra, Finestra, ListaImpostazioni, RigaGiocatore, Tavolo } from './Colonne';
-import { FuoriDallaPartita, NotaVoto, PulsanteVoto } from './Moderazione';
+import { CartelloTurno } from './CartelloTurno';
+import { Chat, ChatChiusa } from './Chat';
+import { RigaGiocatoreGioco, TestataGioco } from './ColonnaGioco';
+import { Finestra, Tavolo } from './Colonne';
+import { ListaImpostazioni } from './Impostazioni';
+import { useChatRichiudibile } from './colonna';
+import { Cronologia, EventoCorrente, RegistroCorto } from './EventoCorrente';
+import { FuoriDallaPartita, NotaVoto, VotoNellaRiga } from './Moderazione';
 import { useScena } from './regia';
 import { FinePartita, PannelloStatistiche, StatisticheComplete } from './FinePartita';
 import { EditorScambio, PannelloScambi, VediScambio, type BozzaProposta } from './Scambi';
 import { SchedaProprieta, Tabellone } from './Tabellone';
 import { ESITO_USCITA, righeRegistro } from './testi';
-import { TimerTurno } from './Timer';
+import { eventoCorrente, tentativoPrigione, useTitoloScheda, useVariazioniSaldo } from './turno';
 
 /** `null` se la mossa si può fare adesso, altrimenti il motivo (per il suggerimento del pulsante). */
 function motivo(partita: Stato, io: IdGiocatore, mossa: Mossa): string | null {
@@ -80,21 +85,6 @@ function AzioneScheda({
       </button>
     </span>
   );
-}
-
-/** Cosa sta facendo un giocatore, al centro del tabellone, per chi aspetta. */
-function cosaFa(attivita: Attivita | undefined, assente: boolean): string {
-  if (assente) return 'ha perso il collegamento: il turno passa da solo…';
-  switch (attivita?.tipo) {
-    case 'crea':
-      return 'sta creando uno scambio…';
-    case 'guarda':
-      return 'sta guardando uno scambio…';
-    case 'tratta':
-      return 'sta preparando una controproposta…';
-    default:
-      return 'sta giocando…';
-  }
 }
 
 /** Le finestre degli scambi: nuova proposta (o controproposta su `base`) oppure uno scambio da vedere. */
@@ -133,25 +123,25 @@ function AzioniTurno({
 
   // Un solo pulsante ambra alla volta: è l'azione del turno che si aspetta adesso. Le alternative sono secondarie.
   if (t.fase === 'prigione') {
-    const tentativo = Math.min((me.prigione ?? 0) + 1, TENTATIVI_PRIGIONE);
+    const grazia = me.carteGrazia.length > 0;
     return (
       <>
         <div className="centro-gioco__azioni">
           <Pulsante variante="ambra" icona="dado" blocco={blocco({ tipo: 'lancia' })} onClick={() => onMossa({ tipo: 'lancia' })}>
-            Tira i dadi
+            Tenta il doppio
           </Pulsante>
           <Pulsante icona="euro" blocco={blocco({ tipo: 'paga_cauzione' })} onClick={() => onMossa({ tipo: 'paga_cauzione' })}>
-            Paga {euro(tab.cauzione)}
+            Paga {euro(tab.cauzione)} ed esci
           </Pulsante>
-          {me.carteGrazia.length > 0 && (
+          {grazia && (
             <Pulsante icona="grazia" blocco={blocco({ tipo: 'usa_grazia' })} onClick={() => onMossa({ tipo: 'usa_grazia' })}>
               Usa la Carta Grazia
             </Pulsante>
           )}
         </div>
         <p className="centro-gioco__nota">
-          Sei in prigione: fai un doppio per uscire (tentativo {tentativo} di {TENTATIVI_PRIGIONE}), paga la cauzione
-          {me.carteGrazia.length > 0 ? ' o usa la Carta Grazia' : ''}. Pagando, ti muovi al prossimo turno.
+          Con il doppio esci e ti muovi subito. Pagando{grazia ? ' o con la Carta Grazia' : ''} esci adesso, ma ti muovi al
+          prossimo turno.
         </p>
       </>
     );
@@ -250,6 +240,7 @@ export function Gioco({
   const [bozze, setBozze] = useState<Record<string, BozzaProposta>>({});
   const [uscita, setUscita] = useState(false);
   const [statistiche, setStatistiche] = useState(false);
+  const [cronologia, setCronologia] = useState(false);
   // I coriandoli partono solo se la fine arriva mentre si guarda, non a chi ricarica la pagina dopo.
   const [vistaInCorso] = useState(inCorso);
   const [festa, setFesta] = useState(true);
@@ -257,6 +248,12 @@ export function Gioco({
   // Asta e scambi seguono la partita aggiornata, senza aspettare le animazioni: lì conta ogni secondo.
   const vivo = stanza.partita ?? partita;
   const giocoIo = vivo.fase === 'in_corso' && vivo.giocatori.some((g) => g.id === io && !g.eliminato) ? io : null;
+
+  const chatRichiusa = useChatRichiudibile(chat, io);
+  // «● Tocca a te» nel titolo della scheda appena tocca a me, senza aspettare le animazioni.
+  useTitoloScheda(giocoIo !== null && vivo.turno.giocatore === giocoIo, chatRichiusa.nuovi);
+  // I saldi cambiano a fine scena, insieme al resto della partita mostrata.
+  const variazioni = useVariazioniSaldo(partita.giocatori);
 
   const mossa = useCallback((m: Mossa, poi?: () => void) => {
     setInviando(true);
@@ -356,59 +353,62 @@ export function Gioco({
   // Presenze e voti seguono la partita aggiornata, come il timer.
   const vivi = new Map(vivo.giocatori.map((g) => [g.id, g]));
   const righe = righeRegistro(registro, stanza, scena.registroFino);
-  let azioni: ReactNode;
-  if (!inCorso) {
-    azioni = null;
-  } else if (mioTurno && me && io) {
-    azioni = scena.occupata ? (
-      <div className="centro-gioco__azioni" />
-    ) : (
+  const evento = inCorso ? eventoCorrente(registro, scena.registroFino) : null;
+  const azioni =
+    mioTurno && me && io && !scena.occupata ? (
       <AzioniTurno partita={partita} io={io} me={me} inviando={inviando} onMossa={mossa} />
-    );
-  } else if (corrente) {
-    azioni = (
-      <div className="centro-gioco__azioni">
-        <p className="sta-giocando">
-          <Pedina colore={corrente.colore} className="pedina--mini" />
-          <b>{corrente.nome}</b> {cosaFa(attivita[corrente.id], vivi.get(corrente.id)?.offlineDa != null)}
-        </p>
-      </div>
-    );
-  }
+    ) : null;
 
+  // I dadi restano spenti finché chi gioca non ha tirato: mostrano il tiro di prima, non il suo.
+  const spenti = inCorso && !scena.occupata && partita.turno.dadi === null;
+  const doppio = inCorso && !spenti && !scena.rotola && scena.dadi[0] === scena.dadi[1];
+  const classiDadi = ['centro-gioco__dadi', scena.rotola ? 'centro-gioco__dadi--rotola' : '', spenti ? 'centro-gioco__dadi--spenti' : '']
+    .filter(Boolean)
+    .join(' ');
   const inRosso = me && me.saldo < 0 && inCorso && !scena.occupata;
   const centro = (
     <div className="centro-gioco">
-      <TimerTurno partita={vivo} io={giocoIo} inviando={inviando} onMossa={mossa} />
-      {inCorso ? (
-        <>
-          <div
-            className={scena.rotola ? 'centro-gioco__dadi centro-gioco__dadi--rotola' : 'centro-gioco__dadi'}
-            key={scena.lanci}
-          >
-            <Dado valore={scena.dadi[0]} />
-            <Dado valore={scena.dadi[1]} />
-          </div>
-          {azioni}
-          {inRosso && (
-            <p className="centro-gioco__nota centro-gioco__nota--rosso">
-              Hai il saldo negativo: vendi case o proprietà da «Le mie proprietà»
-              {partita.impostazioni.ipoteche ? ', ipotecale' : ''} o proponi uno scambio. Altrimenti dichiara bancarotta.
-            </p>
-          )}
-          <NotaVoto partita={vivo} io={giocoIo} />
-        </>
-      ) : (
-        <div className="centro-gioco__dadi">
+      {inCorso && corrente && (
+        <CartelloTurno
+          key={`${partita.turno.numero}-${corrente.id}`}
+          partita={partita}
+          vivo={vivo}
+          io={giocoIo}
+          attivita={attivita}
+          occupata={scena.occupata}
+          inviando={inviando}
+          onMossa={mossa}
+        />
+      )}
+      <div className="centro-gioco__lancio">
+        {doppio && (
+          <span className="centro-gioco__doppio" key={`doppio-${scena.lanci}`}>
+            Doppio
+          </span>
+        )}
+        <div className={classiDadi} key={scena.lanci}>
           <Dado valore={scena.dadi[0]} />
           <Dado valore={scena.dadi[1]} />
         </div>
+      </div>
+      {azioni}
+      {inRosso && (
+        <p className="centro-gioco__nota centro-gioco__nota--rosso">
+          Hai il saldo negativo: vendi case o proprietà da «Le mie proprietà»
+          {partita.impostazioni.ipoteche ? ', ipotecale' : ''} o proponi uno scambio. Altrimenti dichiara bancarotta dal menu «⋯».
+        </p>
       )}
-      <Registro righe={righe} />
+      {inCorso && <NotaVoto partita={vivo} io={giocoIo} />}
+      {inCorso && (
+        <div className="centro-gioco__accaduto">
+          {evento && <EventoCorrente key={evento.voce.n} evento={evento} partita={partita} io={io} />}
+          <RegistroCorto righe={righe} esclusa={evento?.voce.n} onTutto={() => setCronologia(true)} />
+        </div>
+      )}
     </div>
   );
 
-  /* ---------- Colonna destra ---------- */
+  /* ---------- Colonne ---------- */
 
   const connessi = new Map(stanza.partecipanti.map((p) => [p.id, p.connesso]));
   const bot = new Set(stanza.partecipanti.filter((p) => p.bot).map((p) => p.id));
@@ -532,21 +532,71 @@ export function Gioco({
         onChiudi={() => chiudiEditor(chiave)}
       />
     );
+  } else if (cronologia) {
+    finestraSopra = <Cronologia key="cronologia" righe={righe} onChiudi={() => setCronologia(false)} />;
   }
 
   return (
     <>
       <Tavolo
+        className="tavolo--partita"
         sinistra={
-          <ColonnaSinistra
-            stanza={stanza}
-            io={io}
-            chat={chat}
-            scrivono={scrivono}
-            // Chi è ancora in gioco conferma prima di uscire: i suoi turni continuano senza di lui.
-            onEsci={giocoIo ? () => setUscita(true) : onEsci}
-            onImpostazioni={() => setImpostazioni(true)}
-          />
+          <>
+            <TestataGioco
+              stanza={stanza}
+              // Chi è ancora in gioco conferma prima di uscire: i suoi turni continuano senza di lui.
+              onEsci={giocoIo ? () => setUscita(true) : onEsci}
+              onImpostazioni={() => setImpostazioni(true)}
+              onBancarotta={me && inCorso ? () => setBancarotta(true) : undefined}
+            />
+            <section className="pannello pannello--scuro pannello-giocatori" aria-label="Giocatori">
+              <ul>
+                {partita.giocatori.map((g) => {
+                  const offlineDa = vivi.get(g.id)?.offlineDa ?? null;
+                  const turno = inCorso && g.id === corrente?.id;
+                  return (
+                    <RigaGiocatoreGioco
+                      key={g.id}
+                      g={{
+                        id: g.id,
+                        nome: g.nome,
+                        colore: g.colore,
+                        host: g.id === stanza.host,
+                        tu: g.id === io,
+                        bot: bot.has(g.id),
+                        // Di chi è fuori dalla partita non interessa se è collegato.
+                        connesso: g.eliminato !== null || (connessi.get(g.id) ?? false),
+                        saldo: g.saldo,
+                        turno,
+                        prigione: g.prigione !== null ? tentativoPrigione(g) : null,
+                        vacanza: g.vacanza,
+                        fuori: g.eliminato !== null,
+                        esito: g.eliminato ? ESITO_USCITA[g.eliminato.motivo] : undefined,
+                        assenteFino: inCorso && !g.eliminato && offlineDa !== null ? offlineDa + ASSENZA_MS : undefined,
+                        squadra: g.squadra === null ? undefined : { indice: g.squadra, nome: partita.squadre[g.squadra] ?? '' },
+                        variazione: variazioni[g.id],
+                      }}
+                      puoTogliere={puoTogliere}
+                      bloccoTogli={
+                        g.id === vivo.turno.giocatore ? 'Non puoi togliere chi sta giocando il suo turno: aspetta che finisca.' : null
+                      }
+                      onTogli={() => setDaTogliere(g)}
+                      voto={
+                        inCorso && g.id === vivo.turno.giocatore ? (
+                          <VotoNellaRiga partita={vivo} io={giocoIo} inviando={inviando} onMossa={mossa} />
+                        ) : undefined
+                      }
+                    />
+                  );
+                })}
+              </ul>
+            </section>
+            {chatRichiusa.chiusa ? (
+              <ChatChiusa nuovi={chatRichiusa.nuovi} ultimo={chatRichiusa.ultimo} onApri={chatRichiusa.apri} />
+            ) : (
+              <Chat stanza={stanza} io={io} messaggi={chat} scrivono={scrivono} onRiduci={chatRichiusa.chiudi} />
+            )}
+          </>
         }
         centro={
           <Tabellone
@@ -597,56 +647,6 @@ export function Gioco({
         }
         destra={
           <>
-            <section className="pannello pannello--scuro giocatori" aria-label="Giocatori">
-              <ul>
-                {partita.giocatori.map((g) => {
-                  const offlineDa = vivi.get(g.id)?.offlineDa ?? null;
-                  return (
-                    <RigaGiocatore
-                      key={g.id}
-                      g={{
-                        id: g.id,
-                        nome: g.nome,
-                        colore: g.colore,
-                        host: g.id === stanza.host,
-                        tu: g.id === io,
-                        // Di chi è fuori dalla partita non interessa se è collegato.
-                        connesso: g.eliminato !== null || (connessi.get(g.id) ?? false),
-                        saldo: g.saldo,
-                        turno: inCorso && g.id === corrente?.id,
-                        prigione: g.prigione !== null && !g.eliminato,
-                        fuori: g.eliminato !== null,
-                        esito: g.eliminato ? ESITO_USCITA[g.eliminato.motivo] : undefined,
-                        assenteFino: inCorso && !g.eliminato && offlineDa !== null ? offlineDa + ASSENZA_MS : undefined,
-                        bot: bot.has(g.id),
-                        squadra: g.squadra === null ? undefined : { indice: g.squadra, nome: partita.squadre[g.squadra] ?? '' },
-                      }}
-                      puoEspellere={puoTogliere}
-                      etichettaEspulsione={`Togli ${g.nome} dalla partita`}
-                      bloccoEspulsione={
-                        g.id === vivo.turno.giocatore ? 'Non puoi togliere chi sta giocando il suo turno: aspetta che finisca.' : null
-                      }
-                      onEspelli={() => setDaTogliere(g)}
-                    />
-                  );
-                })}
-              </ul>
-            </section>
-
-            {me && inCorso && (
-              <div className="bancarotta">
-                {giocoIo && <PulsanteVoto partita={vivo} io={giocoIo} inviando={inviando} onMossa={mossa} />}
-                <button
-                  type="button"
-                  className="pulsante pulsante--piccolo pulsante--pericolo-tenue"
-                  onClick={() => setBancarotta(true)}
-                >
-                  <Icona nome="bandiera" />
-                  Bancarotta
-                </button>
-              </div>
-            )}
-
             {inCorso && (
               <PannelloScambi
                 partita={vivo}

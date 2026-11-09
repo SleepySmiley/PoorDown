@@ -199,6 +199,41 @@ export function Chat({
   );
 }
 
+/**
+ * In partita la chat si richiude in una barra in fondo alla colonna: il titolo, i messaggi arrivati da quando
+ * è chiusa e l'ultimo, per sapere se vale la pena aprirla.
+ */
+export function ChatChiusa({
+  nuovi,
+  ultimo,
+  onApri,
+}: {
+  nuovi: number;
+  ultimo?: MessaggioChat;
+  onApri: () => void;
+}): ReactNode {
+  return (
+    <button
+      type="button"
+      className={nuovi > 0 ? 'chat-chiusa chat-chiusa--nuovi' : 'chat-chiusa'}
+      aria-label={nuovi > 0 ? `Apri la chat: ${nuovi} messaggi nuovi` : 'Apri la chat'}
+      onClick={onApri}
+    >
+      <Icona nome="chat" className="chat-chiusa__icona" />
+      <span className="chat-chiusa__titolo">Chat</span>
+      {nuovi > 0 && ultimo ? (
+        <span className="chat-chiusa__ultimo">
+          <b>{ultimo.nome}:</b> {ultimo.testo}
+        </span>
+      ) : (
+        <span className="chat-chiusa__ultimo" />
+      )}
+      {nuovi > 0 && <span className="chat-chiusa__conta">{nuovi}</span>}
+      <Icona nome="su" className="chat-chiusa__freccia" />
+    </button>
+  );
+}
+
 /** Chat ridotta a una bolla: il numero conta i messaggi arrivati da quando è chiusa. */
 export function BollaChat({ messaggi, onEspandi }: { messaggi: MessaggioChat[]; onEspandi: () => void }): ReactNode {
   const [visti] = useState(() => messaggi.at(-1)?.n ?? 0);

@@ -1,6 +1,7 @@
 /* Tabellone: 11×11 (13×13 con 48 caselle), Partenza in alto a sinistra, senso orario.
-   Come in richup l'unico colore pieno è il proprietario: caselle grafite piatte che si
-   toccano, testi bianchi, la regione solo nello stemma, gli angoli grigi come le altre caselle. */
+   È un oggetto sul tavolo: una lastra con la cornice, caselle smaltate separate da fughe, il centro incassato.
+   La luce viene sempre dall'alto. L'unico colore pieno sulle caselle è il proprietario; la regione sta nello stemma;
+   il blu segnaletica solo sui cartelli degli angoli. Tutte le misure in k (1 k = 1 px con il tabellone da 820 px). */
 
 .tabellone {
   --lato: var(--lato-tabellone, 820px);
@@ -8,38 +9,62 @@
      Con più caselle per lato (--scala < 1, da geometria.ts) le caselle sono più piccole e tutto si riduce con loro. */
   --k: calc(var(--lato) * 0.00122 * var(--scala, 1));
 
-  /* Colori del tabellone scuro */
+  /* ---------- Materia del tabellone (solo qui) ----------
+     Lastra: la cornice di metallo scuro. Smalto: le caselle. Incasso: il centro, più in basso delle caselle. */
   --tab-fondo: var(--sfondo);
-  --tab-casella: #2a2e37;
-  --tab-casella-hover: #343945;
-  --tab-testo: #f4f1e8;
-  --tab-tenue: #a9b0bc;
-  --tab-etichetta: #4a5160;
+  --tab-lastra-alto: #3a404b;
+  --tab-lastra: #20242b;
+  --tab-lastra-basso: #181b21;
+  --tab-casella-alto: #333844;
+  --tab-casella: #2b2f39;
+  --tab-casella-basso: #272b34;
+  --tab-casella-hover: #3a404c;
+  --tab-incasso: #14171d;
+  --tab-etichetta: #1d2026;
+  --tab-righe: #23262e;
+  --tab-testo: var(--quadro-testo);
+  --tab-tenue: var(--quadro-tenue);
+  /* Il filo di luce in alto e l'ombra in basso di ogni pezzo smaltato. */
+  --tab-smalto: inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -1px 0 rgb(0 0 0 / 0.35);
 
   position: relative;
   width: var(--lato);
   height: var(--lato);
 }
 
-/* Righe e colonne arrivano da geometria.ts (ANGOLO), così la proporzione sta in un posto solo. */
+/* La lastra. Righe e colonne arrivano da geometria.ts, come cornice e fughe (--cornice, --fuga): i centri delle pedine le contano. */
 .tabellone__griglia {
   position: relative;
   display: grid;
+  gap: calc(var(--k) * var(--fuga, 2.5));
   width: 100%;
   height: 100%;
+  padding: calc(var(--k) * var(--cornice, 5));
+  border-radius: calc(var(--k) * 16);
+  background: linear-gradient(160deg, var(--tab-lastra-alto), var(--tab-lastra) 45%, var(--tab-lastra-basso));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    inset 0 -2px 0 rgb(0 0 0 / 0.5),
+    0 calc(var(--k) * 24) calc(var(--k) * 40) rgb(0 0 0 / 0.55),
+    0 calc(var(--k) * 4) calc(var(--k) * 8) rgb(0 0 0 / 0.4);
   transition:
-    filter 0.4s,
-    opacity 0.4s;
+    filter var(--d-lenta),
+    opacity var(--d-lenta);
 }
 
 .tabellone__griglia--sfocata {
   filter: blur(5px) saturate(0.6) brightness(0.8);
 }
 
-/* ---------- Caselle ---------- */
+/* ---------- Caselle smaltate ---------- */
 
 .casella {
+  /* Il colore che fa da «buco» nelle icone piene. */
   --buco: var(--tab-casella);
+  /* Direzione della luce dentro il corpo della casella: nelle colonne il corpo è ruotato, la luce no. */
+  --luce: 180deg;
+  --luce-x: 0;
+  --luce-y: 1;
 
   position: relative;
   z-index: 2;
@@ -48,45 +73,134 @@
   min-height: 0;
   padding: 0;
   border: 0;
-  border-radius: calc(var(--k) * 6);
-  background: var(--tab-casella);
+  border-radius: calc(var(--k) * 5);
+  background: linear-gradient(180deg, var(--tab-casella-alto) 0%, var(--tab-casella) 55%, var(--tab-casella-basso) 100%);
   color: var(--tab-testo);
   font-family: var(--stretto);
   text-align: center;
+  box-shadow: var(--tab-smalto);
+  transition: opacity var(--d-rapida);
 }
 
-button.casella {
-  transition: background-color 0.15s;
+/* Il tratteggio dell'ipoteca: si accende e si spegne piano (riscatto). */
+.casella::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--tab-casella) 0 calc(var(--k) * 5),
+    var(--tab-righe) calc(var(--k) * 5) calc(var(--k) * 10)
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--d-lenta);
 }
 
 button.casella:hover {
   --buco: var(--tab-casella-hover);
 
-  background: var(--tab-casella-hover);
+  background: linear-gradient(180deg, var(--tab-casella-hover) 0%, var(--tab-casella-alto) 100%);
 }
 
 .casella--selezionata {
   z-index: 4;
   box-shadow:
+    var(--tab-smalto),
     0 0 0 calc(var(--k) * 2) var(--tab-fondo),
     0 0 0 calc(var(--k) * 4.5) var(--ambra);
 }
 
-/* Gli angoli esterni del tabellone sono più arrotondati. */
+/* Casella d'arrivo del turno (prop arrivo): contorno ambra, rosso se si paga l'affitto; due impulsi all'arrivo. */
+.casella--arrivo {
+  --arrivo: var(--ambra);
+
+  z-index: 4;
+  box-shadow:
+    var(--tab-smalto),
+    0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+    0 0 0 calc(var(--k) * 4.5) var(--arrivo);
+}
+
+.casella--arrivo-affitto {
+  --arrivo: var(--rosso);
+}
+
+/* Caselle che lampeggiano nel colore del proprietario (prop lampeggia, per gli scambi). */
+.casella--lampeggia {
+  --lampo: var(--proprietario, var(--tab-testo));
+
+  z-index: 4;
+  box-shadow:
+    var(--tab-smalto),
+    0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+    0 0 0 calc(var(--k) * 4.5) var(--lampo);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .casella--arrivo {
+    animation: arrivo-impulso 600ms var(--c-arrivo) 2;
+  }
+
+  .casella--lampeggia {
+    animation: lampeggia 1.1s var(--c-viaggio) infinite;
+  }
+}
+
+@keyframes arrivo-impulso {
+  from {
+    box-shadow:
+      var(--tab-smalto),
+      0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+      0 0 0 calc(var(--k) * 4.5) var(--arrivo),
+      0 0 0 calc(var(--k) * 4.5) color-mix(in srgb, var(--arrivo) 45%, transparent);
+  }
+
+  to {
+    box-shadow:
+      var(--tab-smalto),
+      0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+      0 0 0 calc(var(--k) * 4.5) var(--arrivo),
+      0 0 0 calc(var(--k) * 14.5) transparent;
+  }
+}
+
+@keyframes lampeggia {
+  50% {
+    box-shadow:
+      var(--tab-smalto),
+      0 0 0 calc(var(--k) * 2) var(--tab-fondo),
+      0 0 0 calc(var(--k) * 4.5) var(--lampo),
+      0 0 calc(var(--k) * 16) calc(var(--k) * 5) color-mix(in srgb, var(--lampo) 55%, transparent);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--lampo) 22%, var(--tab-casella-alto)),
+      color-mix(in srgb, var(--lampo) 12%, var(--tab-casella-basso))
+    );
+  }
+}
+
+/* Il mouse su una città: la sua regione resta accesa e gli stemmi crescono, le altre caselle si spengono. */
+.casella--spenta {
+  opacity: 0.55;
+}
+
+/* Gli angoli esterni del tabellone seguono la curva della lastra. */
 .casella--angolo-0 {
-  border-top-left-radius: calc(var(--k) * 10);
+  border-top-left-radius: calc(var(--k) * 11);
 }
 
 .casella--angolo-1 {
-  border-top-right-radius: calc(var(--k) * 10);
+  border-top-right-radius: calc(var(--k) * 11);
 }
 
 .casella--angolo-2 {
-  border-bottom-right-radius: calc(var(--k) * 10);
+  border-bottom-right-radius: calc(var(--k) * 11);
 }
 
 .casella--angolo-3 {
-  border-bottom-left-radius: calc(var(--k) * 10);
+  border-bottom-left-radius: calc(var(--k) * 11);
 }
 
 .casella__corpo {
@@ -103,7 +217,7 @@ button.casella:hover {
   flex-direction: column-reverse;
 }
 
-/* Nelle colonne il contenuto è una casella normale ruotata verso il centro. */
+/* Nelle colonne il contenuto è una casella normale ruotata verso il centro; pittogrammi e luce restano dritti. */
 .casella--sinistra .casella__corpo,
 .casella--destra .casella__corpo {
   inset: auto;
@@ -121,8 +235,20 @@ button.casella:hover {
   transform: translate(-50%, -50%) rotate(-90deg);
 }
 
-/* Stemma della regione: a cavallo del bordo interno, sporge verso il centro.
-   Sul tabellone è solo colore: bordo scuro, niente sigla, niente ombra. */
+.casella--sinistra {
+  --luce: 90deg;
+  --luce-x: 1;
+  --luce-y: 0;
+}
+
+.casella--destra {
+  --luce: 270deg;
+  --luce-x: -1;
+  --luce-y: 0;
+}
+
+/* ---------- Stemma della regione: smaltato, a cavallo del bordo interno, con la sigla ---------- */
+
 .casella__stemma {
   position: absolute;
   top: 0;
@@ -130,25 +256,34 @@ button.casella:hover {
   z-index: 1;
   width: calc(var(--k) * 32);
   height: calc(var(--k) * 37);
-  transform: translate(-50%, -50%);
+  translate: -50% -50%;
+  filter: drop-shadow(0 calc(var(--k) * 1.5) calc(var(--k) * 1.5) rgb(0 0 0 / 0.45));
+  transition:
+    scale var(--d-rapida) var(--c-arrivo),
+    opacity var(--d-lenta),
+    filter var(--d-lenta);
 }
 
 .casella--alto .casella__stemma {
   top: auto;
   bottom: 0;
-  transform: translate(-50%, 50%);
+  translate: -50% 50%;
 }
 
-.casella__stemma path {
+.casella__stemma .stemma__contorno {
   stroke: var(--tab-fondo);
-  stroke-width: 1.5;
 }
 
 .casella__stemma text {
-  display: none;
+  font-size: 8px;
 }
 
-/* Nome: grande, bianco, su una riga sola. */
+.casella--accesa .casella__stemma {
+  scale: 1.12;
+}
+
+/* ---------- Nome: grande, crema, su una riga sola ---------- */
+
 .casella__nome {
   position: relative;
   max-width: 100%;
@@ -157,26 +292,29 @@ button.casella:hover {
   font-weight: 700;
   line-height: 1.05;
   white-space: nowrap;
+  transition:
+    opacity var(--d-lenta),
+    filter var(--d-lenta);
 }
 
 .casella--citta .casella__nome {
-  margin-top: calc(var(--k) * 22);
+  margin-top: calc(var(--k) * 21);
 }
 
 .casella--alto.casella--citta .casella__nome {
   margin-top: 0;
-  margin-bottom: calc(var(--k) * 22);
+  margin-bottom: calc(var(--k) * 21);
 }
 
-/* Una sola parola lunga (es. Courmayeur): carattere più piccolo invece di spezzarla. */
+/* Una sola parola lunga (es. Courmayeur): carattere più piccolo invece di spezzarla, mai sotto 13 px. */
 .casella__nome--lunga {
-  font-size: calc(var(--k) * 14);
+  font-size: max(13px, calc(var(--k) * 14));
   letter-spacing: -0.02em;
 }
 
 /* Due parole lunghe (es. Porto Cervo): su due righe. */
 .casella__nome--due-righe {
-  font-size: calc(var(--k) * 14);
+  font-size: max(13px, calc(var(--k) * 14));
   line-height: 0.95;
   letter-spacing: -0.02em;
   white-space: normal;
@@ -190,24 +328,70 @@ button.casella:hover {
   font-size: calc(var(--k) * 16);
 }
 
-/* Icona piena verso il bordo interno, al posto dello stemma. */
-.casella__icona {
+/* ---------- Pittogramma (stazioni, servizi, carte, tasse): sul bordo interno, sempre dritto ---------- */
+
+.casella__segnale {
   position: relative;
+  display: flex;
   flex: none;
-  width: calc(var(--k) * 30);
-  height: calc(var(--k) * 30);
-  margin: calc(var(--k) * 12) 0 calc(var(--k) * 4);
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--k) * 4);
+  margin: calc(var(--k) * 4) 0 calc(var(--k) * 1);
+}
+
+.casella--alto .casella__segnale {
+  margin: calc(var(--k) * 1) 0 calc(var(--k) * 4);
+}
+
+.casella__icona {
+  flex: none;
+  width: calc(var(--k) * 23);
+  height: calc(var(--k) * 23);
   color: var(--tab-testo);
+  filter: drop-shadow(0 1px 0 rgb(0 0 0 / 0.45));
+  transition:
+    opacity var(--d-lenta),
+    filter var(--d-lenta);
 }
 
-.casella--alto .casella__icona {
-  margin: calc(var(--k) * 4) 0 calc(var(--k) * 12);
+.casella--sinistra .casella__icona {
+  rotate: -90deg;
 }
 
-/* Busta e Cartolina: icona grande in ambra, il nome in ambra sul bordo esterno. */
+.casella--destra .casella__icona {
+  rotate: 90deg;
+}
+
+/* Stazioni e servizi: pittogramma e nome stretti verso il bordo interno, la corsia delle pedine resta libera. */
+.casella--stazione .casella__segnale,
+.casella--servizio .casella__segnale {
+  margin: calc(var(--k) * 3) 0 0;
+}
+
+.casella--alto.casella--stazione .casella__segnale,
+.casella--alto.casella--servizio .casella__segnale {
+  margin: 0 0 calc(var(--k) * 3);
+}
+
+.casella--stazione .casella__icona,
+.casella--servizio .casella__icona {
+  width: calc(var(--k) * 22);
+  height: calc(var(--k) * 22);
+}
+
+/* Busta e Cartolina: pittogramma grande in ambra, il nome in ambra sul bordo esterno. */
+.casella--carta .casella__segnale {
+  margin-top: calc(var(--k) * 6);
+}
+
+.casella--carta.casella--alto .casella__segnale {
+  margin: 0 0 calc(var(--k) * 6);
+}
+
 .casella--carta .casella__icona {
-  width: calc(var(--k) * 42);
-  height: calc(var(--k) * 42);
+  width: calc(var(--k) * 36);
+  height: calc(var(--k) * 36);
   color: var(--ambra);
 }
 
@@ -215,15 +399,16 @@ button.casella:hover {
   color: var(--ambra);
 }
 
-/* Tasse: non sono in vendita, quindi niente etichetta. L'importo è un testo grigio sotto l'icona. */
+/* Tasse: l'importo accanto al pittogramma, il nome sul bordo esterno. */
 .casella--tassa .casella__icona {
   color: var(--tab-tenue);
 }
 
 .casella__importo {
   color: var(--tab-tenue);
-  font-size: calc(var(--k) * 13);
-  font-weight: 600;
+  font-size: calc(var(--k) * 15);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
@@ -231,13 +416,13 @@ button.casella:hover {
 .casella--tassa .casella__nome,
 .casella--premio .casella__nome {
   margin-top: auto;
-  margin-bottom: calc(var(--k) * 9);
+  margin-bottom: calc(var(--k) * 5);
 }
 
 .casella--alto.casella--carta .casella__nome,
 .casella--alto.casella--tassa .casella__nome,
 .casella--alto.casella--premio .casella__nome {
-  margin-top: calc(var(--k) * 9);
+  margin-top: calc(var(--k) * 5);
   margin-bottom: auto;
 }
 
@@ -247,7 +432,8 @@ button.casella:hover {
   color: var(--ambra);
 }
 
-/* Prezzo: un'etichetta neutra sul bordo esterno, solo sulle proprietà libere. */
+/* ---------- Prezzo: un'etichetta scura sul bordo esterno, solo sulle proprietà libere ---------- */
+
 .casella__prezzo {
   position: relative;
   margin: auto 0 calc(var(--k) * 7);
@@ -255,18 +441,22 @@ button.casella:hover {
   border-radius: calc(var(--k) * 3);
   background: var(--tab-etichetta);
   color: var(--tab-testo);
-  font-size: calc(var(--k) * 12);
+  font-size: max(11px, calc(var(--k) * 13));
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   line-height: 1.1;
   white-space: nowrap;
+  box-shadow:
+    inset 0 -1px 0 rgb(255 255 255 / 0.06),
+    inset calc(var(--luce-x) * 1px) calc(var(--luce-y) * 1px) 0 rgb(0 0 0 / 0.5);
 }
 
 .casella--alto .casella__prezzo {
   margin: calc(var(--k) * 7) 0 auto;
 }
 
-/* ---------- Proprietà possedute ----------
-   Blocco pieno del colore del proprietario sul bordo esterno, al posto del prezzo. */
+/* ---------- Blocco del proprietario: chi è e quanto ha costruito ----------
+   Smaltato nel colore del proprietario, sul bordo esterno: iniziale, case da contare o piastrina HOTEL. */
 
 .casella__blocco {
   position: relative;
@@ -274,69 +464,76 @@ button.casella:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--k) * 2);
+  gap: calc(var(--k) * 4);
   align-self: stretch;
-  height: calc(var(--k) * 28);
+  height: calc(var(--k) * 26);
   margin-top: auto;
-  border-radius: 0 0 calc(var(--k) * 6) calc(var(--k) * 6);
-  background: var(--proprietario);
+  padding: 0 calc(var(--k) * 3);
+  border-radius: 0 0 calc(var(--k) * 5) calc(var(--k) * 5);
+  background: linear-gradient(var(--luce), color-mix(in srgb, var(--proprietario) 82%, #fff), var(--proprietario) 60%);
   color: var(--inchiostro);
+  box-shadow:
+    inset calc(var(--luce-x) * 1px) calc(var(--luce-y) * 1px) 0 rgb(255 255 255 / 0.4),
+    inset calc(var(--luce-x) * -1px) calc(var(--luce-y) * -1px) 0 rgb(0 0 0 / 0.18);
 }
 
 .casella--alto .casella__blocco {
   margin-top: 0;
   margin-bottom: auto;
-  border-radius: calc(var(--k) * 6) calc(var(--k) * 6) 0 0;
+  border-radius: calc(var(--k) * 5) calc(var(--k) * 5) 0 0;
 }
 
-/* Ipotecata: blocco a righe con l'icona della banca. */
-.casella__blocco--ipotecata {
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--proprietario) 0 calc(var(--k) * 4),
-    color-mix(in srgb, var(--proprietario) 40%, var(--tab-casella)) calc(var(--k) * 4) calc(var(--k) * 8)
-  );
-}
-
-.casella__edificio {
-  width: calc(var(--k) * 15);
-  height: calc(var(--k) * 15);
-  fill: currentColor;
-  stroke-width: 1;
-}
-
-.casella__case {
+.casella__iniziale {
   font-size: calc(var(--k) * 15);
   font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.02em;
+  opacity: 0.88;
 }
 
-/* Albergo: icona più grande su una piastrina scura, si distingue subito dalle case. */
-.casella__edificio--albergo {
-  width: calc(var(--k) * 22);
-  height: calc(var(--k) * 22);
-  padding: calc(var(--k) * 3);
-  border-radius: calc(var(--k) * 4);
-  background: var(--inchiostro);
+/* Le case e l'albergo: uguali sul tabellone e nella scheda (componente Edifici). */
+.edifici {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: calc(var(--k, 1px) * 2);
+}
+
+.edifici__casa {
+  display: block;
+  width: calc(var(--k, 1px) * 9);
+  height: calc(var(--k, 1px) * 10);
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 44%, 100% 100%, 0 100%, 0 44%);
+}
+
+.edifici--albergo {
+  /* La piastrina dell'albergo: rosso mattone, più scuro del rosso «pericolo». */
+  --albergo: color-mix(in srgb, var(--rosso) 72%, #000);
+
+  display: inline-grid;
+  place-items: center;
+  height: calc(var(--k, 1px) * 16);
+  padding: 0 calc(var(--k, 1px) * 4.5);
+  border-radius: calc(var(--k, 1px) * 3);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--albergo) 80%, #fff), var(--albergo) 55%);
   color: #fff;
-  fill: none;
-  stroke-width: 2.2;
-}
-
-.casella__edificio--ipoteca {
-  width: calc(var(--k) * 20);
-  height: calc(var(--k) * 20);
-  padding: calc(var(--k) * 2.5);
-  border-radius: calc(var(--k) * 4);
-  background: var(--tab-casella);
-  color: var(--tab-testo);
-  fill: none;
-  stroke-width: 2;
+  font: 700 calc(var(--k, 1px) * 11) / 1 var(--stretto);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 1px 0 rgb(0 0 0 / 0.45);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .casella__blocco {
-    animation: blocco-entra 0.35s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+    animation: blocco-entra var(--d-lenta) var(--c-molla);
+  }
+
+  /* Una casa nuova (o l'albergo) cade al suo posto con un rimbalzo: si anima solo quella appena aggiunta. */
+  .casella__edifici .edifici__casa,
+  .casella__edifici.edifici--albergo {
+    animation: casa-entra var(--d-entrata) var(--c-molla) both;
   }
 }
 
@@ -346,81 +543,202 @@ button.casella:hover {
   }
 }
 
-/* ---------- Angoli: grigi come le altre caselle, blu solo il riquadro del pittogramma ---------- */
+@keyframes casa-entra {
+  from {
+    scale: 0;
+  }
+
+  60% {
+    scale: 1.15;
+  }
+}
+
+/* ---------- Città ipotecata: «dorme» ----------
+   Tratteggio diagonale, nome stemma e pittogramma spenti, blocco smorzato con la scritta IPOTECATA. */
+
+.casella--ipotecata::before {
+  opacity: 1;
+}
+
+.casella--ipotecata .casella__nome,
+.casella--ipotecata .casella__stemma,
+.casella--ipotecata .casella__icona {
+  opacity: 0.38;
+  filter: saturate(0.2);
+}
+
+.casella__blocco--ipotecata {
+  background: color-mix(in srgb, var(--proprietario) 35%, var(--tab-casella));
+  color: var(--tab-testo);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--proprietario) 55%, transparent);
+}
+
+.casella__ipotecata {
+  font-size: calc(var(--k) * 11);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------- Angoli: cartelli che informano ----------
+   Un cartello stradale blu segnaletica (pittogramma e nome, doppio filetto bianco) sul bordo esterno,
+   l'importo a palette accanto; metà casella resta alle pedine. */
 
 .casella--angolo .casella__corpo {
+  justify-content: flex-start;
+  gap: calc(var(--k) * 4);
+  padding: calc(var(--k) * 7) calc(var(--k) * 5) 0;
+}
+
+/* Vacanza e Vai in prigione: il cartello in basso, sul bordo esterno; le pedine in alto. */
+.casella--angolo-2 .casella__corpo,
+.casella--angolo-3 .casella__corpo {
+  flex-direction: column-reverse;
+  padding: 0 calc(var(--k) * 5) calc(var(--k) * 7);
+}
+
+.casella__cartello {
+  display: flex;
+  align-items: center;
   justify-content: center;
   gap: calc(var(--k) * 5);
+  width: 100%;
+  min-height: calc(var(--k) * 31);
+  padding: calc(var(--k) * 4) calc(var(--k) * 7);
+  border-radius: calc(var(--k) * 6);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--segnaletica) 82%, #fff), var(--segnaletica) 60%);
+  color: #fff;
+  text-align: left;
+  box-shadow:
+    inset 0 0 0 calc(var(--k) * 1.5) var(--segnaletica),
+    inset 0 0 0 calc(var(--k) * 2.7) #fff,
+    0 calc(var(--k) * 1.5) 0 rgb(0 0 0 / 0.45),
+    0 calc(var(--k) * 3) calc(var(--k) * 6) rgb(0 0 0 / 0.35);
 }
 
 .casella__pittogramma {
   flex: none;
-  width: calc(var(--k) * 38);
-  height: calc(var(--k) * 38);
-  padding: calc(var(--k) * 7.5);
-  border-radius: calc(var(--k) * 6);
-  background: var(--cartello);
-  color: #fff;
-  stroke-width: 2.2;
+  width: calc(var(--k) * 22);
+  height: calc(var(--k) * 22);
+  stroke-width: 2.4;
 }
 
 .casella--angolo .casella__nome {
-  padding: 0 calc(var(--k) * 4);
-  font-size: calc(var(--k) * 16);
+  min-width: 0;
+  padding: 0;
+  font-size: calc(var(--k) * 14.5);
+  line-height: 0.95;
   white-space: normal;
 }
 
-/* Dove le pedine si fermano spesso il testo lascia libera metà casella. */
-.casella--angolo-0 .casella__corpo {
-  justify-content: flex-start;
-  padding-top: calc(var(--k) * 9);
+.casella__valore {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--k) * 3);
+  color: var(--tab-testo);
+  font-size: calc(var(--k) * 13);
+  font-weight: 700;
 }
 
-.casella--angolo-2 .casella__corpo,
-.casella--angolo-3 .casella__corpo {
-  justify-content: flex-end;
-  padding-bottom: calc(var(--k) * 9);
+.casella__segno {
+  color: var(--verde-testo);
+  font-size: calc(var(--k) * 18);
+  line-height: 1;
 }
 
-/* Prigione: la cella con le sbarre verso il centro, "In visita" sul bordo. */
+.casella__etichetta {
+  color: var(--tab-tenue);
+  font-size: calc(var(--k) * 11);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Prigione: fascia «In visita» lungo i bordi esterni (alto e destra), la cella verso il centro.
+   --fascia e --targa arrivano da geometria.ts / Tabellone.tsx, come la posizione delle sbarre e delle pedine. */
+.casella--angolo-1 .casella__corpo {
+  padding: 0;
+}
+
+.casella__visita {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: calc((1 - var(--fascia)) * 100%);
+  height: calc(var(--fascia) * 100%);
+  color: var(--tab-tenue);
+  font-size: calc(var(--k) * 13);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .casella__cella {
   position: absolute;
   left: 0;
   bottom: 0;
-  width: 66%;
-  height: 66%;
-  border-radius: 0 calc(var(--k) * 6) 0 calc(var(--k) * 6);
+  display: flex;
+  flex-direction: column;
+  width: calc((1 - var(--fascia)) * 100%);
+  height: calc((1 - var(--fascia)) * 100%);
+  overflow: hidden;
+  border-radius: 0 calc(var(--k) * 6) 0 calc(var(--k) * 11);
+  background: var(--tab-incasso);
+  box-shadow:
+    inset 0 calc(var(--k) * 5) calc(var(--k) * 10) rgb(0 0 0 / 0.65),
+    inset 0 0 0 calc(var(--k) * 1.5) #4a515e,
+    0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.casella__finestra {
+  flex: 1;
+  background: radial-gradient(ellipse 80% 70% at 50% 30%, rgb(255 214 140 / 0.06), transparent 70%);
+}
+
+.casella__targa {
+  display: grid;
+  flex: none;
+  place-items: center;
+  height: calc(var(--k) * var(--targa));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--segnaletica) 85%, #fff), var(--segnaletica) 60%);
+  color: #fff;
+  font-size: calc(var(--k) * 11.5);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: inset 0 calc(var(--k) * 1) 0 rgb(255 255 255 / 0.55);
+}
+
+/* Le sbarre: nel livello delle pedine, sopra i prigionieri. Posizione e misura da Tabellone.tsx. */
+.tabellone__sbarre {
+  position: absolute;
+  z-index: 15;
+  padding: 0 calc(var(--k) * 4);
   background:
+    linear-gradient(
+      180deg,
+      transparent calc(var(--k) * 9),
+      #5c6472 calc(var(--k) * 9),
+      #c9ced8 calc(var(--k) * 10.5),
+      #565e6b calc(var(--k) * 12.5),
+      transparent calc(var(--k) * 12.5)
+    ),
     repeating-linear-gradient(
       90deg,
-      rgb(255 255 255 / 0.3) 0 calc(var(--k) * 2.5),
-      transparent calc(var(--k) * 2.5) calc(var(--k) * 9)
-    ),
-    var(--linea-forte);
+      transparent 0 calc(var(--k) * 7.2),
+      #4f5663 calc(var(--k) * 7.2),
+      #dde2ea calc(var(--k) * 8.6),
+      #59616e calc(var(--k) * 10.2),
+      transparent calc(var(--k) * 10.2) calc(var(--k) * 12.4)
+    )
+    content-box;
+  filter: drop-shadow(calc(var(--k) * 1.5) calc(var(--k) * 2) calc(var(--k) * 1.5) rgb(0 0 0 / 0.55));
+  pointer-events: none;
 }
 
-/* La scritta sta in fondo alla cella, sotto le pedine dei prigionieri. */
-.casella--angolo-1 .casella__nome {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 66%;
-  padding: calc(var(--k) * 3) 0 calc(var(--k) * 4);
-  border-radius: 0 0 0 calc(var(--k) * 6);
-  background: rgb(17 19 23 / 0.85);
-  font-size: calc(var(--k) * 14);
-}
-
-.casella__sotto {
-  position: absolute;
-  top: calc(var(--k) * 9);
-  right: calc(var(--k) * 8);
-  font-size: calc(var(--k) * 14);
-  font-weight: 600;
-  line-height: 1;
-}
-
-/* ---------- Centro: è il fondo della pagina, come in richup ---------- */
+/* ---------- Centro: incassato nella lastra, con una macchia di luce e la grana del cemento ---------- */
 
 .tabellone__centro {
   position: relative;
@@ -429,9 +747,19 @@ button.casella:hover {
   flex-direction: column;
   align-items: center;
   min-height: 0;
+  margin: calc(var(--k) * 2);
   padding: calc(var(--k) * 26) calc(var(--k) * 32) calc(var(--k) * 16);
   overflow: hidden;
+  border-radius: calc(var(--k) * 9);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 40%, rgb(255 255 255 / 0.045), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.05'/%3E%3C/svg%3E"),
+    var(--tab-incasso);
   color: var(--tab-testo);
+  box-shadow:
+    inset 0 calc(var(--k) * 6) calc(var(--k) * 28) rgb(0 0 0 / 0.65),
+    inset 0 0 0 1px rgb(0 0 0 / 0.6),
+    0 1px 0 rgb(255 255 255 / 0.05);
 }
 
 .tabellone__velo {
@@ -443,7 +771,7 @@ button.casella:hover {
   color: var(--testo-1);
 }
 
-/* ---------- Pedine sul tabellone: lo stesso disco con l'iniziale della lista ---------- */
+/* ---------- Pedine: gettoni con corpo, nella corsia tra il nome e il bordo esterno ---------- */
 
 .tabellone__pedine {
   position: absolute;
@@ -467,6 +795,11 @@ button.casella:hover {
   display: block;
 }
 
+.segnaposto__disco {
+  position: relative;
+  isolation: isolate;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .segnaposto__salto {
     animation: salto 0.17s ease-out;
@@ -479,83 +812,206 @@ button.casella:hover {
   }
 }
 
+/* Il gettone: colore con la luce in alto a sinistra, bordo bianco, spessore sotto e ombra sul tabellone.
+   --u è una k già scalata con la pedina (più pedine sulla stessa casella sono più piccole). */
 .pedina--tabellone {
+  --u: calc(var(--k) * var(--s, 1));
+
   display: grid;
-  width: calc(var(--k) * 30 * var(--s, 1));
-  height: calc(var(--k) * 30 * var(--s, 1));
-  font-size: calc(var(--k) * 17 * var(--s, 1));
-  box-shadow:
-    0 0 0 calc(var(--k) * 2) #fff,
-    0 calc(var(--k) * 2) calc(var(--k) * 6) rgb(0 0 0 / 0.6);
-}
-
-/* Chi è di turno: un anello ambra netto attorno al disco, sopra le altre pedine. */
-.segnaposto--turno {
-  z-index: 1;
-}
-
-.segnaposto--turno .pedina--tabellone {
-  box-shadow:
-    0 0 0 calc(var(--k) * 2) #fff,
-    0 0 0 calc(var(--k) * 4.5) var(--ambra),
-    0 calc(var(--k) * 2) calc(var(--k) * 6) rgb(0 0 0 / 0.6);
-}
-
-.segnaposto .in-prigione::after {
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 calc(var(--k) * 5 * var(--s, 1)),
-    rgb(20 20 24 / 0.8) calc(var(--k) * 5 * var(--s, 1)) calc(var(--k) * 7.5 * var(--s, 1))
+  width: calc(var(--u) * 30);
+  height: calc(var(--u) * 30);
+  background: radial-gradient(
+    circle at 35% 28%,
+    color-mix(in srgb, var(--colore) 55%, #fff) 0%,
+    var(--colore) 45%,
+    color-mix(in srgb, var(--colore) 70%, #000) 100%
   );
+  font: 700 calc(var(--u) * 16) / 1 var(--stretto);
+  letter-spacing: -0.03em;
+  text-shadow: 0 calc(var(--u) * 0.8) 0 rgb(255 255 255 / 0.35);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 1.4) rgb(255 255 255 / 0.22),
+    0 0 0 calc(var(--u) * 2) #fff,
+    0 calc(var(--u) * 3.5) 0 calc(var(--u) * 1) color-mix(in srgb, var(--colore) 45%, #000),
+    0 calc(var(--u) * 7) calc(var(--u) * 9) rgb(0 0 0 / 0.65);
+  transition:
+    translate var(--d-entrata) var(--c-arrivo),
+    box-shadow var(--d-entrata);
+}
+
+/* Chi è di turno: sollevato, anello ambra e un alone che respira. */
+.segnaposto--turno .pedina--tabellone {
+  translate: 0 calc(var(--u) * -3);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 1.4) rgb(255 255 255 / 0.22),
+    0 0 0 calc(var(--u) * 2) #fff,
+    0 0 0 calc(var(--u) * 4.5) var(--ambra),
+    0 calc(var(--u) * 5) 0 calc(var(--u) * 2) color-mix(in srgb, var(--colore) 45%, #000),
+    0 calc(var(--u) * 11) calc(var(--u) * 12) rgb(0 0 0 / 0.6);
+}
+
+.segnaposto--turno .segnaposto__disco::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--k) * var(--s, 1) * -10);
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ambra) 45%, transparent) 30%, transparent 70%);
+  opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .segnaposto--turno .segnaposto__disco::before {
+    animation: alone-respira 1.6s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes alone-respira {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.3;
+  }
+}
+
+/* ---------- 13×13: caselle più strette in profondità ---------- */
+
+.tabellone--13 .casella__cartello {
+  gap: calc(var(--k) * 4);
+  padding: calc(var(--k) * 4) calc(var(--k) * 5);
+}
+
+.tabellone--13 .casella--angolo .casella__nome {
+  font-size: calc(var(--k) * 13.5);
+}
+
+.tabellone--13 .casella__valore {
+  font-size: calc(var(--k) * 12);
+}
+
+.tabellone--13 .casella__etichetta {
+  font-size: calc(var(--k) * 10);
+}
+
+.tabellone--13 .casella--stazione .casella__icona,
+.tabellone--13 .casella--servizio .casella__icona {
+  width: calc(var(--k) * 20);
+  height: calc(var(--k) * 20);
+}
+
+.tabellone--13 .casella--stazione .casella__segnale,
+.tabellone--13 .casella--servizio .casella__segnale {
+  margin: calc(var(--k) * 3) 0 0;
+}
+
+.tabellone--13 .casella--alto.casella--stazione .casella__segnale,
+.tabellone--13 .casella--alto.casella--servizio .casella__segnale {
+  margin: 0 0 calc(var(--k) * 3);
+}
+
+.tabellone--13 .casella__blocco {
+  height: calc(var(--k) * 24);
+}
+
+.tabellone--13 .casella--citta .casella__nome {
+  margin-top: calc(var(--k) * 20);
+}
+
+.tabellone--13 .casella--alto.casella--citta .casella__nome {
+  margin-top: 0;
+  margin-bottom: calc(var(--k) * 20);
 }
 
 /* =====================================================================
-   Scheda della proprietà
+   Scheda della proprietà: un biglietto
+   Testata piena del colore della regione con lo stemma, affitti con le case da contare,
+   piede a matrice (tratteggio e mezzelune) con il prezzo a palette.
+   Ogni parte ha il suo fondo: le mezzelune lasciano vedere quello che c'è sotto.
    ===================================================================== */
 
-/* La scheda è un popover: superficie sollevata. La testata ha il colore della regione (le altre caselle sono neutre). */
 .scheda {
+  --scheda-fondo: var(--sup-2);
+
   width: 250px;
-  overflow: hidden;
   border-radius: var(--r-2);
-  background: var(--sup-2);
   color: var(--testo-1);
   font-size: 0.9375rem;
-  box-shadow: var(--e2);
+  filter: drop-shadow(0 10px 22px rgb(0 0 0 / 0.5)) drop-shadow(0 1px 2px rgb(0 0 0 / 0.4));
 }
 
 .scheda__testa {
   position: relative;
-  padding: 0.75rem 1rem;
-  background: var(--gruppo, var(--sup-3));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  padding: 12px 40px 12px 12px;
+  border-radius: var(--r-2) var(--r-2) 0 0;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.16), transparent 55%),
+    var(--gruppo, var(--sup-3));
   color: var(--su-gruppo, #fff);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -1px 0 rgb(0 0 0 / 0.3);
 }
 
 .scheda__testa--senza-regione {
-  background: var(--sup-3);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.06), transparent 55%),
+    var(--sup-3);
   color: var(--testo-1);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.375rem;
-  padding-top: 0.875rem;
 }
 
-.scheda__regione {
-  font-size: 0.8125rem;
-  opacity: 0.85;
+.scheda__stemma {
+  width: 40px;
+  height: 46px;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.35));
+}
+
+.scheda__stemma text {
+  font-size: 8px;
+}
+
+/* Stazioni e servizi: il pittogramma su un cartello blu, come gli angoli del tabellone. */
+.scheda__pittogramma {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-2);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--segnaletica) 85%, #fff), var(--segnaletica) 55%);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 2px var(--segnaletica),
+    inset 0 0 0 3.5px #fff,
+    0 2px 4px rgb(0 0 0 / 0.35);
 }
 
 .scheda__icona {
-  width: 30px;
-  height: 30px;
-  padding: 4px;
-  border-radius: var(--r-1);
-  box-shadow: inset 0 0 0 2px currentColor;
+  --buco: var(--segnaletica);
+
+  width: 24px;
+  height: 24px;
+}
+
+.scheda__titolo {
+  min-width: 0;
+}
+
+.scheda__regione {
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
 }
 
 .scheda__nome {
   font: 700 1.875rem/1 var(--stretto);
+  overflow-wrap: anywhere;
 }
 
 .scheda__chiudi {
@@ -587,6 +1043,14 @@ button.casella:hover {
   height: 18px;
 }
 
+/* Il corpo: in basso le due mezzelune della matrice (la metà alta; l'altra è nel piede). */
+.scheda__corpo {
+  padding-bottom: 12px;
+  background:
+    radial-gradient(circle at 0 100%, transparent 8px, var(--scheda-fondo) 8.5px) left bottom / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 100%, transparent 8px, var(--scheda-fondo) 8.5px) right bottom / 51% 100% no-repeat;
+}
+
 .scheda__ipoteca {
   padding: 0.375rem 1rem;
   background: var(--sup-3);
@@ -596,13 +1060,17 @@ button.casella:hover {
   font-weight: 600;
 }
 
+.scheda__tabella {
+  position: relative;
+}
+
 .scheda__affitti {
   width: 100%;
   border-collapse: collapse;
 }
 
 .scheda__affitti thead th {
-  padding: 0.5rem 1rem 0.25rem;
+  padding: 0.625rem 1rem 0.25rem;
   color: var(--testo-2);
   font: var(--t-etichetta);
   text-transform: uppercase;
@@ -616,7 +1084,8 @@ button.casella:hover {
 
 .scheda__affitti tbody th,
 .scheda__affitti td {
-  padding: 0.3125rem 1rem;
+  height: 30px;
+  padding: 0 1rem;
   font-weight: inherit;
   text-align: left;
 }
@@ -630,14 +1099,53 @@ button.casella:hover {
 }
 
 .scheda__affitti tbody tr:nth-child(odd) {
-  background: var(--sup-1);
+  background: color-mix(in srgb, var(--sup-1) 70%, var(--scheda-fondo));
 }
 
-/* La riga dell'affitto di adesso: ambra. */
+/* Le case nella scheda: crema sul fondo scuro, l'albergo rosso come sul tabellone. */
+.scheda__edifici {
+  --k: 1.25px;
+
+  vertical-align: -1px;
+  color: var(--quadro-testo);
+}
+
+.scheda__edifici.edifici--albergo {
+  color: #fff;
+}
+
+/* La riga dell'affitto di adesso: barra ambra a sinistra. */
 .scheda__affitti tbody tr.scheda__attuale {
-  background: var(--ambra-velo);
-  box-shadow: inset 3px 0 0 var(--ambra);
+  background: color-mix(in srgb, var(--ambra) 13%, var(--scheda-fondo));
+  box-shadow: inset 4px 0 0 var(--ambra);
   font-weight: 600;
+}
+
+.scheda__affitti tbody tr.scheda__attuale td {
+  color: var(--ambra-testo);
+  font-weight: 700;
+}
+
+/* Ipotecata: la tabella si spegne e ci passa sopra un timbro. */
+.scheda--ipotecata .scheda__affitti {
+  opacity: 0.45;
+}
+
+.scheda__timbro {
+  position: absolute;
+  top: 54%;
+  left: 50%;
+  padding: 3px 12px 1px;
+  border: 2.5px solid var(--rosso-testo);
+  border-radius: var(--r-1);
+  color: var(--rosso-testo);
+  font: 700 1.5rem/1.1 var(--stretto);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--rosso-testo) 35%, transparent);
+  pointer-events: none;
 }
 
 .scheda__azioni {
@@ -650,6 +1158,7 @@ button.casella:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin: 0.625rem 1rem 0;
   padding-top: 0.625rem;
   border-top: 1px solid var(--linea-forte);
@@ -660,23 +1169,60 @@ button.casella:hover {
 .scheda__proprietario strong {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
+  min-width: 0;
   color: var(--testo-1);
   font: 600 1.0625rem/1 var(--stretto);
 }
 
+.scheda__proprietario .scheda__libera {
+  color: var(--testo-2);
+}
+
+.pedina.pedina--scheda {
+  width: 22px;
+  height: 22px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.scheda__chiedi.pulsante {
+  width: calc(100% - 2rem);
+  margin: 0.75rem 1rem 0;
+}
+
+/* Il piede a matrice: tratteggio di strappo e le due mezzelune (la metà bassa). */
 .scheda__piede {
+  position: relative;
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 0.5rem;
   margin: 0;
-  padding: 0.625rem 1rem 0.875rem;
+  padding: 0.875rem 1rem 0.875rem;
+  border-radius: 0 0 var(--r-2) var(--r-2);
+  background:
+    radial-gradient(circle at 0 0, transparent 8px, var(--scheda-fondo) 8.5px) left top / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 0, transparent 8px, var(--scheda-fondo) 8.5px) right top / 51% 100% no-repeat;
+}
+
+.scheda__piede::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 13px;
+  right: 13px;
+  border-top: 2px dashed var(--linea-forte);
 }
 
 .scheda__piede div {
   display: grid;
   justify-items: center;
-  gap: 2px;
+  gap: 4px;
+}
+
+.scheda__piede .scheda__prezzo {
+  justify-items: start;
 }
 
 .scheda__piede dt {
@@ -684,7 +1230,9 @@ button.casella:hover {
   place-items: center;
   height: 18px;
   color: var(--testo-2);
-  font: var(--t-piccolo);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .scheda__piede dt .icona {
@@ -696,8 +1244,12 @@ button.casella:hover {
   font: 600 1.0625rem/1 var(--stretto);
 }
 
+.scheda__prezzo dd {
+  font-size: 1.25rem;
+}
+
 /* Aperta accanto alla casella, verso il centro. Si apre e si chiude con Motion (SchedaProprieta).
-   --margine (da geometria.ts) è lo spessore delle caselle lungo il bordo. */
+   --margine (da geometria.ts) è dove comincia il centro: cornice + spessore delle caselle. */
 .scheda--popover {
   position: absolute;
   z-index: 6;
@@ -720,7 +1272,7 @@ button.casella:hover {
 
 .scheda--da-destra,
 .scheda--da-sinistra {
-  top: clamp(calc(var(--margine) + 8px), calc(var(--y) - 170px), calc(100% - var(--margine) - 350px));
+  top: clamp(calc(var(--margine) + 8px), calc(var(--y) - 190px), calc(100% - var(--margine) - 400px));
 }
 
 .scheda--da-destra {

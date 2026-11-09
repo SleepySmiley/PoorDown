@@ -1,4 +1,8 @@
-/* Home: stessa impaginazione del riferimento, grafica Partenze. */
+/*
+ * Home come un tabellone delle partenze: a sinistra l'insegna e l'ingresso, a destra le stanze aperte.
+ * Qui ci sono anche l'insegna estesa del marchio (ui/Marchio.tsx) e i passi di «Come si gioca»,
+ * usati pure nella finestra di aiuto della stanza.
+ */
 
 .home {
   position: relative;
@@ -12,15 +16,15 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 26px 32px;
+  justify-content: flex-end;
+  padding: var(--s-5) var(--s-6);
 }
 
 .home__link {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
   border-radius: var(--r-1);
   color: var(--testo-2);
   font: 500 1.0625rem/1 var(--normale);
@@ -35,7 +39,58 @@
   color: var(--testo-1);
 }
 
-/* ---------- Cartelli sparsi in fondo ---------- */
+/* =====================================================================
+   Marchio: l'insegna estesa (pittogramma + nome in un solo cartello smaltato)
+   Misure in em: l'altezza è 1em, la decide il font-size del contenitore.
+   ===================================================================== */
+
+.insegna-estesa {
+  display: inline-flex;
+  align-items: stretch;
+  height: 1em;
+  border-radius: 0.11em;
+  background: var(--cartello);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 0.05em var(--cartello),
+    inset 0 0 0 0.088em #fff,
+    0 0.08em 0.25em rgb(0 0 0 / 0.35);
+  line-height: 1;
+}
+
+.insegna-estesa__segno {
+  flex: none;
+  width: 0.92em;
+  height: 1em;
+  padding: 0.16em 0.12em 0.15em 0.15em;
+}
+
+/* Il nome sta nel secondo riquadro: il filetto bianco li divide. */
+.insegna-estesa__nome {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0 0.26em 0.05em 0.24em;
+  font-family: var(--stretto);
+  font-size: 0.74em;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.insegna-estesa__nome::before {
+  content: '';
+  position: absolute;
+  top: 0.118em;
+  bottom: 0.118em;
+  left: 0;
+  width: 0.064em;
+  background: #fff;
+}
+
+/* =====================================================================
+   Pittogrammi sparsi ai bordi, come cartelli di stazione (mai sopra i comandi)
+   ===================================================================== */
 
 .home__sfondo {
   position: absolute;
@@ -44,7 +99,17 @@
   min-height: 720px;
   overflow: hidden;
   pointer-events: none;
-  background: radial-gradient(ellipse 40% 34% at 50% 104%, rgb(255 184 28 / 0.22), transparent 70%);
+}
+
+/* La luce della sera: calda in fondo, fredda dietro il tabellone. Sfuma prima del bordo, così non si vede dove finisce. */
+.home__sfondo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 44% 30% at 50% 100%, rgb(255 184 28 / 0.13), transparent 70%),
+    radial-gradient(ellipse 36% 40% at 72% 46%, rgb(42 100 200 / 0.08), transparent 70%);
+  mask-image: linear-gradient(#000 72%, transparent);
 }
 
 .cartello {
@@ -53,12 +118,12 @@
   top: var(--y);
   display: grid;
   place-items: center;
-  width: calc(58px * var(--d));
-  height: calc(58px * var(--d));
+  width: calc(3.625rem * var(--d));
+  height: calc(3.625rem * var(--d));
   border-radius: calc(7px * var(--d));
   background: var(--cartello);
   color: #fff;
-  opacity: calc(0.25 + var(--d) * 0.6);
+  opacity: calc(0.12 + var(--d) * 0.45);
   transform: translate(-50%, -50%) rotate(var(--r));
   box-shadow:
     inset 0 0 0 calc(3px * var(--d)) var(--cartello),
@@ -73,8 +138,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .cartello {
     animation:
-      cartello-entra 0.7s calc(var(--i) * 60ms + 200ms) both cubic-bezier(0.2, 0.8, 0.3, 1.2),
-      cartello-oscilla 6s calc(var(--i) * -0.7s) ease-in-out infinite;
+      cartello-entra var(--d-viaggio) calc(var(--i) * 70ms + 300ms) both var(--c-molla),
+      cartello-oscilla 6s calc(var(--i) * -0.9s) ease-in-out infinite;
   }
 }
 
@@ -91,142 +156,85 @@
   }
 }
 
-/* ---------- Colonna centrale ---------- */
+/* =====================================================================
+   Palco: due colonne, ingresso a sinistra e partenze a destra
+   ===================================================================== */
 
-.home__centro {
+.home__palco {
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 25rem) minmax(0, 1fr);
+  align-items: start;
+  align-content: center;
+  gap: var(--s-8);
+  width: min(75rem, 100% - 2 * var(--s-6));
   min-height: 100vh;
-  padding-top: 92px;
-  transition: padding-top 0.4s cubic-bezier(0.3, 0.7, 0.3, 1);
+  margin: 0 auto;
+  padding: var(--s-8) 0 var(--s-7);
 }
 
-.home__centro--stanze {
-  padding-top: 48px;
+@media (max-width: 1100px) {
+  .home__palco {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-7);
+  }
 }
 
-.marchio {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.dado-home {
-  padding: 0;
-  border: 0;
-  background: none;
-}
-
-.dado-home__corpo {
-  display: block;
-  transform: rotate(-10deg);
-}
-
-.dado-home .dado {
-  width: 104px;
-  height: 104px;
-  padding: 19px;
-  border-radius: 18px;
-  box-shadow:
-    0 8px 0 #a7afbb,
-    0 18px 30px rgb(0 0 0 / 0.5);
-}
-
-.dado-home .dado .punto {
-  width: 15px;
-  height: 15px;
-}
-
-.dado-home:hover .dado-home__corpo:not(.dado-home__corpo--rotola) {
-  transform: rotate(-4deg) translateY(-3px);
-  transition: transform 0.2s;
+.home__ingresso {
+  display: grid;
+  justify-items: start;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .dado-home__corpo--rotola {
-    animation: dado-rotola 0.9s cubic-bezier(0.25, 0.7, 0.3, 1) both;
+  .home__ingresso,
+  .partenze,
+  .biglietto {
+    animation: compare var(--d-lenta) var(--c-arrivo) both;
+  }
+
+  .partenze,
+  .biglietto {
+    animation-delay: 80ms;
   }
 }
 
-@keyframes dado-rotola {
-  0% {
-    transform: rotate(-10deg);
-  }
-
-  35% {
-    transform: translateY(-46px) rotate(190deg) scale(1.05);
-  }
-
-  65% {
-    transform: translateY(0) rotate(330deg) scale(1);
-  }
-
-  78% {
-    transform: translateY(0) rotate(345deg) scale(1.06, 0.92);
-  }
-
-  100% {
-    transform: rotate(350deg);
-  }
+.home__insegna {
+  display: flex;
+  font-size: 4.5rem;
+  line-height: 1;
 }
 
-.marchio__nome {
-  margin-top: 30px;
-  padding: 6px 30px 12px;
-  border-radius: var(--r-3);
-  background: var(--cartello);
-  color: #fff;
-  font: 700 88px/1 var(--stretto);
-  letter-spacing: 0.005em;
-  box-shadow:
-    inset 0 0 0 5px var(--cartello),
-    inset 0 0 0 8px #fff;
-  transition:
-    font-size 0.4s cubic-bezier(0.3, 0.7, 0.3, 1),
-    padding 0.4s cubic-bezier(0.3, 0.7, 0.3, 1),
-    margin 0.4s cubic-bezier(0.3, 0.7, 0.3, 1);
+.home__insegna-link {
+  display: inline-flex;
+  border-radius: var(--r-2);
+  color: inherit;
+  text-decoration: none;
 }
 
-.marchio__motto {
-  margin-top: 14px;
+.home__motto {
+  margin-top: var(--s-4);
   color: var(--testo-2);
-  font: 500 1.375rem/1.2 var(--normale);
-  transition: font-size 0.4s cubic-bezier(0.3, 0.7, 0.3, 1);
+  font: 500 1.25rem/1.3 var(--normale);
+  text-wrap: balance;
 }
 
-.home__centro--stanze .marchio__nome {
-  margin-top: 22px;
-  padding: 4px 18px 7px;
-  font-size: 48px;
-}
-
-.home__centro--stanze .marchio__motto {
-  margin-top: 8px;
-  font-size: 1.0625rem;
-}
-
-/* ---------- Nome, Gioca e altri ingressi ---------- */
+/* ---------- Nome, Gioca e stanza privata ---------- */
 
 .ingresso {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  width: 300px;
-  margin-top: 76px;
+  display: grid;
+  gap: var(--s-3);
+  width: 100%;
+  margin-top: var(--s-7);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .ingresso,
-  .elenco-stanze {
-    animation: compare 0.35s cubic-bezier(0.3, 0.7, 0.3, 1) both;
-  }
+.ingresso__etichetta {
+  margin-bottom: calc(var(--s-1) * -1);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-
-
 
 .campo-nome {
   position: relative;
@@ -234,7 +242,7 @@
 }
 
 .campo-nome .campo {
-  height: 48px;
+  height: 3rem;
   padding-right: 3.25rem;
 }
 
@@ -245,8 +253,8 @@
   transform: translateY(-50%);
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 2.375rem;
+  height: 2.375rem;
   padding: 0;
   border: 0;
   border-radius: var(--r-1);
@@ -263,13 +271,13 @@
 }
 
 .campo-nome__dado .icona {
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .campo-nome__dado .gira {
-    animation: rotola 0.45s cubic-bezier(0.3, 0.6, 0.3, 1);
+    animation: rotola 450ms var(--c-arrivo);
   }
 }
 
@@ -279,197 +287,197 @@
   }
 }
 
-/* Il tasto grande della home: lo spessore è un bordo inferiore blu scuro che si abbassa alla pressione. */
-.pulsante--gioca {
-  width: 100%;
-  height: 80px;
-  border-radius: var(--r-2);
-  font-size: 2.25rem;
-  gap: var(--s-3);
-  box-shadow: 0 5px 0 var(--segnale-scuro);
+/* Il tasto della home: il più grande della pagina, con lo spessore del tasto sotto. */
+.pulsante.pulsante--gioca {
+  margin-top: var(--s-1);
+  font-size: 1.625rem;
+  box-shadow: inset 0 -3px 0 var(--segnale-scuro);
 }
 
 .pulsante.pulsante--gioca:active:not(:disabled) {
-  box-shadow: 0 2px 0 var(--segnale-scuro);
-  transform: translateY(3px);
+  box-shadow: none;
 }
 
-.pulsante--gioca .icona {
-  width: 34px;
-  height: 34px;
-  stroke-width: 2.4;
+.ingresso__spiega {
+  color: var(--testo-3);
+  font: var(--t-piccolo);
+  text-wrap: pretty;
 }
 
 .ingresso__altri {
   display: flex;
-  gap: 8px;
-  margin-top: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  margin-top: var(--s-3);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--linea);
 }
 
-/* Ingressi secondari della home: pulsanti secondari (vecchio nome «tenue»). */
-.pulsante--tenue {
-  --pulsante-fondo: var(--sup-2);
-  --pulsante-testo: var(--testo-1);
-  --pulsante-hover: var(--sup-3);
-  --pulsante-anello: var(--linea-forte);
+.ingresso__spiega-privata {
+  color: var(--testo-3);
+  font: var(--t-piccolo);
 }
 
-/* ---------- Tutte le stanze (stesso riquadro) ---------- */
+/* =====================================================================
+   Il tabellone delle partenze
+   ===================================================================== */
 
-.elenco-stanze {
-  width: 564px;
-  max-width: calc(100vw - 32px);
-  margin-top: 40px;
-  padding: 30px 30px 24px;
+.partenze,
+.biglietto {
+  /* Sul quadro nero le palette si staccano con un grigio più chiaro (come .pannello--scuro). */
+  --flap-alto: #3d424c;
+  --flap-basso: #33373f;
+
+  min-width: 0;
+  overflow: hidden;
   border-radius: var(--r-3);
   background: var(--quadro);
   color: var(--quadro-testo);
   box-shadow:
-    0 0 0 1px var(--quadro-linea),
-    var(--e3);
+    inset 0 0 0 1px var(--quadro-linea),
+    0 24px 64px rgb(0 0 0 / 0.5);
 }
 
-.elenco-stanze__barra {
+.partenze {
+  --colonne: 6.25rem minmax(0, 1fr) 10.5rem 7rem;
+  --riga: 3.25rem;
+}
+
+.partenze__testa {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-5) var(--s-5) var(--s-4);
 }
 
-.elenco-stanze__spazio {
-  flex: 1;
-}
-
-/* Sul quadro nero: pulsanti secondari con l'anello chiaro (vecchio nome «contorno chiaro»). */
-.pulsante--contorno-chiaro {
-  --pulsante-fondo: var(--quadro-hover);
-  --pulsante-testo: var(--quadro-testo);
-  --pulsante-hover: var(--sup-4);
-  --pulsante-anello: var(--quadro-anello);
-}
-
-.pulsante-icona.pulsante-icona--contorno {
-  width: 2rem;
-  height: 2rem;
-  background: var(--quadro-hover);
+.partenze__titolo {
   color: var(--quadro-testo);
-  box-shadow: inset 0 0 0 1px var(--quadro-anello);
+  font: var(--t-titolo-1);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.pulsante-icona.pulsante-icona--contorno:hover {
-  background: var(--sup-4);
-  color: #fff;
+.partenze__sottotitolo {
+  margin-top: var(--s-1);
+  color: var(--quadro-tenue);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.elenco-stanze__invito {
-  margin: var(--s-5) 0 var(--s-3);
-  text-align: center;
-  color: var(--testo-2);
+.partenze__ora {
+  display: inline-flex;
 }
 
-.elenco-stanze__lista {
+.partenze__colonne,
+.partenza {
   display: grid;
-  gap: 8px;
-  max-height: 292px;
+  grid-template-columns: var(--colonne);
+  align-items: center;
+  gap: var(--s-4);
+  padding: 0 var(--s-5);
+}
+
+.partenze__colonne {
+  padding-block: var(--s-2);
+  border-block: 1px solid var(--quadro-linea);
+  color: var(--quadro-tenue);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.partenze__colonne span:last-child {
+  justify-self: end;
+}
+
+.partenze__corpo {
+  position: relative;
+  min-height: calc(var(--riga) * 6);
+  max-height: calc(var(--riga) * 8);
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--linea-forte) transparent;
+  scrollbar-color: var(--quadro-anello) transparent;
 }
 
-.stanza-card {
-  display: flex;
+.partenze__voce {
+  height: var(--riga);
+}
+
+/* Righe alterne, come le strisce dei tabelloni veri. */
+.partenze__voce:nth-child(even) {
+  background: color-mix(in srgb, var(--quadro-hover) 35%, transparent);
+}
+
+.partenza {
   width: 100%;
-  min-height: 76px;
-  padding: 0;
+  height: 100%;
   border: 0;
-  border-radius: var(--r-2);
-  overflow: hidden;
-  background: var(--sup-3);
-  color: var(--quadro-testo);
+  background: transparent;
+  color: inherit;
   text-align: left;
   transition: background-color var(--d-rapida);
 }
 
-.stanza-card:hover {
-  background: var(--sup-4);
+.partenza:hover,
+.partenza:focus-visible {
+  background: var(--quadro-hover);
 }
 
-.stanza-card__sinistra {
-  flex: 1;
-  display: grid;
-  align-content: center;
-  gap: 9px;
-  padding: 12px 16px;
+.partenza:focus-visible {
+  outline-offset: -2px;
+}
+
+.partenza__codice {
+  display: inline-flex;
+}
+
+.partenza__tabellone {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.partenza__mappa {
+  flex: none;
+  color: var(--quadro-testo);
+  font: var(--t-nome);
   font-size: 1.125rem;
 }
 
-.stanza-card__posti {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.stanza-card .pedina.pedina--posto {
-  width: 16px;
-  height: 16px;
-  box-shadow: none;
-}
-
-.posto-libero {
-  width: 8px;
-  height: 8px;
-  margin: 0 4px;
-  border-radius: 50%;
-  background: var(--testo-3);
-}
-
-.stanza-card__destra {
-  display: grid;
-  justify-items: end;
-  align-content: center;
-  gap: 8px;
-  padding: var(--s-3) var(--s-4);
-  background: var(--sup-2);
-}
-
-.stanza-card__mappa {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.partenza__standard {
+  overflow: hidden;
   color: var(--quadro-tenue);
-  font: 600 1rem/1 var(--stretto);
-}
-
-.stanza-card__mappa .icona {
-  width: 16px;
-  height: 16px;
-}
-
-.stanza-card__standard {
-  padding: 2px var(--s-2);
-  border-radius: var(--r-tondo);
-  background: var(--sup-4);
   font: var(--t-piccolo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.stanza-card__regole {
+.partenza__regole {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s-3);
+  min-width: 0;
+  color: var(--quadro-tenue);
 }
 
 .regola-icona {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--s-1);
   font: 600 0.9375rem/1 var(--stretto);
 }
 
 .regola-icona .icona {
-  width: 19px;
-  height: 19px;
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
+/* Il pallino dice se la regola diversa è accesa (verde) o spenta (rosso). */
 .regola-icona:not(.regola-icona--soldi)::after {
   content: '';
   position: absolute;
@@ -479,29 +487,248 @@
   height: 7px;
   border-radius: 50%;
   background: var(--rosso);
-  box-shadow: 0 0 0 2px var(--sup-2);
+  box-shadow: 0 0 0 2px var(--quadro);
 }
 
 .regola-icona.regola-icona--attiva::after {
   background: var(--verde);
 }
 
-.elenco-stanze__nota {
+.partenza__posti {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 18px;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.partenza__pedine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.partenze .partenza .pedina--posto {
+  width: 0.875rem;
+  height: 0.875rem;
+  box-shadow: none;
+}
+
+.partenze .partenza .pedina--bot {
+  opacity: 0.55;
+}
+
+.partenza__libero {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--quadro-anello);
+}
+
+.partenza__conta {
+  margin-left: auto;
   color: var(--quadro-tenue);
+  font: var(--t-nome);
+  font-variant-numeric: tabular-nums;
+}
+
+.partenza__stato {
+  position: relative;
+  display: grid;
+  justify-items: end;
+  align-items: center;
+}
+
+.partenza__testo-stato,
+.partenza__entra {
+  grid-area: 1 / 1;
+  transition: opacity var(--d-rapida);
+}
+
+.partenza__testo-stato {
+  font: var(--t-etichetta);
   font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.elenco-stanze__nota .icona {
-  width: 16px;
-  height: 16px;
+.partenza__stato--attesa .partenza__testo-stato {
+  color: var(--quadro-testo);
 }
 
-/* ---------- Come si gioca (sotto la piega) ---------- */
+.partenza__stato--piena .partenza__testo-stato,
+.partenza__stato--partita .partenza__testo-stato {
+  color: var(--quadro-tenue);
+}
+
+/* Passando sulla riga lo stato lascia il posto a «Entra» (o «Guarda» se ci si siede solo come spettatori). */
+.partenza__entra {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-height: 1.75rem;
+  padding: 0 var(--s-2) 0 var(--s-3);
+  border-radius: var(--r-1);
+  background: var(--segnale);
+  color: #fff;
+  font: 600 0.9375rem/1 var(--stretto);
+  opacity: 0;
+}
+
+.partenza__entra .icona {
+  width: 1rem;
+  height: 1rem;
+}
+
+.partenza__stato--piena .partenza__entra,
+.partenza__stato--partita .partenza__entra {
+  background: var(--quadro-anello);
+}
+
+.partenza:hover .partenza__entra,
+.partenza:focus-visible .partenza__entra {
+  opacity: 1;
+}
+
+.partenza:hover .partenza__testo-stato,
+.partenza:focus-visible .partenza__testo-stato {
+  opacity: 0;
+}
+
+/* Messaggi sopra le righe vuote: caricamento e «nessuna partenza». */
+.partenze__messaggio,
+.partenze__vuoto {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  text-align: center;
+}
+
+.partenze__messaggio {
+  color: var(--quadro-tenue);
+}
+
+.partenze__vuoto p {
+  max-width: 26rem;
+  color: var(--quadro-tenue);
+  text-wrap: pretty;
+}
+
+.partenze__vuoto b {
+  color: var(--quadro-testo);
+  font-weight: 600;
+}
+
+.partenze__piede {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4) var(--s-3) var(--s-5);
+  border-top: 1px solid var(--quadro-linea);
+}
+
+.partenze__nota {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  color: var(--quadro-tenue);
+  font: var(--t-piccolo);
+}
+
+.partenze__nota .icona {
+  width: 1rem;
+  height: 1rem;
+}
+
+.partenze .pulsante-icona {
+  color: var(--quadro-tenue);
+}
+
+.partenze .pulsante-icona:hover:not(:disabled) {
+  background: var(--quadro-hover);
+  color: var(--quadro-testo);
+}
+
+/* Pulsante secondario sul quadro nero. */
+.pulsante.pulsante--sul-quadro {
+  --pulsante-fondo: var(--quadro-hover);
+  --pulsante-testo: var(--quadro-testo);
+  --pulsante-hover: var(--sup-4);
+  --pulsante-anello: var(--quadro-anello);
+}
+
+/* ---------- Biglietto dell'invito (al posto delle partenze) ---------- */
+
+.biglietto {
+  justify-self: center;
+  width: min(100%, 32rem);
+}
+
+.biglietto__testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-5) var(--s-5) var(--s-4);
+  border-bottom: 1px dashed var(--quadro-anello);
+}
+
+.biglietto__titolo {
+  font: var(--t-titolo-1);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.biglietto__corpo {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+  padding: var(--s-5);
+}
+
+.biglietto__etichetta {
+  color: var(--quadro-tenue);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.biglietto__testo {
+  margin-top: var(--s-2);
+  color: var(--quadro-tenue);
+  text-wrap: pretty;
+}
+
+.biglietto__testo b {
+  color: var(--quadro-testo);
+  font-weight: 600;
+}
+
+.biglietto__piede {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-5);
+  border-top: 1px solid var(--quadro-linea);
+  color: var(--quadro-tenue);
+  font: var(--t-piccolo);
+}
+
+.biglietto__piede .icona {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* =====================================================================
+   Come si gioca (sotto la piega; anche nella finestra di aiuto della stanza)
+   ===================================================================== */
 
 .come-si-gioca {
   position: relative;
@@ -536,8 +763,8 @@
   opacity: 0;
   transform: translateY(28px);
   transition:
-    opacity 0.5s,
-    transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1);
+    opacity var(--d-lenta),
+    transform var(--d-viaggio) var(--c-arrivo);
 }
 
 .passo--visto {
@@ -587,7 +814,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .passo__figura > * {
-    animation: figura-entra 0.5s 0.25s both cubic-bezier(0.2, 0.8, 0.3, 1.3);
+    animation: figura-entra var(--d-viaggio) 0.25s both var(--c-molla);
   }
 }
 
@@ -624,7 +851,7 @@
   width: 74px;
   height: 92px;
   border-radius: 4px;
-  background: linear-gradient(#272c35, #1f232a 70%);
+  background: linear-gradient(var(--sup-3), var(--sup-2) 70%);
   color: var(--quadro-testo);
   text-align: center;
 }

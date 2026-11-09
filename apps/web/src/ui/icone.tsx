@@ -231,16 +231,23 @@ const PIENE = {
   fulmine: <path d="M13.8 2 4.5 13.6h6.6L9.8 22l9.7-12.4h-6.4z" />,
   goccia: <path d="M12 2.5s7 7.2 7 12a7 7 0 0 1-14 0c0-4.8 7-12 7-12z" />,
   fiamma: <path d="M12 22a7 7 0 0 0 7-7c0-4.6-3.5-7.6-4.7-12-2.9 2.3-3.8 5-3.5 7.6-1.4-.7-2.4-2.1-2.6-3.6C6.4 9.6 5 12.2 5 15a7 7 0 0 0 7 7z" />,
+  // Busta chiusa: la linguetta e il sigillo di ceralacca sulla punta.
   busta: (
     <>
-      <rect x="2.5" y="5" width="19" height="14" rx="2" />
-      <path d="m4 6.8 8 6.2 8-6.2" style={BUCO} />
+      <rect x="2" y="5" width="20" height="14.5" rx="2" />
+      <path d="m3.4 6.4 8.6 6.6 8.6-6.6" style={BUCO} />
+      <circle cx="12" cy="13" r="3.4" style={{ fill: 'var(--buco, #2a2e37)' }} />
+      <circle cx="12" cy="13" r="2.3" />
     </>
   ),
+  // Cartolina: righe del messaggio a sinistra, francobollo dentellato in alto a destra con l'annullo sopra.
   cartolina: (
     <>
-      <path fillRule="evenodd" d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm11.5 3v4.5h4V8z" />
-      <path d="M13 8.5v7M5 10h5M5 13h5" style={BUCO} />
+      <rect x="1.5" y="4.5" width="21" height="15" rx="2" />
+      <path d="M4.3 10h6.2M4.3 13h6.2M4.3 16h4" style={BUCO} />
+      <rect x="15" y="7" width="5" height="6" rx="0.3" style={{ ...BUCO, strokeWidth: 1.3, strokeDasharray: '1.05 0.75', strokeLinecap: 'butt' }} />
+      <circle cx="14.6" cy="13.2" r="2.7" style={{ ...BUCO, strokeWidth: 1.1 }} />
+      <path d="M12.6 16.6c.9-.5 1.6-.5 2.4 0s1.6.5 2.4 0" style={{ ...BUCO, strokeWidth: 1.1 }} />
     </>
   ),
   percento: (

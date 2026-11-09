@@ -50,8 +50,9 @@ function vista(tab: Tabellone, c: Casella, n: number): CasellaVista {
     case 'carta':
       return { ...base, tipo: 'carta', icona: c.mazzo === 'busta' ? 'busta' : 'cartolina' };
     case 'tassa':
+      // La moneta per tutte le tasse: l'importo accanto dice già se è una percentuale.
       return c.tassa.tipo === 'percentuale'
-        ? { ...base, tipo: 'tassa', importo: `${c.tassa.valore}%`, icona: 'percento' }
+        ? { ...base, tipo: 'tassa', importo: `${c.tassa.valore}%`, icona: 'euro' }
         : { ...base, tipo: 'tassa', importo: euro(c.tassa.valore), icona: 'euro' };
     case 'premio':
       return { ...base, tipo: 'premio', importo: `+${euro(c.importo)}`, icona: 'euro' };

@@ -1,0 +1,353 @@
+/* Carte pescate (ui/Carta.tsx): Busta e Cartolina, due facce che si girano.
+   Misure in --carta-u: sul tabellone una k (la carta cresce con il tabellone), fuori 1 px. Carta 260 × 170.
+   Materiali (solo qui): carta da pacchi, carta crema, inchiostro, ceralacca ambra, cielo della cartolina. */
+
+.carta {
+  --carta-u: var(--k, 1px);
+  --u: var(--carta-u);
+  --carta-crema: var(--quadro-testo);
+  --carta-inchiostro: var(--inchiostro);
+  --carta-pacchi-chiara: #e8d6a8;
+  --carta-pacchi: #d9c08a;
+  --carta-pacchi-scura: #cdb176;
+  --carta-piega: rgb(120 90 40 / 0.28);
+  --francobollo: var(--segnaletica);
+
+  position: relative;
+  flex: none;
+  width: calc(var(--u) * 260);
+  height: calc(var(--u) * 170);
+  perspective: calc(var(--u) * 900);
+  color: var(--carta-inchiostro);
+  text-align: left;
+}
+
+.carta__giro {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform var(--d-lenta) var(--c-viaggio);
+}
+
+.carta--dorso .carta__giro {
+  transform: rotateY(180deg);
+}
+
+.carta__faccia {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(var(--u) * 8);
+  backface-visibility: hidden;
+  box-shadow:
+    0 calc(var(--u) * 18) calc(var(--u) * 40) rgb(0 0 0 / 0.55),
+    0 calc(var(--u) * 2) calc(var(--u) * 4) rgb(0 0 0 / 0.3);
+}
+
+.carta__dorso {
+  transform: rotateY(180deg);
+}
+
+.carta__intestazione {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+  font: 700 calc(var(--u) * 13) / 1 var(--stretto);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.carta__testo {
+  display: block;
+  margin-top: calc(var(--u) * 9);
+  font: 500 calc(var(--u) * 19) / 1.22 var(--normale);
+  text-wrap: pretty;
+}
+
+/* ---------- Sigillo di ceralacca ---------- */
+
+.sigillo {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border-radius: 46% 54% 50% 50% / 52% 48% 54% 46%;
+  background: radial-gradient(circle at 38% 32%, var(--ambra-hover) 0%, var(--ambra) 40%, color-mix(in srgb, var(--ambra) 60%, #6b3a00) 100%);
+  color: color-mix(in srgb, var(--ambra) 45%, #4a2800);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 2.2) color-mix(in srgb, var(--ambra) 80%, #7a4500),
+    0 calc(var(--u) * 1.5) calc(var(--u) * 2) rgb(60 30 0 / 0.45);
+}
+
+.sigillo__lettera {
+  font: 700 1em/1 var(--stretto);
+  text-shadow: 0 1px 0 rgb(255 230 170 / 0.6);
+}
+
+.sigillo--piccolo {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  font-size: calc(var(--u) * 10);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 1.3) color-mix(in srgb, var(--ambra) 80%, #7a4500),
+    0 calc(var(--u) * 1) calc(var(--u) * 1.5) rgb(60 30 0 / 0.4);
+}
+
+.sigillo--grande {
+  position: absolute;
+  top: calc(var(--u) * 74);
+  left: 50%;
+  width: calc(var(--u) * 40);
+  height: calc(var(--u) * 40);
+  font-size: calc(var(--u) * 22);
+  translate: -50% -50%;
+}
+
+/* ---------- Busta: davanti ---------- */
+
+.carta--busta .carta__fronte {
+  background: linear-gradient(170deg, var(--carta-pacchi-chiara), var(--carta-pacchi));
+}
+
+/* L'interno della busta, più scuro, dietro la lettera. */
+.busta__fondo {
+  position: absolute;
+  inset: calc(var(--u) * 8) calc(var(--u) * 8) 0;
+  border-radius: calc(var(--u) * 4) calc(var(--u) * 4) 0 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--carta-pacchi-scura) 80%, #000), var(--carta-pacchi-scura));
+  box-shadow: inset 0 calc(var(--u) * 3) calc(var(--u) * 6) rgb(60 40 10 / 0.35);
+}
+
+.busta__lettera {
+  position: absolute;
+  inset: calc(var(--u) * 14) calc(var(--u) * 16) calc(var(--u) * 10);
+  padding: calc(var(--u) * 14) calc(var(--u) * 16);
+  border-radius: calc(var(--u) * 3);
+  background:
+    linear-gradient(180deg, transparent calc(var(--u) * 33), rgb(20 36 61 / 0.1) calc(var(--u) * 33), rgb(20 36 61 / 0.1) calc(var(--u) * 34), transparent calc(var(--u) * 34)),
+    var(--carta-crema);
+  box-shadow:
+    0 calc(var(--u) * 2) calc(var(--u) * 5) rgb(60 40 10 / 0.35),
+    inset 0 0 calc(var(--u) * 18) rgb(200 170 110 / 0.18);
+}
+
+/* La tasca della busta: copre solo il fondo della lettera, con la piega a V. */
+.busta__tasca {
+  position: absolute;
+  inset: auto 0 0;
+  height: calc(var(--u) * 26);
+  background: linear-gradient(180deg, var(--carta-pacchi), color-mix(in srgb, var(--carta-pacchi) 88%, #000));
+  clip-path: polygon(0 0, 50% 60%, 100% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 calc(var(--u) * -1) 0 rgb(60 40 10 / 0.25));
+}
+
+/* ---------- Busta: dietro (chiusa) ---------- */
+
+.carta--busta .carta__dorso {
+  background: linear-gradient(170deg, var(--carta-pacchi-chiara), var(--carta-pacchi));
+}
+
+/* Le pieghe laterali e quella in basso, come una busta vera. */
+.busta__pieghe {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), var(--carta-piega) 50%, transparent calc(50% + 1px)) left bottom / 50% 62% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - 1px), var(--carta-piega) 50%, transparent calc(50% + 1px)) right bottom / 50% 62% no-repeat;
+}
+
+.busta__linguetta {
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(var(--u) * 92);
+  background: linear-gradient(180deg, var(--carta-pacchi-scura), color-mix(in srgb, var(--carta-pacchi-scura) 90%, #000));
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 calc(var(--u) * 2) calc(var(--u) * 2) rgb(60 40 10 / 0.35));
+}
+
+.busta__timbro {
+  position: absolute;
+  left: calc(var(--u) * 16);
+  bottom: calc(var(--u) * 14);
+  padding: calc(var(--u) * 3) calc(var(--u) * 8);
+  border: calc(var(--u) * 1.5) solid rgb(20 36 61 / 0.55);
+  border-radius: calc(var(--u) * 3);
+  color: rgb(20 36 61 / 0.6);
+  font: 700 calc(var(--u) * 13) / 1 var(--stretto);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  rotate: -4deg;
+}
+
+/* ---------- Cartolina: davanti (il messaggio) ---------- */
+
+.carta--cartolina .carta__fronte {
+  display: grid;
+  grid-template-columns: 1fr calc(var(--u) * 86);
+  background:
+    radial-gradient(ellipse 90% 80% at 30% 20%, rgb(255 255 255 / 0.35), transparent 70%),
+    var(--carta-crema);
+}
+
+.cartolina__messaggio {
+  margin: calc(var(--u) * 12) 0;
+  padding: calc(var(--u) * 3) calc(var(--u) * 12) 0 calc(var(--u) * 16);
+  border-right: calc(var(--u) * 1.2) solid rgb(20 36 61 / 0.22);
+}
+
+.carta--cartolina .carta__intestazione {
+  color: var(--francobollo);
+}
+
+/* Sulla cartolina il messaggio ha mezza carta: un po' più piccolo. */
+.carta--cartolina .carta__testo {
+  margin-top: calc(var(--u) * 7);
+  font-size: calc(var(--u) * 16.5);
+  line-height: 1.2;
+}
+
+.cartolina__indirizzo {
+  position: relative;
+}
+
+/* Il francobollo dentellato: i fori sono una griglia trasparente, l'immagine copre tutto tranne il bordo. */
+.francobollo {
+  position: absolute;
+  top: calc(var(--u) * 12);
+  right: calc(var(--u) * 12);
+  width: calc(var(--u) * 44);
+  height: calc(var(--u) * 52);
+  padding: calc(var(--u) * 4);
+  background: radial-gradient(circle, transparent calc(var(--u) * 1.5), #fff calc(var(--u) * 1.7)) calc(var(--u) * -2.5) calc(var(--u) * -2.5) / calc(var(--u) * 5) calc(var(--u) * 5);
+  filter: drop-shadow(0 calc(var(--u) * 1) calc(var(--u) * 1) rgb(0 0 0 / 0.25));
+}
+
+.francobollo__immagine {
+  position: relative;
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--francobollo) 55%, #fff), var(--francobollo));
+}
+
+.francobollo__sole {
+  position: absolute;
+  top: 22%;
+  right: 22%;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.85);
+}
+
+.francobollo__colle {
+  position: absolute;
+  inset: 55% -20% -30%;
+  border-radius: 50% 50% 0 0;
+  background: color-mix(in srgb, var(--francobollo) 55%, #000);
+}
+
+.annullo {
+  position: absolute;
+  top: calc(var(--u) * 30);
+  right: calc(var(--u) * 2);
+  width: calc(var(--u) * 84);
+  fill: none;
+  stroke: rgb(20 36 61 / 0.55);
+  stroke-width: 1.6;
+  rotate: -10deg;
+}
+
+.annullo text {
+  fill: rgb(20 36 61 / 0.6);
+  stroke: none;
+  font-family: var(--stretto);
+  font-weight: 700;
+}
+
+.annullo__giro {
+  font-size: 8.4px;
+  letter-spacing: 0.08em;
+}
+
+.annullo__centro {
+  font-size: 9px;
+}
+
+.cartolina__righe {
+  position: absolute;
+  inset: auto calc(var(--u) * 12) calc(var(--u) * 22) calc(var(--u) * 10);
+  height: calc(var(--u) * 46);
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 calc(var(--u) * 14),
+    rgb(20 36 61 / 0.28) calc(var(--u) * 14) calc(var(--u) * 15.2)
+  );
+}
+
+/* ---------- Cartolina: dietro (la foto) ---------- */
+
+.cartolina__foto {
+  position: absolute;
+  inset: 0;
+  border: calc(var(--u) * 7) solid var(--carta-crema);
+  border-radius: inherit;
+  background: var(--carta-crema);
+}
+
+.cartolina__paesaggio {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--u) * 3);
+}
+
+.cartolina__cielo-alto {
+  stop-color: #f7c98b;
+}
+
+.cartolina__cielo {
+  stop-color: #f4e2bd;
+}
+
+.cartolina__cielo-basso {
+  stop-color: #e9d9b4;
+}
+
+.cartolina__sole {
+  fill: #fff4dc;
+  opacity: 0.9;
+}
+
+.cartolina__monti {
+  fill: color-mix(in srgb, var(--francobollo) 40%, #8a9bb0);
+  opacity: 0.75;
+}
+
+.cartolina__colline {
+  fill: var(--francobollo);
+}
+
+.cartolina__mare {
+  fill: var(--inchiostro);
+  opacity: 0.85;
+}
+
+.cartolina__saluti {
+  position: absolute;
+  left: calc(var(--u) * 20);
+  top: calc(var(--u) * 18);
+  display: grid;
+  color: #fff;
+  font: 700 calc(var(--u) * 30) / 0.95 var(--stretto);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow:
+    0 calc(var(--u) * 2) 0 var(--inchiostro),
+    0 0 calc(var(--u) * 10) rgb(20 36 61 / 0.35);
+}
+
+.cartolina__saluti small {
+  font: 600 calc(var(--u) * 14) / 1.2 var(--stretto);
+  letter-spacing: 0.14em;
+}

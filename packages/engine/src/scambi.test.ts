@@ -1,9 +1,10 @@
 /* Scambi tra giocatori: docs/analisi/04-economia-fine-partita.md §4. */
 
 import { describe, expect, it } from 'vitest';
-import { assegna, esegui, g, partitaDiProva, problemi } from './prove';
-import { PROPOSTE_IN_ATTESA_MAX, problemiScambio, SCAMBI_APERTI_MAX } from './scambi';
+import { assegna, esegui, g, partitaASquadre, partitaDiProva, problemi } from './prove';
+import { effettiScambio, PROPOSTE_IN_ATTESA_MAX, problemiScambio, SCAMBI_APERTI_MAX, valorePacchetto } from './scambi';
 import { verifica } from './regole';
+import { tabellone } from './tabelloni';
 import type { Azione, IdGiocatore, Impostazioni, Pacchetto, Stato } from './tipi';
 
 const SIENA = 11;
@@ -11,6 +12,9 @@ const PISA = 13;
 const FIRENZE = 14;
 const ROMA = 34;
 const STAZIONE_NORD = 5;
+const LUCE = 12;
+/** Indice della Toscana (Siena, Pisa, Firenze) nelle regioni del tabellone classico. */
+const TOSCANA = 2;
 
 function pacchetto(p: Partial<Pacchetto> = {}): Pacchetto {
   return { soldi: 0, caselle: [], grazie: [], ...p };
@@ -93,6 +97,30 @@ describe('proporre e rispondere', () => {
     expect(s.scambi.map((x) => [x.id, x.da, x.a, x.trattativa])).toEqual([[2, 'b', 'a', 1]]);
     s = esegui(s, proposta('a', 'b', { soldi: 50 }, { caselle: [PISA] }, { sostituisce: 2 })).stato;
     expect(s.scambi.map((x) => [x.id, x.trattativa])).toEqual([[3, 2]]);
+  });
+
+  it('ogni nuova versione ricorda la precedente, girata nel suo verso', () => {
+    let s = esegui(partita(), proposta('a', 'b', { soldi: 10 }, { caselle: [PISA] })).stato;
+    expect(s.scambi[0]!.precedente).toBeUndefined();
+    // Risponde Bruno: quello che Anna dava, ora Bruno lo chiede.
+    s = esegui(s, proposta('b', 'a', { caselle: [PISA] }, { soldi: 100 }, { sostituisce: 1 })).stato;
+    expect(s.scambi[0]!.precedente).toEqual({ dare: pacchetto({ caselle: [PISA] }), avere: pacchetto({ soldi: 10 }) });
+    // Bruno modifica la sua proposta: stesso verso, le parti restano dove sono.
+    s = esegui(s, proposta('b', 'a', { caselle: [PISA] }, { soldi: 80 }, { sostituisce: 2 })).stato;
+    expect(s.scambi[0]!.precedente).toEqual({ dare: pacchetto({ caselle: [PISA] }), avere: pacchetto({ soldi: 100 }) });
+    // Si ricorda solo l'ultima versione, non tutta la storia.
+    s = esegui(s, proposta('a', 'b', { soldi: 90 }, { caselle: [PISA] }, { sostituisce: 3 })).stato;
+    expect(s.scambi[0]).toMatchObject({ trattativa: 3, precedente: { dare: pacchetto({ soldi: 80 }), avere: pacchetto({ caselle: [PISA] }) } });
+    expect(s.scambi[0]!.precedente).not.toHaveProperty('precedente');
+  });
+
+  it('gli scambi delle partite salvate senza la versione precedente si accettano e si contropropongono', () => {
+    const s = esegui(partita(), proposta('a', 'b', { soldi: 10 }, { caselle: [PISA] })).stato;
+    const salvata = JSON.parse(JSON.stringify(s)) as Stato;
+    expect(salvata.scambi[0]).not.toHaveProperty('precedente');
+    const contro = esegui(salvata, proposta('b', 'a', { caselle: [PISA] }, { soldi: 30 }, { sostituisce: 1 })).stato;
+    expect(contro.scambi[0]!.precedente).toEqual({ dare: pacchetto({ caselle: [PISA] }), avere: pacchetto({ soldi: 10 }) });
+    expect(esegui(salvata, { tipo: 'accetta', giocatore: 'b', scambio: 1 }).stato.proprieta[PISA]!.proprietario).toBe('a');
   });
 
   it('passano anche le Carte Grazia e le proprietà ipotecate, che restano ipotecate', () => {
@@ -226,6 +254,68 @@ describe('regole di equità', () => {
     const privata = assegna(partita(2, { stanzaPrivata: true }), 'a', ROMA, STAZIONE_NORD);
     g(privata, 'a').saldo = 100;
     expect(codice(privata, regalo)).toBeUndefined();
+  });
+});
+
+describe('effetti dello scambio', () => {
+  function bozza(da: IdGiocatore, a: IdGiocatore, dare: Partial<Pacchetto>, avere: Partial<Pacchetto>) {
+    return { da, a, dare: pacchetto(dare), avere: pacchetto(avere) };
+  }
+
+  it('il tabellone classico ha la Toscana dove se la aspettano i test', () => {
+    expect(tabellone('classica').regioni[TOSCANA]!.nome).toBe('Toscana');
+  });
+
+  it('chi riceve l’ultima città completa la regione, chi ne cede una la rompe', () => {
+    const s = assegna(partita(3), 'a', FIRENZE);
+    // Anna ha Siena e Firenze: con Pisa completa la Toscana.
+    expect(effettiScambio(s, bozza('a', 'b', { soldi: 100 }, { caselle: [PISA] }))).toEqual([
+      { tipo: 'completa', giocatore: 'a', regione: TOSCANA },
+    ]);
+    // Bruno le dà Pisa di sua iniziativa: è sempre Anna a completarla.
+    expect(effettiScambio(s, bozza('b', 'a', { caselle: [PISA] }, { soldi: 100 }))).toEqual([
+      { tipo: 'completa', giocatore: 'a', regione: TOSCANA },
+    ]);
+    // Con tutta la Toscana, cedere Siena la rompe.
+    assegna(s, 'a', PISA);
+    expect(effettiScambio(s, bozza('a', 'c', { caselle: [SIENA] }, { soldi: 60 }))).toEqual([
+      { tipo: 'rompe', giocatore: 'a', regione: TOSCANA },
+    ]);
+    // Soldi e regioni a metà non cambiano niente.
+    expect(effettiScambio(partita(3), bozza('a', 'c', { caselle: [SIENA] }, { soldi: 60 }))).toEqual([]);
+  });
+
+  it('conta le stazioni e i servizi di tutte e due le parti, con le regioni prima', () => {
+    const s = assegna(partita(), 'a', FIRENZE, STAZIONE_NORD);
+    assegna(s, 'b', LUCE);
+    expect(effettiScambio(s, bozza('a', 'b', { caselle: [STAZIONE_NORD] }, { caselle: [PISA, LUCE] }))).toEqual([
+      { tipo: 'completa', giocatore: 'a', regione: TOSCANA },
+      { tipo: 'stazioni', giocatore: 'a', prima: 1, dopo: 0 },
+      { tipo: 'stazioni', giocatore: 'b', prima: 0, dopo: 1 },
+      { tipo: 'servizi', giocatore: 'a', prima: 0, dopo: 1 },
+      { tipo: 'servizi', giocatore: 'b', prima: 1, dopo: 0 },
+    ]);
+  });
+
+  it('a squadre la regione si completa anche con le città del compagno', () => {
+    // a e b insieme, c e d insieme: Anna ha Siena, Bruno Pisa, Carla Firenze.
+    const s = assegna(assegna(assegna(partitaASquadre([0, 0, 1, 1]), 'a', SIENA), 'b', PISA), 'c', FIRENZE);
+    expect(effettiScambio(s, bozza('a', 'c', { soldi: 200 }, { caselle: [FIRENZE] }))).toEqual([
+      { tipo: 'completa', giocatore: 'a', regione: TOSCANA },
+    ]);
+    // Tra compagni la regione resta della squadra: nessun effetto.
+    assegna(s, 'a', FIRENZE);
+    expect(effettiScambio(s, bozza('a', 'b', { caselle: [FIRENZE] }, {}))).toEqual([]);
+  });
+
+  it('il valore di listino conta soldi, proprietà non ipotecate e Carte Grazia', () => {
+    const s = partita(2, { ipoteche: true });
+    const prezzo = (i: number) => (tabellone('classica').caselle[i] as { prezzo: number }).prezzo;
+    expect(valorePacchetto(s, pacchetto({ soldi: 30, caselle: [SIENA, PISA], grazie: ['busta'] }))).toBe(
+      30 + prezzo(SIENA) + prezzo(PISA) + 50,
+    );
+    s.proprieta[PISA]!.ipotecata = true;
+    expect(valorePacchetto(s, pacchetto({ soldi: 30, caselle: [SIENA, PISA] }))).toBe(30 + prezzo(SIENA));
   });
 });
 

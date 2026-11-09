@@ -165,9 +165,176 @@
   transform: scale(1.15);
 }
 
-/* ---------- Impostazioni e finestre ---------- */
+/* ---------- Giocatori: nessuno al tavolo ---------- */
 
-/* Nota in testa alle impostazioni (es. «Solo l'host può cambiarle»): riquadro neutro con la barra a sinistra. */
+.giocatori .lobby-vuota {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+}
+
+.lobby-vuota .icona {
+  width: 2rem;
+  height: 2rem;
+  color: var(--quadro-tenue);
+  stroke-width: 1.5;
+}
+
+.lobby-vuota p {
+  display: grid;
+  gap: 2px;
+  color: var(--quadro-tenue);
+  font: var(--t-piccolo);
+}
+
+.lobby-vuota b {
+  color: var(--quadro-testo);
+  font: var(--t-nome);
+}
+
+/* ---------- Impostazioni (schermate/Impostazioni.tsx): righe a griglia, gruppi con l'intestazione ---------- */
+
+/* «Solo l'host può cambiarle»: un chip col lucchetto in testa al pannello. */
+.pannello--impostazioni .impostazioni__blocco {
+  padding: var(--s-3) var(--s-4) var(--s-1);
+}
+
+.imposta {
+  display: grid;
+}
+
+.imposta .imposta__gruppo + .imposta__gruppo {
+  border-top: 1px solid var(--linea);
+}
+
+/* L'intestazione del gruppo resta in alto mentre si scorre. */
+.imposta .imposta__titolo {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--s-3) var(--s-4) var(--s-2);
+  background: var(--sup-1);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.imposta .imposta__riga {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--s-3);
+  min-height: 3.5rem;
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-4);
+}
+
+.imposta .imposta__riga + .imposta__riga {
+  border-top: 1px solid var(--linea);
+}
+
+.imposta .imposta__icona {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--testo-2);
+}
+
+.imposta .imposta__testo {
+  min-width: 0;
+}
+
+.imposta .imposta__nome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  color: var(--testo-1);
+  font: var(--t-nome);
+}
+
+.imposta .imposta__breve {
+  margin-top: 2px;
+  color: var(--testo-2);
+  font: var(--t-piccolo);
+}
+
+.imposta__breve b {
+  color: var(--testo-1);
+  font-weight: 600;
+}
+
+.imposta .imposta__controllo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.imposta .imposta__lucchetto {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--testo-3);
+}
+
+.imposta__riga--presto .imposta__testo,
+.imposta__riga--presto .imposta__icona {
+  opacity: 0.6;
+}
+
+/* Interruttore compatto nelle righe (il normale è 62 × 30). */
+.imposta .interruttore {
+  width: 3.25rem;
+  height: 1.75rem;
+}
+
+.imposta .interruttore__leva {
+  width: calc(1.75rem - 6px);
+  height: calc(1.75rem - 6px);
+}
+
+.imposta .interruttore[aria-checked='true'] .interruttore__leva {
+  transform: translateX(1.5rem);
+}
+
+.imposta .interruttore__testo {
+  right: 7px;
+  font-size: 0.75rem;
+}
+
+.imposta .interruttore[aria-checked='true'] .interruttore__testo {
+  right: auto;
+  left: 8px;
+}
+
+.imposta .imposta__scelta {
+  min-height: 2rem;
+  padding: 0 var(--s-1) 0 var(--s-3);
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-1);
+  background: var(--sup-2);
+  color: var(--testo-1);
+  font: var(--t-nome);
+  transition: border-color var(--d-rapida);
+}
+
+.imposta .imposta__scelta:hover:not(:disabled) {
+  border-color: var(--sup-4);
+}
+
+.imposta .imposta__scelta:focus {
+  outline: none;
+  border-color: var(--segnale);
+}
+
+.imposta .imposta__scelta:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------- Finestre ---------- */
+
+/* Nota in testa a un elenco (es. le impostazioni in partita): riquadro neutro con la barra a sinistra. */
 .impostazioni__nota {
   padding: 10px 14px;
   background: var(--sup-2);

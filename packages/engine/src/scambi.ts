@@ -6,7 +6,16 @@
  */
 
 import { accredita, errore, type Contesto } from './contesto';
-import { compagni, giocatore, patrimonio, proprietabile, regioneConEdifici, valoreLiquidazione, VALORE_GRAZIA } from './conti';
+import {
+  compagni,
+  giocatore,
+  patrimonio,
+  possiedeRegione,
+  proprietabile,
+  regioneConEdifici,
+  valoreLiquidazione,
+  VALORE_GRAZIA,
+} from './conti';
 import { tabellone } from './tabelloni';
 import type { Azione, Errore, Giocatore, IdGiocatore, Pacchetto, Scambio, Stato } from './tipi';
 
@@ -32,8 +41,11 @@ export function caselleIpotecate(stato: Stato, bozza: BozzaScambio): number[] {
   return [...bozza.dare.caselle, ...bozza.avere.caselle].filter((i) => stato.proprieta[i]?.ipotecata === true).sort((x, y) => x - y);
 }
 
-/** Valore di un pacchetto per la regola sugli scambi sbilanciati: soldi, prezzo delle proprietà non ipotecate, Carte Grazia. */
-function valore(stato: Stato, p: Pacchetto): number {
+/**
+ * Valore di un pacchetto a prezzo di listino: soldi, prezzo delle proprietà non ipotecate, Carte Grazia.
+ * Serve alla regola sugli scambi sbilanciati e al riepilogo dell'interfaccia.
+ */
+export function valorePacchetto(stato: Stato, p: Pacchetto): number {
   const tab = tabellone(stato.mappa);
   let totale = p.soldi + p.grazie.length * VALORE_GRAZIA;
   for (const i of p.caselle) if (!stato.proprieta[i]?.ipotecata) totale += proprietabile(tab, i)?.prezzo ?? 0;
@@ -129,7 +141,7 @@ export function problemiScambio(stato: Stato, bozza: BozzaScambio): string[] {
       [da, bozza.dare, bozza.avere],
       [a, bozza.avere, bozza.dare],
     ] as const) {
-      const ceduto = valore(stato, dato) - valore(stato, ricevuto);
+      const ceduto = valorePacchetto(stato, dato) - valorePacchetto(stato, ricevuto);
       if (ceduto > SBILANCIO_MAX * (patrimonio(stato, chi.id) + Math.max(0, -chi.saldo))) {
         out.push('Questo scambio è troppo sbilanciato.');
         break;
@@ -165,6 +177,69 @@ function trasferisci(ctx: Contesto, bozza: BozzaScambio): void {
       verso.carteGrazia.push(mazzo);
     }
   }
+}
+
+/* ---------------------------- Effetti ------------------------------ */
+
+/**
+ * Che cosa cambia nel gioco se lo scambio va in porto:
+ * - `completa`: dopo lo scambio il giocatore (con i compagni di squadra) ha tutte le città della regione, prima no;
+ * - `rompe`: prima le aveva tutte, dopo no;
+ * - `stazioni`, `servizi`: quante ne ha il giocatore prima e dopo, solo se il numero cambia.
+ * `regione` è l'indice in `tabellone.regioni`.
+ */
+export type EffettoScambio =
+  | { tipo: 'completa' | 'rompe'; giocatore: IdGiocatore; regione: number }
+  | { tipo: 'stazioni' | 'servizi'; giocatore: IdGiocatore; prima: number; dopo: number };
+
+const ORDINE_EFFETTI: Record<EffettoScambio['tipo'], number> = { completa: 0, rompe: 1, stazioni: 2, servizi: 3 };
+
+/**
+ * Gli effetti dello scambio sulle regioni, le stazioni e i servizi delle due parti, per l'interfaccia.
+ * In ordine di importanza: regioni completate, regioni rotte, stazioni, servizi; a parità prima chi propone.
+ * Guarda solo i possessi: che lo scambio si possa fare lo dice `problemiScambio`.
+ */
+export function effettiScambio(stato: Stato, bozza: BozzaScambio): EffettoScambio[] {
+  const tab = tabellone(stato.mappa);
+  // Basta copiare i possessi: gli effetti non dipendono dai soldi.
+  const dopo: Stato = { ...stato, proprieta: stato.proprieta.map((p) => (p ? { ...p } : p)) };
+  for (const [p, verso] of [
+    [bozza.dare, bozza.a],
+    [bozza.avere, bozza.da],
+  ] as const) {
+    for (const i of p.caselle) {
+      const proprieta = dopo.proprieta[i];
+      if (proprieta) proprieta.proprietario = verso;
+    }
+  }
+
+  const regioni = new Set<number>();
+  for (const i of [...bozza.dare.caselle, ...bozza.avere.caselle]) {
+    const c = proprietabile(tab, i);
+    if (c?.tipo === 'citta') regioni.add(c.regione);
+  }
+  const quante = (s: Stato, id: IdGiocatore, tipo: 'stazione' | 'servizio') =>
+    s.proprieta.filter((p, i) => p?.proprietario === id && tab.caselle[i]?.tipo === tipo).length;
+
+  const out: EffettoScambio[] = [];
+  for (const id of [bozza.da, bozza.a]) {
+    for (const regione of [...regioni].sort((x, y) => x - y)) {
+      const prima = possiedeRegione(stato, id, regione);
+      const poi = possiedeRegione(dopo, id, regione);
+      if (!prima && poi) out.push({ tipo: 'completa', giocatore: id, regione });
+      else if (prima && !poi) out.push({ tipo: 'rompe', giocatore: id, regione });
+    }
+    for (const [tipo, casella] of [
+      ['stazioni', 'stazione'],
+      ['servizi', 'servizio'],
+    ] as const) {
+      const prima = quante(stato, id, casella);
+      const poi = quante(dopo, id, casella);
+      if (prima !== poi) out.push({ tipo, giocatore: id, prima, dopo: poi });
+    }
+  }
+  // L'ordinamento è stabile: a parità di tipo resta prima chi propone.
+  return out.sort((x, y) => ORDINE_EFFETTI[x.tipo] - ORDINE_EFFETTI[y.tipo]);
 }
 
 /* --------------------------- Controlli ----------------------------- */
@@ -245,6 +320,14 @@ export function proponi(ctx: Contesto, azione: Extract<Azione, { tipo: 'proponi'
     trattativa: sostituito ? sostituito.trattativa + 1 : 0,
     ipotecate: caselleIpotecate(s, bozza),
   };
+  // La versione di prima, girata nel verso di questa: se risponde l'altro, quello che dava ora lo chiede.
+  if (sostituito) {
+    const stessoVerso = sostituito.da === azione.giocatore;
+    scambio.precedente = {
+      dare: stessoVerso ? sostituito.dare : sostituito.avere,
+      avere: stessoVerso ? sostituito.avere : sostituito.dare,
+    };
+  }
   s.scambi = [...s.scambi.filter((x) => x !== sostituito), scambio];
   ctx.eventi.push({ tipo: 'scambio_proposto', scambio: scambio.id, da: scambio.da, a: scambio.a, trattativa: scambio.trattativa });
 }

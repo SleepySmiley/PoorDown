@@ -9,10 +9,11 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { euro, type IdGiocatore, type Stato } from '@poordown/engine';
 import { Pedina } from '../ui/comuni';
+import { Icona } from '../ui/icone';
 import { iniziale } from '../ui/utili';
 
 const L = 560;
-const A = 360;
+const A = 320;
 const MARGINE = { sinistra: 66, destra: 18, alto: 14, basso: 46 };
 
 /** Passo "tondo" (1, 2, 2,5, 5 × 10ⁿ) per avere al massimo `quanti` intervalli su `ampiezza`. */
@@ -36,6 +37,8 @@ interface Serie {
   colore: number;
   /** Cosa c'è scritto sulla pedina in fondo alla linea: l'iniziale del giocatore o il numero della squadra. */
   segno: string;
+  /** Ha vinto (il giocatore, o la squadra): la sua linea è più spessa. */
+  vincente: boolean;
   punti: { turno: number; valore: number }[];
 }
 
@@ -47,6 +50,7 @@ function serieGiocatori(partita: Stato): Serie[] {
     nome: g.nome,
     colore: g.colore,
     segno: iniziale(g.nome),
+    vincente: partita.squadraVincitrice === null ? partita.vincitore === g.id : g.squadra === partita.squadraVincitrice,
     punti: dati.flatMap((p) => (p.valori[i] == null ? [] : [{ turno: p.turno, valore: p.valori[i]! }])),
   }));
 }
@@ -62,6 +66,7 @@ function serieSquadre(partita: Stato): Serie[] {
       nome: partita.squadre[t] ?? `Squadra ${t + 1}`,
       colore: partita.giocatori[membri[0]!]!.colore,
       segno: String(t + 1),
+      vincente: partita.squadraVincitrice === t,
       punti: dati.flatMap((p) => {
         const valori = membri.map((i) => p.valori[i]).filter((v): v is number => v != null);
         return valori.length === 0 ? [] : [{ turno: p.turno, valore: valori.reduce((a, b) => a + b, 0) }];
@@ -78,7 +83,14 @@ export function GraficoPatrimonio({ partita }: { partita: Stato }): ReactNode {
   const area = useRef<SVGSVGElement>(null);
 
   if (dati.length < 2) {
-    return <p className="grafico__vuoto">Non ci sono abbastanza dati per disegnare il grafico.</p>;
+    return (
+      <div className="grafico">
+        <p className="grafico__vuoto">
+          <Icona nome="grafico" />
+          La partita è durata troppo poco per disegnare il grafico.
+        </p>
+      </div>
+    );
   }
 
   const aSquadre = partita.squadre.length > 0;
@@ -168,11 +180,15 @@ export function GraficoPatrimonio({ partita }: { partita: Stato }): ReactNode {
 
           {scelto && <line className="grafico__mirino" x1={x(scelto.turno)} x2={x(scelto.turno)} y1={MARGINE.alto} y2={A - MARGINE.basso} />}
 
-          {serie.map((s) => {
+          {/* La linea di chi ha vinto si disegna per ultima, sopra le altre. */}
+          {[...serie].sort((a, b) => Number(a.vincente) - Number(b.vincente)).map((s) => {
             const fine = s.punti.at(-1);
             const spenta = evidenziato !== null && evidenziato !== s.id;
+            const classi = ['grafico__serie', spenta ? 'grafico__serie--spenta' : '', s.vincente ? 'grafico__serie--vincente' : '']
+              .filter(Boolean)
+              .join(' ');
             return (
-              <g key={s.id} className={spenta ? 'grafico__serie grafico__serie--spenta' : 'grafico__serie'} style={{ color: `var(--p${s.colore})` }}>
+              <g key={s.id} className={classi} style={{ color: `var(--p${s.colore})` }}>
                 <path className="grafico__linea" d={tracciato(s)} />
                 {fine && (
                   <g transform={`translate(${x(fine.turno)} ${y(fine.valore)})`}>
