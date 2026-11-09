@@ -38,6 +38,7 @@ const REGOLE: { chiave: keyof Impostazioni; icona: NomeIcona; nome: string }[] =
   { chiave: 'ipoteche', icona: 'banca', nome: 'Ipoteche' },
   { chiave: 'costruzioneUniforme', icona: 'uniforme', nome: 'Costruzione uniforme' },
   { chiave: 'timerTurno', icona: 'orologio', nome: 'Timer di turno' },
+  { chiave: 'durataMassima', icona: 'coppa', nome: 'Durata massima' },
 ];
 
 /** Pochi pittogrammi sparsi ai bordi e in fondo, come cartelli di stazione: mai sopra i comandi. */

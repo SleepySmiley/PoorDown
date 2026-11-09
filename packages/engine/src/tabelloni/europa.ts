@@ -15,7 +15,7 @@ const REGIONI: Regione[] = [
   { nome: 'Grecia', sigla: 'GRC', colore: 4, costoCasa: 100, costoAlbergo: 100 },
   { nome: 'Portogallo', sigla: 'PRT', colore: 5, costoCasa: 100, costoAlbergo: 100 },
   { nome: 'Paesi Bassi', sigla: 'NLD', colore: 6, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Polonia', sigla: 'POL', colore: 7, costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Polonia', sigla: 'POL', colore: 7, costoCasa: 200, costoAlbergo: 200 },
   { nome: 'Spagna', sigla: 'ESP', colore: 8, costoCasa: 150, costoAlbergo: 150 },
   { nome: 'Francia', sigla: 'FRA', colore: 9, costoCasa: 200, costoAlbergo: 200 },
   { nome: 'Germania', sigla: 'DEU', colore: 10, costoCasa: 200, costoAlbergo: 200 },

@@ -55,6 +55,7 @@ const CONTROLLI_IMPOSTAZIONI: { [K in keyof Impostazioni]: (v: unknown) => boole
   costruzioneUniforme: (v) => typeof v === 'boolean',
   soldiIniziali: (v) => (SOLDI_INIZIALI_POSSIBILI as readonly unknown[]).includes(v),
   timerTurno: (v) => typeof v === 'boolean',
+  durataMassima: (v) => typeof v === 'boolean',
   ordineCasuale: (v) => typeof v === 'boolean',
   squadre: (v) => typeof v === 'boolean',
 };

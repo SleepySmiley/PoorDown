@@ -103,7 +103,8 @@ describe.each(Object.values(TABELLONI).map((tab) => [tab.nome, tab] as const))('
       for (let l = 1; l < 6; l++) expect(c.affitti[l]).toBeGreaterThan(c.affitti[l - 1]!);
     }
     expect(Math.min(...tab.regioni.map((r) => r.costoCasa))).toBe(50);
-    expect(Math.max(...tab.regioni.map((r) => r.costoCasa))).toBe(200);
+    // Al massimo 200 €: su Grandi aree il Nord costa 150 € (bilanciamento della Fase 9).
+    expect(Math.max(...tab.regioni.map((r) => r.costoCasa))).toBeLessThanOrEqual(200);
   });
 
   it('le regioni hanno sigla e colore, e almeno due città', () => {

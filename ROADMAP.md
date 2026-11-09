@@ -30,6 +30,8 @@ Pubblicità, captcha, login e account, store e monete, karma, profili pubblici, 
 - **Mazzi nascosti:** l'ordine delle carte non viene mai inviato ai giocatori (richup lo manda a tutti).
 - **Ricaricare non fa perdere il posto,** né in lobby né in partita (su richup l'host che ricarica in lobby perde ruolo e posto).
 - **Timer disattivabile:** si aggiunge un'impostazione "Timer di turno" (default ON, stesso comportamento di richup).
+- **Durata massima:** impostazione in più (default ON): dopo 100 turni a testa vince il patrimonio più alto, così anche le partite senza scambi finiscono.
+- **Bonus di partenza:** chi gioca dopo il primo parte con un po' di soldi in più, per pareggiare il vantaggio di chi tira per primo.
 - **Tabellone e carte originali:** stessa struttura e scala economica (prezzi 60–400, case 50–200), ma nomi, tema, valori e testi sono nostri.
 
 ---
@@ -177,7 +179,10 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
   - volume 0–100 con muto in home, lobby e testata di gioco, salvato nel browser; pagina `/suoni` per ascoltarli tutti (solo con `npm run dev`)
 - ~~Layout per telefono e tablet, accessibilità di base~~ tolto: si gioca solo da PC e l'accessibilità non serve (decisione del 2026-11-08)
 - [x] Test end-to-end con 4 browser: quattro Edge con identità separate giocano dai pulsanti veri una partita intera (stanza privata, aste accese, 1.000 € a testa, 54 turni): dadi, doppi, prigione, acquisti, aste con quattro offerenti, chat, ricarica a metà partita, tre bancarotte, fine partita e «Un'altra partita». Saldi uguali su tutti i browser a ogni controllo, coriandoli solo per chi vince, nessun errore in console
-- [ ] Bilanciamento: misurato con 1000 partite di bot per tabellone (durata, vantaggio di chi parte primo, regioni decisive); ritocchi proposti, da approvare
+- [x] Bilanciamento, misurato con 1000 partite di bot per tabellone (durata, vantaggio di chi parte primo, regioni decisive). Ritocchi approvati:
+  - **durata massima** (nuova impostazione, accesa): dopo 100 turni a testa vince il patrimonio più alto; il registro avvisa quando mancano 10 turni a testa e il cartello degli arrivi dice perché è finita. Senza, il 64–100% delle partite di bot senza scambi non finiva;
+  - **bonus di partenza**: chi gioca dopo il primo parte con il 5% dei soldi iniziali in più per ogni posto (2,5% in due); le vittorie per posizione passano da 29/27/23/21% a circa 25% ciascuno;
+  - **prezzi**: case del Lazio (Classico) 150 €, della Polonia (Europa) 200 €, del Sud e del Nord (Grandi aree) 125 e 150 €; stazioni di Colpo di fortuna 40/80/160/280 €
 - [x] Avvio con doppio clic su Windows e guida per gli amici
   - `Avvia PoorDown.cmd`: controlla Node.js (se manca apre il sito per scaricarlo), installa i pacchetti solo la prima volta e dopo un aggiornamento, prepara il sito in silenzio, accende il server e apre il browser quando è pronto; se il gioco è già acceso apre solo il browser. Chiudendo la finestra il server salva le partite;
   - [GUIDA.md](GUIDA.md): come entrare con il link, come accendere il gioco, cosa fare se gli amici non si collegano
@@ -241,6 +246,8 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 | Vittoria a squadre | Vince tutta la squadra rimasta, anche chi era già uscito: coriandoli e «vincitore» in classifica per tutti i suoi giocatori |
 | Chat di squadra | La leggono solo i giocatori seduti che erano nella squadra quando il messaggio è stato scritto (non gli spettatori, non chi entra nella squadra dopo); «sta scrivendo» arriva solo ai compagni; i messaggi contano nelle statistiche |
 | Affitti dei tabelloni alternativi | Ricavati dal prezzo con la scala del Classico, così l’economia resta la stessa |
+| Durata massima | 100 turni per ogni giocatore seduto all’inizio (contano tutti i turni, anche quelli di chi poi esce). Vince il patrimonio più alto tra chi è in gioco (soldi, carte grazia, proprietà non ipotecate e edifici al prezzo pieno); a squadre la squadra con la somma più alta; a pari merito chi viene prima nei turni. In classifica chi è ancora in gioco sta davanti per patrimonio. Le partite cominciate prima della regola continuano senza limite |
+| Bonus di partenza | 5% dei soldi iniziali per ogni posto dopo il primo nell’ordine dei turni, arrotondato ai 5 € (2,5% in due): con 1500 € e quattro giocatori 0, +75, +150, +225. Vale anche a squadre e con «Un’altra partita» |
 
 ---
 

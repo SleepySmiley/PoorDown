@@ -43,6 +43,7 @@ export {
 export { acquistoInSospeso, ASTA_MS, RILANCI } from './economia';
 export { aOppureAd, descrivi, descriviVoce, destinazione, euro, preposizioneA } from './descrivi';
 export {
+  bonusPerPosto,
   GIOCATORI_MAX,
   GIOCATORI_MIN,
   IMPOSTAZIONI_PREDEFINITE,
@@ -50,7 +51,9 @@ export {
   NOMI_SQUADRE_PREDEFINITI,
   SOLDI_INIZIALI_POSSIBILI,
   SQUADRE_MAX,
+  TURNI_A_TESTA,
 } from './impostazioni';
+export { finitaPerDurata, ultimoTurno } from './turni';
 export { nomeCasuale, pulisciNome } from './nomi';
 export { creaPartita, type NuovoGiocatore } from './partita';
 export {

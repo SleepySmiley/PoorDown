@@ -12,11 +12,13 @@ describe('creaPartita', () => {
     if (!esito.ok) throw new Error(esito.messaggio);
     const s = esito.stato;
     expect(s.giocatori.map((g) => g.id)).toEqual(['a', 'b', 'c']);
-    expect(s.giocatori.every((g) => g.saldo === 2000 && g.posizione === 0)).toBe(true);
+    // Chi gioca dopo il primo parte con il 5% dei soldi iniziali in più per ogni posto.
+    expect(s.giocatori.map((g) => g.saldo)).toEqual([2000, 2100, 2200]);
+    expect(s.giocatori.every((g) => g.posizione === 0)).toBe(true);
     expect(s.proprieta.filter(Boolean)).toHaveLength(28);
     expect(s.turno).toMatchObject({ giocatore: 'a', numero: 1, fase: 'lancio' });
     expect(esito.eventi).toEqual([
-      { tipo: 'inizio', ordineCasuale: false },
+      { tipo: 'inizio', ordineCasuale: false, bonus: 100 },
       { tipo: 'turno', giocatore: 'a', numero: 1 },
     ]);
     expect(problemi(s)).toEqual([]);

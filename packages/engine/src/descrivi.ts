@@ -36,10 +36,13 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
   const casella = (i: number) => tab.caselle[i]?.nome ?? '?';
 
   switch (evento.tipo) {
-    case 'inizio':
-      return evento.ordineCasuale
-        ? 'La partita comincia. L’ordine dei giocatori è stato estratto a sorte.'
-        : 'La partita comincia.';
+    case 'inizio': {
+      const ordine = evento.ordineCasuale ? ' L’ordine dei giocatori è stato estratto a sorte.' : '';
+      const bonus = evento.bonus ? ` Chi gioca dopo il primo parte con ${euro(evento.bonus)} in più per ogni posto.` : '';
+      return `La partita comincia.${ordine}${bonus}`;
+    }
+    case 'ultimi_turni':
+      return `Mancano ${evento.turni} turni alla fine della partita: poi vince chi ha il patrimonio più alto.`;
     case 'turno':
     case 'dadi':
     case 'trasferimento':
@@ -168,10 +171,12 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
         ? `${nome(evento.da)} vota per far uscire ${nome(evento.contro)} dalla partita (${evento.voti} di ${evento.servono}).`
         : `${nome(evento.da)} ritira il voto contro ${nome(evento.contro)}.`;
     case 'fine': {
-      if (evento.squadra === undefined) return evento.vincitore ? `Partita finita. Vince ${nome(evento.vincitore)}.` : 'Partita finita.';
+      const finita = evento.durata ? 'Partita finita: è arrivata la durata massima.' : 'Partita finita.';
+      const ricco = evento.durata ? ', con il patrimonio più alto' : '';
+      if (evento.squadra === undefined) return evento.vincitore ? `${finita} Vince ${nome(evento.vincitore)}${ricco}.` : finita;
       // «Vince Squadra 1», ma «Vince la squadra Volpi».
       const squadra = stato.squadre[evento.squadra] ?? `Squadra ${evento.squadra + 1}`;
-      return `Partita finita. Vince ${/^squadra\b/i.test(squadra) ? squadra : `la squadra ${squadra}`}.`;
+      return `${finita} Vince ${/^squadra\b/i.test(squadra) ? squadra : `la squadra ${squadra}`}${ricco}.`;
     }
   }
 }

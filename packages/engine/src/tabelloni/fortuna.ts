@@ -92,7 +92,7 @@ export const FORTUNA: Tabellone = {
   partenza: { passaggio: 200, arrivo: 300 },
   prigione: 10,
   cauzione: 50,
-  affittiStazioni: [25, 50, 100, 200],
+  affittiStazioni: [40, 80, 160, 280],
   moltiplicatoriServizi: [4, 10, 20],
   mazzi: { busta: BUSTA, cartolina: CARTOLINA },
 };

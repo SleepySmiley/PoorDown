@@ -10,7 +10,7 @@ Tre tabelloni oltre al Classico ([tabellone-e-carte.md](tabellone-e-carte.md)), 
 
 Regole comuni:
 - Angoli sempre a 0, ¼, ½ e ¾ del giro (Prigione alla casella 12 su Europa, 10 sugli altri). Partenza +200 passando, +300 fermandosi.
-- **Affitti dalla scala del Classico**: per ogni prezzo gli affitti si interpolano tra le due città del Classico più vicine per prezzo (base all'euro, case e albergo ai 5 €). Codice: `packages/engine/src/tabelloni/scala.ts`. Si ribilanciano dopo le partite di prova (Fase 9).
+- **Affitti dalla scala del Classico**: per ogni prezzo gli affitti si interpolano tra le due città del Classico più vicine per prezzo (base all'euro, case e albergo ai 5 €). Codice: `packages/engine/src/tabelloni/scala.ts`. Ribilanciati nella Fase 9 con 1000 partite di bot per tabellone: casa e albergo della Polonia (Europa) da 150 a 200 €, del Sud (Grandi aree) da 100 a 125 €, del Nord (Grandi aree) da 200 a 150 €; stazioni di Colpo di fortuna 40 / 80 / 160 / 280 €.
 - **Busta** uguale su tutti i tabelloni (17 carte). La **Cartolina** cambia perché le sue mete sono caselle di quel tabellone; "Vai al servizio più vicino" c'è solo dove ci sono servizi.
 - Stemmi: ogni gruppo ha sigla di tre lettere e colore (Europa usa due colori in più, `--g9` e `--g10`).
 - I dati usati dal gioco stanno in `packages/engine/src/tabelloni/` (`europa.ts`, `grandi-aree.ts`, `fortuna.ts`); le tabelle qui sotto sono generate da quei file.
@@ -27,7 +27,7 @@ Regole comuni:
 | 4. Grecia | GRC | Patrasso, Salonicco, Atene | 100 |
 | 5. Portogallo | PRT | Braga, Coimbra, Porto, Lisbona | 100 |
 | 6. Paesi Bassi | NLD | Utrecht, Rotterdam, Amsterdam | 150 |
-| 7. Polonia | POL | Cracovia, Varsavia | 150 |
+| 7. Polonia | POL | Cracovia, Varsavia | 200 |
 | 8. Spagna | ESP | Siviglia, Barcellona, Madrid | 150 |
 | 9. Francia | FRA | Lione, Marsiglia, Parigi | 200 |
 | 10. Germania | DEU | Amburgo, Monaco di Baviera, Berlino | 200 |
@@ -112,9 +112,9 @@ Ogni lato è una sola area d’Italia, da 5 o 6 città: completarla è difficile
 | Gruppo | Sigla | Città | Casa e albergo |
 |---|---|---|---|
 | 1. Isole | ISO | Oristano, Nuoro, Agrigento, Trapani, Messina | 50 |
-| 2. Sud | SUD | Campobasso, Potenza, Cosenza, Pescara, Reggio Calabria, Bari | 100 |
+| 2. Sud | SUD | Campobasso, Potenza, Cosenza, Pescara, Reggio Calabria, Bari | 125 |
 | 3. Centro | CEN | Rieti, Arezzo, Terni, Lucca, Ancona, Perugia | 150 |
-| 4. Nord | NOR | Udine, Trento, Genova, Bologna, Torino | 200 |
+| 4. Nord | NOR | Udine, Trento, Genova, Bologna, Torino | 150 |
 
 ### Le 40 caselle
 
@@ -183,7 +183,7 @@ Ogni lato è una sola area d’Italia, da 5 o 6 città: completarla è difficile
 
 ## Colpo di fortuna
 
-Località di vacanza solo su due lati; gli altri due sono carte, tasse e un Rimborso. Conta molto la fortuna.
+Località di vacanza solo su due lati; gli altri due sono carte, tasse e un Rimborso. Conta molto la fortuna. Le stazioni rendono di più che sugli altri tabelloni: 40 / 80 / 160 / 280 € con 1 / 2 / 3 / 4 stazioni.
 
 | Gruppo | Sigla | Città | Casa e albergo |
 |---|---|---|---|

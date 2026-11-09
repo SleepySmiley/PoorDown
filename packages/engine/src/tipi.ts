@@ -31,6 +31,8 @@ export interface Impostazioni {
   soldiIniziali: number;
   ordineCasuale: boolean;
   timerTurno: boolean;
+  /** Dopo `TURNI_A_TESTA` turni per ogni giocatore la partita finisce e vince il patrimonio più alto. */
+  durataMassima: boolean;
   /**
    * Modalità squadre: i compagni non si pagano l'affitto, costruiscono sulle regioni della squadra,
    * ereditano i beni di chi fa bancarotta e vincono insieme.
@@ -430,7 +432,10 @@ export type Azione =
 export type TipoAzione = Azione['tipo'];
 
 export type Evento =
-  | { tipo: 'inizio'; ordineCasuale: boolean }
+  /** `bonus`: i soldi in più per ogni posto dopo il primo nell'ordine dei turni (manca nelle partite più vecchie). */
+  | { tipo: 'inizio'; ordineCasuale: boolean; bonus?: number }
+  /** Con la durata massima: mancano `turni` turni alla fine della partita. */
+  | { tipo: 'ultimi_turni'; turni: number }
   | { tipo: 'turno'; giocatore: IdGiocatore; numero: number }
   | { tipo: 'turno_saltato'; giocatore: IdGiocatore }
   | { tipo: 'dadi'; giocatore: IdGiocatore; dadi: [number, number] }
@@ -511,8 +516,8 @@ export type Evento =
   | { tipo: 'tempo_regalato'; da: IdGiocatore; a: IdGiocatore; ms: number }
   /** `voti`: quanti sono adesso i voti a favore; `servono`: quanti ne servono per toglierlo. */
   | { tipo: 'voto'; da: IdGiocatore; contro: IdGiocatore; favorevole: boolean; voti: number; servono: number }
-  /** `squadra`: a squadre, la squadra vincitrice. */
-  | { tipo: 'fine'; vincitore: IdGiocatore | null; squadra?: number };
+  /** `squadra`: a squadre, la squadra vincitrice. `durata`: finita per la durata massima, vince il patrimonio più alto. */
+  | { tipo: 'fine'; vincitore: IdGiocatore | null; squadra?: number; durata?: true };
 
 export type TipoEvento = Evento['tipo'];
 

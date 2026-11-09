@@ -1073,7 +1073,8 @@ function aggiornaSalvata(salvata: Stato, adesso: number): Stato {
   const asta = v.asta ?? null;
   return {
     ...v,
-    impostazioni: { ...IMPOSTAZIONI_PREDEFINITE, ...v.impostazioni },
+    // Le partite cominciate prima della durata massima continuano senza limite.
+    impostazioni: { ...IMPOSTAZIONI_PREDEFINITE, durataMassima: false, ...(v.impostazioni as Partial<Stato['impostazioni']>) },
     asta,
     scambi: v.scambi ?? [],
     prossimoScambio: v.prossimoScambio ?? 1,

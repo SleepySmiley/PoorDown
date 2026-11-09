@@ -56,6 +56,7 @@ export interface Piazzamento {
  * La classifica per turni sopravvissuti: prima chi è ancora in gioco (il vincitore, a fine partita),
  * poi chi è uscito, dal più tardi al più presto. Chi esce nello stesso turno è dietro a chi esce dopo di lui.
  * A squadre i giocatori della squadra vincitrice stanno davanti a tutti, anche quelli usciti presto.
+ * Se la partita finisce per la durata massima, tra chi è ancora in gioco sta davanti il patrimonio più alto.
  */
 export function classifica(s: Stato): Piazzamento[] {
   const uscite = s.statistiche.uscite;
@@ -63,6 +64,8 @@ export function classifica(s: Stato): Piazzamento[] {
     .map((g) => ({ g, vincitore: haVinto(s, g.id) }))
     .sort(({ g: a, vincitore: va }, { g: b, vincitore: vb }) => {
       if (va !== vb) return Number(vb) - Number(va);
+      // Ancora in gioco tutti e due (la partita finita per la durata massima): conta il patrimonio.
+      if (!a.eliminato && !b.eliminato) return patrimonio(s, b.id) - patrimonio(s, a.id);
       if (!a.eliminato || !b.eliminato) return Number(a.eliminato !== null) - Number(b.eliminato !== null);
       return b.eliminato.turno - a.eliminato.turno || uscite.indexOf(b.id) - uscite.indexOf(a.id);
     })

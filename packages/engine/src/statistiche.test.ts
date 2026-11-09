@@ -37,7 +37,8 @@ describe('raccolta durante la partita', () => {
     expect(s.statistiche).toMatchObject({ inizio: 5_000, fine: null, doppi: 0, scambi: 0, messaggi: 0, prigione: {}, uscite: [] });
     expect(s.statistiche.visite).toHaveLength(40);
     expect(s.statistiche.visite.every((v) => v === 0)).toBe(true);
-    expect(s.statistiche.patrimonio).toEqual([{ turno: 0, valori: [1500, 1500, 1500] }]);
+    // Chi gioca dopo il primo parte con 75 € in più per ogni posto.
+    expect(s.statistiche.patrimonio).toEqual([{ turno: 0, valori: [1500, 1575, 1650] }]);
   });
 
   it('conta i doppi e le caselle su cui ci si ferma', () => {
@@ -109,7 +110,7 @@ describe('fine della partita', () => {
     expect(finita.statistiche.uscite).toEqual(['b', 'a']);
     expect(finita.statistiche.fine).toBe(61_000);
     expect(durata(finita)).toBe(60_000);
-    expect(finita.statistiche.patrimonio.at(-1)).toEqual({ turno: 1, valori: [null, null, 1500] });
+    expect(finita.statistiche.patrimonio.at(-1)).toEqual({ turno: 1, valori: [null, null, 1650] });
     // Il punto del turno 1 c'è una volta sola, anche se il turno è passato da 'a' a 'c' prima della fine.
     expect(finita.statistiche.patrimonio.filter((p) => p.turno === 1)).toHaveLength(1);
   });

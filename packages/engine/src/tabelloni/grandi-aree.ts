@@ -10,9 +10,9 @@ import { affittiPerPrezzo } from './scala';
 
 const REGIONI: Regione[] = [
   { nome: 'Isole', sigla: 'ISO', colore: 2, costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Sud', sigla: 'SUD', colore: 4, costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Sud', sigla: 'SUD', colore: 4, costoCasa: 125, costoAlbergo: 125 },
   { nome: 'Centro', sigla: 'CEN', colore: 3, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Nord', sigla: 'NOR', colore: 8, costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Nord', sigla: 'NOR', colore: 8, costoCasa: 150, costoAlbergo: 150 },
 ];
 
 function citta(nome: string, regione: number, prezzo: number, breve?: string): Casella {

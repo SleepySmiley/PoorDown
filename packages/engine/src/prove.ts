@@ -1,19 +1,31 @@
 /* Aiuti per i test del motore. Non fanno parte del gioco. */
 
 import { casoDaSeme } from './caso';
-import { caselleDellaRegione, giocatore, possiedeRegione, proprietabile, regioneIpotecata } from './conti';
+import { caselleDellaRegione, giocatore, patrimonio, possiedeRegione, proprietabile, regioneIpotecata } from './conti';
 import { IMPOSTAZIONI_PREDEFINITE } from './impostazioni';
 import { creaPartita } from './partita';
 import { applica } from './regole';
 import { tabellone } from './tabelloni';
 import { BANCA_MAX_MS } from './tempo';
+import { finitaPerDurata } from './turni';
 import type { Azione, Caso, Evento, IdGiocatore, Impostazioni, NomeMazzo, Stato } from './tipi';
 
 export const NOMI = ['Anna', 'Bruno', 'Carla', 'Dario', 'Elena', 'Fabio', 'Gina', 'Ugo'];
 /** Id dei giocatori di prova: 'a', 'b', 'c'… */
 export const ID = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
-/** Partita con `n` giocatori in ordine fisso (a, b, c…): tocca ad 'a'. */
+/**
+ * I test delle regole partono tutti con gli stessi soldi: il bonus per chi gioca dopo il primo
+ * ha i suoi test in partita.test.ts.
+ */
+function stessiSoldi(s: Stato): Stato {
+  for (const x of s.giocatori) x.saldo = s.impostazioni.soldiIniziali;
+  // Il primo punto del grafico (turno 0) segue: all'inizio il patrimonio sono i soldi.
+  s.statistiche.patrimonio = s.statistiche.patrimonio.map((p) => ({ ...p, valori: p.valori.map(() => s.impostazioni.soldiIniziali) }));
+  return s;
+}
+
+/** Partita con `n` giocatori in ordine fisso (a, b, c…): tocca ad 'a'. Tutti con gli stessi soldi iniziali. */
 export function partitaDiProva(n = 2, impostazioni: Partial<Impostazioni> = {}): Stato {
   const esito = creaPartita(
     ID.slice(0, n).map((id, i) => ({ id, nome: NOMI[i]!, colore: i + 1 })),
@@ -21,7 +33,7 @@ export function partitaDiProva(n = 2, impostazioni: Partial<Impostazioni> = {}):
     casoDaSeme(1),
   );
   if (!esito.ok) throw new Error(esito.messaggio);
-  return esito.stato;
+  return stessiSoldi(esito.stato);
 }
 
 /**
@@ -35,7 +47,7 @@ export function partitaASquadre(squadre: number[], impostazioni: Partial<Imposta
     casoDaSeme(1),
   );
   if (!esito.ok) throw new Error(esito.messaggio);
-  return esito.stato;
+  return stessiSoldi(esito.stato);
 }
 
 /** Caso che restituisce i tiri indicati, in ordine. Finiti i tiri, il test fallisce. */
@@ -90,14 +102,27 @@ export function problemi(s: Stato): string[] {
     if (s.turno.fase === 'prigione' && c?.prigione === null) out.push('Fase prigione ma il giocatore è libero.');
   } else {
     const rimasti = s.giocatori.filter((x) => !x.eliminato);
-    if (s.impostazioni.squadre) {
+    const aTempo = finitaPerDurata(s);
+    if (aTempo) {
+      // Finita per la durata massima: vince il patrimonio più alto (a squadre, la squadra più ricca).
+      const valore = (chi: readonly Stato['giocatori'][number][]) => chi.reduce((t, x) => t + patrimonio(s, x.id), 0);
+      const vincitore = rimasti.find((x) => x.id === s.vincitore);
+      if (!vincitore) out.push('Durata massima: il vincitore non è in gioco.');
+      else if (s.impostazioni.squadre) {
+        const delGruppo = (q: number | null) => valore(rimasti.filter((x) => x.squadra === q));
+        if (s.squadraVincitrice !== vincitore.squadra) out.push('Durata massima: squadra vincitrice sbagliata.');
+        if (rimasti.some((x) => delGruppo(x.squadra) > delGruppo(vincitore.squadra))) out.push('Durata massima: vince una squadra meno ricca.');
+      } else if (rimasti.some((x) => patrimonio(s, x.id) > patrimonio(s, vincitore.id))) {
+        out.push('Durata massima: vince un giocatore meno ricco.');
+      }
+    } else if (s.impostazioni.squadre) {
       if (new Set(rimasti.map((x) => x.squadra)).size > 1) out.push('Partita finita con più di una squadra in gioco.');
       if (s.squadraVincitrice !== (rimasti[0]?.squadra ?? null)) out.push('Squadra vincitrice sbagliata.');
     } else {
       if (rimasti.length > 1) out.push('Partita finita con più di un giocatore in gioco.');
       if (s.squadraVincitrice !== null) out.push('Squadra vincitrice senza squadre.');
     }
-    if (s.vincitore !== (rimasti[0]?.id ?? null)) out.push('Vincitore sbagliato.');
+    if (!aTempo && s.vincitore !== (rimasti[0]?.id ?? null)) out.push('Vincitore sbagliato.');
   }
   if (s.impostazioni.squadre !== (s.squadre.length > 0)) out.push('Nomi delle squadre che non tornano con l’impostazione.');
 

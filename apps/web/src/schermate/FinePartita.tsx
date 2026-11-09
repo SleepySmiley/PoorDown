@@ -16,6 +16,7 @@ import {
   classifica,
   durata,
   euro,
+  finitaPerDurata,
   patrimonio,
   piuVolteInPrigione,
   proprietaPiuVisitata,
@@ -312,6 +313,12 @@ function Arrivi({
               'Nessun vincitore'
             ))}
         </p>
+        {finitaPerDurata(partita) && (
+          <p className="arrivi__motivo">
+            <Icona nome="coppa" />
+            È arrivata la durata massima: vince il patrimonio più alto.
+          </p>
+        )}
       </div>
 
       <div className="arrivi__colonne" aria-hidden="true">

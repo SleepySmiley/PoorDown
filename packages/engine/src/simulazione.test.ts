@@ -175,6 +175,7 @@ function giocaPartita(seme: number) {
       costruzioneUniforme: caso.intero(3) > 0,
       stanzaPrivata: caso.intero(2) === 1,
       timerTurno: caso.intero(3) > 0,
+      durataMassima: caso.intero(2) === 1,
     },
     caso,
   );

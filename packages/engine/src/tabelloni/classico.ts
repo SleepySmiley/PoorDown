@@ -13,7 +13,7 @@ const REGIONI: Regione[] = [
   { nome: 'Sicilia', sigla: 'SIC', colore: 4, costoCasa: 100, costoAlbergo: 100 },
   { nome: 'Veneto', sigla: 'VEN', colore: 5, costoCasa: 150, costoAlbergo: 150 },
   { nome: 'Campania', sigla: 'CAM', colore: 6, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Lazio', sigla: 'LAZ', colore: 7, costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Lazio', sigla: 'LAZ', colore: 7, costoCasa: 150, costoAlbergo: 150 },
   { nome: 'Lombardia', sigla: 'LOM', colore: 8, costoCasa: 200, costoAlbergo: 200 },
 ];
 

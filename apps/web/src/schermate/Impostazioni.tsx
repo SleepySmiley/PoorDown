@@ -13,6 +13,7 @@ import {
   GIOCATORI_MIN,
   SOLDI_INIZIALI_POSSIBILI,
   tabellone,
+  TURNI_A_TESTA,
   type Impostazioni,
 } from '@poordown/engine';
 import { Chip } from '../ui/Chip';
@@ -87,7 +88,8 @@ const GRUPPI: { titolo: string; voci: Voce[] }[] = [
         icona: 'banconota',
         nome: 'Soldi iniziali',
         breve: 'Per ogni giocatore',
-        descrizione: 'Con quanti soldi parte ogni giocatore',
+        descrizione:
+          'Con quanti soldi parte ogni giocatore. Chi gioca dopo il primo ne ha un po’ di più: il 5% per ogni posto (il 2,5% in due)',
       },
       {
         chiave: 'affittoDoppioSetCompleto',
@@ -137,6 +139,13 @@ const GRUPPI: { titolo: string; voci: Voce[] }[] = [
         nome: 'Ordine casuale',
         breve: 'Turni estratti a sorte',
         descrizione: 'L’ordine dei turni viene estratto a sorte all’inizio della partita',
+      },
+      {
+        chiave: 'durataMassima',
+        icona: 'coppa',
+        nome: 'Durata massima',
+        breve: `${TURNI_A_TESTA} turni a testa`,
+        descrizione: `Dopo ${TURNI_A_TESTA} turni per ogni giocatore la partita finisce: vince chi ha il patrimonio più alto (soldi, città e case)`,
       },
     ],
   },

@@ -4,7 +4,18 @@
  */
 
 import { accredita, rossoVersoBanca, type Contesto } from './contesto';
-import { attivi, caselleDellaRegione, costoEdifici, giocatore, possedute, possiedeRegione, proprietabile, valoreLiquidazione } from './conti';
+import {
+  attivi,
+  caselleDellaRegione,
+  costoEdifici,
+  giocatore,
+  patrimonio,
+  possedute,
+  possiedeRegione,
+  proprietabile,
+  valoreLiquidazione,
+} from './conti';
+import { TURNI_A_TESTA, TURNI_DI_AVVISO_A_TESTA } from './impostazioni';
 import { segnaPatrimonio } from './statistiche';
 import { chiudiOrologio, tempoIniziale, votiNecessari } from './tempo';
 import type { Debito, Evento, Giocatore, MotivoUscita, Stato } from './tipi';
@@ -12,7 +23,23 @@ import type { Debito, Evento, Giocatore, MotivoUscita, Stato } from './tipi';
 /** Tiri falliti dopo i quali si esce di prigione gratis, al turno successivo. */
 export const TENTATIVI_PRIGIONE = 3;
 
-/** Inizia il turno di `g`. Chi ha già fallito 3 tiri in prigione esce gratis e tira normalmente. */
+/** Con la durata massima: il numero dell'ultimo turno della partita (cento a testa); `null` senza limite. */
+export function ultimoTurno(s: Stato): number | null {
+  return s.impostazioni.durataMassima ? TURNI_A_TESTA * s.giocatori.length : null;
+}
+
+/** La partita è finita per la durata massima: all'ultimo turno, con più giocatori (o squadre) ancora in gioco. */
+export function finitaPerDurata(s: Stato): boolean {
+  const ultimo = ultimoTurno(s);
+  if (s.fase !== 'finita' || ultimo === null || s.turno.numero < ultimo) return false;
+  const rimasti = attivi(s);
+  return s.impostazioni.squadre ? new Set(rimasti.map((g) => g.squadra)).size > 1 : rimasti.length > 1;
+}
+
+/**
+ * Inizia il turno di `g`. Chi ha già fallito 3 tiri in prigione esce gratis e tira normalmente.
+ * Con la durata massima, quando mancano dieci turni a testa il registro avvisa.
+ */
 export function iniziaTurno(s: Stato, eventi: Evento[], g: Giocatore, adesso: number): void {
   s.turno = {
     giocatore: g.id,
@@ -26,6 +53,9 @@ export function iniziaTurno(s: Stato, eventi: Evento[], g: Giocatore, adesso: nu
     votazione: { voti: [], scadenza: null },
   };
   eventi.push({ tipo: 'turno', giocatore: g.id, numero: s.turno.numero });
+  const ultimo = ultimoTurno(s);
+  const avviso = TURNI_DI_AVVISO_A_TESTA * s.giocatori.length;
+  if (ultimo !== null && s.turno.numero === ultimo - avviso + 1) eventi.push({ tipo: 'ultimi_turni', turni: avviso });
   if (g.prigione === null) return;
   if (g.prigione >= TENTATIVI_PRIGIONE) {
     g.prigione = null;
@@ -35,11 +65,19 @@ export function iniziaTurno(s: Stato, eventi: Evento[], g: Giocatore, adesso: nu
   }
 }
 
-/** Passa al prossimo giocatore in gioco. Chi è in vacanza salta il turno (una volta). */
+/**
+ * Passa al prossimo giocatore in gioco. Chi è in vacanza salta il turno (una volta).
+ * Con la durata massima, dopo l'ultimo turno la partita finisce.
+ */
 export function passaTurno(ctx: Contesto): void {
   const { s } = ctx;
   const uscente = giocatore(s, s.turno.giocatore);
   if (uscente && !uscente.eliminato) chiudiOrologio(s, uscente, s.turno, ctx.adesso);
+  const ultimo = ultimoTurno(s);
+  if (ultimo !== null && s.turno.numero >= ultimo) {
+    chiudiPerDurata(ctx);
+    return;
+  }
   segnaPatrimonio(s);
   const n = s.giocatori.length;
   let i = s.giocatori.findIndex((g) => g.id === s.turno.giocatore);
@@ -204,18 +242,7 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
   const rimasti = attivi(s);
   const squadre = new Set(rimasti.map((x) => x.squadra));
   if (rimasti.length <= 1 || (s.impostazioni.squadre && squadre.size <= 1)) {
-    s.fase = 'finita';
-    s.vincitore = rimasti[0]?.id ?? null;
-    s.squadraVincitrice = s.impostazioni.squadre ? (rimasti[0]?.squadra ?? null) : null;
-    s.asta = null;
-    s.scambi = [];
-    s.statistiche.fine = ctx.adesso;
-    segnaPatrimonio(s);
-    ctx.eventi.push(
-      s.squadraVincitrice === null
-        ? { tipo: 'fine', vincitore: s.vincitore }
-        : { tipo: 'fine', vincitore: s.vincitore, squadra: s.squadraVincitrice },
-    );
+    chiudiPartita(ctx, rimasti[0]);
     return;
   }
   if (s.turno.giocatore === g.id) {
@@ -225,4 +252,45 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
   // Con un giocatore in meno ne servono meno: i voti già dati possono bastare.
   const voti = s.turno.votazione.voti.length;
   if (voti > 0 && voti >= votiNecessari(s)) elimina(ctx, giocatore(s, s.turno.giocatore)!, 'voto');
+}
+
+/** La partita finisce: vince `vincitore` (a squadre, con tutta la sua squadra). `durata`: per la durata massima. */
+function chiudiPartita(ctx: Contesto, vincitore: Giocatore | undefined, durata = false): void {
+  const { s } = ctx;
+  s.fase = 'finita';
+  s.vincitore = vincitore?.id ?? null;
+  s.squadraVincitrice = s.impostazioni.squadre ? (vincitore?.squadra ?? null) : null;
+  s.asta = null;
+  s.scambi = [];
+  s.statistiche.fine = ctx.adesso;
+  segnaPatrimonio(s);
+  ctx.eventi.push({
+    tipo: 'fine',
+    vincitore: s.vincitore,
+    ...(s.squadraVincitrice === null ? {} : { squadra: s.squadraVincitrice }),
+    ...(durata ? { durata: true as const } : {}),
+  });
+}
+
+/**
+ * La durata massima è arrivata: vince il patrimonio più alto tra chi è ancora in gioco. A squadre vince la squadra
+ * con il patrimonio più alto (sommando i suoi giocatori ancora in gioco). A pari merito, chi viene prima nei turni.
+ */
+function chiudiPerDurata(ctx: Contesto): void {
+  const { s } = ctx;
+  const rimasti = attivi(s);
+  const valore = new Map(rimasti.map((g) => [g.id, patrimonio(s, g.id)]));
+  let candidati = rimasti;
+  if (s.impostazioni.squadre) {
+    const somme = new Map<number | null, number>();
+    for (const g of rimasti) somme.set(g.squadra, (somme.get(g.squadra) ?? 0) + valore.get(g.id)!);
+    const migliore = Math.max(...somme.values());
+    const squadra = rimasti.find((g) => somme.get(g.squadra) === migliore)?.squadra;
+    candidati = rimasti.filter((g) => g.squadra === squadra);
+  }
+  const vincitore = candidati.reduce<Giocatore | undefined>(
+    (meglio, g) => (meglio === undefined || valore.get(g.id)! > valore.get(meglio.id)! ? g : meglio),
+    undefined,
+  );
+  chiudiPartita(ctx, vincitore, true);
 }

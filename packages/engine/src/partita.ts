@@ -1,6 +1,6 @@
 import { mescola } from './caso';
 import { proprietabile } from './conti';
-import { GIOCATORI_MAX, GIOCATORI_MIN, NOMI_SQUADRE_PREDEFINITI, SQUADRE_MAX } from './impostazioni';
+import { bonusPerPosto, GIOCATORI_MAX, GIOCATORI_MIN, NOMI_SQUADRE_PREDEFINITI, SQUADRE_MAX } from './impostazioni';
 import { segnaPatrimonio, statisticheIniziali } from './statistiche';
 import { tabellone } from './tabelloni';
 import { BANCA_INIZIALE_MS } from './tempo';
@@ -43,7 +43,7 @@ function problemaSquadre(giocatori: readonly NuovoGiocatore[]): string | null {
 
 /**
  * Prepara una partita: ordine dei giocatori (mescolato se richiesto), mazzi mescolati,
- * soldi iniziali, e fa partire il primo turno.
+ * soldi iniziali (con il bonus per chi gioca dopo il primo, vedi `bonusPerPosto`), e fa partire il primo turno.
  * @param adesso orologio del server (ms): da qui parte il tempo del primo turno.
  * @param nomiSquadre i nomi delle squadre, per le partite a squadre.
  */
@@ -73,16 +73,17 @@ export function creaPartita(
   const tab = tabellone(impostazioni.mappa);
   const ordine = ordineDeiTurni(giocatori, impostazioni, caso);
   const nuovoMazzo = (n: number): Mazzo => ({ ordine: mescola([...Array(n).keys()], caso), prossima: 0 });
+  const bonus = bonusPerPosto(impostazioni.soldiIniziali, giocatori.length);
 
   const stato: Stato = {
     mappa: impostazioni.mappa,
     impostazioni: { ...impostazioni },
-    giocatori: ordine.map((g) => ({
+    giocatori: ordine.map((g, posto) => ({
       id: g.id,
       nome: g.nome,
       colore: g.colore,
       posizione: 0,
-      saldo: impostazioni.soldiIniziali,
+      saldo: impostazioni.soldiIniziali + posto * bonus,
       debiti: [],
       prigione: null,
       vacanza: false,
@@ -122,7 +123,7 @@ export function creaPartita(
   };
   segnaPatrimonio(stato);
 
-  const eventi: Evento[] = [{ tipo: 'inizio', ordineCasuale: impostazioni.ordineCasuale }];
+  const eventi: Evento[] = [{ tipo: 'inizio', ordineCasuale: impostazioni.ordineCasuale, bonus }];
   iniziaTurno(stato, eventi, stato.giocatori[0]!, adesso);
   return { ok: true, stato, eventi };
 }

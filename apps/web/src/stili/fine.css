@@ -137,6 +137,23 @@
   font: var(--t-titolo-1);
 }
 
+/* Finita per la durata massima: il perché, sotto il vincitore. */
+.arrivi__annuncio .arrivi__motivo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+  color: var(--quadro-tenue);
+  font: var(--t-corpo);
+}
+
+.arrivi__motivo .icona {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--ambra);
+}
+
 .arrivi__vince .arrivi__corona {
   width: 1.75rem;
   height: 1.75rem;
