@@ -176,7 +176,8 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
   - gong ripetuto ogni minuto se tocca a te e la scheda è nascosta, ticchettio negli ultimi 10 s del tuo turno e negli ultimi 3 dell'asta;
   - volume 0–100 con muto in home, lobby e testata di gioco, salvato nel browser; pagina `/suoni` per ascoltarli tutti (solo con `npm run dev`)
 - ~~Layout per telefono e tablet, accessibilità di base~~ tolto: si gioca solo da PC e l'accessibilità non serve (decisione del 2026-11-08)
-- [ ] Test end-to-end con 4 browser, bilanciamento dopo le partite di prova
+- [x] Test end-to-end con 4 browser: quattro Edge con identità separate giocano dai pulsanti veri una partita intera (stanza privata, aste accese, 1.000 € a testa, 54 turni): dadi, doppi, prigione, acquisti, aste con quattro offerenti, chat, ricarica a metà partita, tre bancarotte, fine partita e «Un'altra partita». Saldi uguali su tutti i browser a ogni controllo, coriandoli solo per chi vince, nessun errore in console
+- [ ] Bilanciamento: misurato con 1000 partite di bot per tabellone (durata, vantaggio di chi parte primo, regioni decisive); ritocchi proposti, da approvare
 - [x] Avvio con doppio clic su Windows e guida per gli amici
   - `Avvia PoorDown.cmd`: controlla Node.js (se manca apre il sito per scaricarlo), installa i pacchetti solo la prima volta e dopo un aggiornamento, prepara il sito in silenzio, accende il server e apre il browser quando è pronto; se il gioco è già acceso apre solo il browser. Chiudendo la finestra il server salva le partite;
   - [GUIDA.md](GUIDA.md): come entrare con il link, come accendere il gioco, cosa fare se gli amici non si collegano
