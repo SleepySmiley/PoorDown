@@ -310,8 +310,10 @@ export function RigaGiocatoreGioco({
 }): ReactNode {
   const v = g.variazione;
   const verso = v ? (v.importo < 0 ? 'paga' : 'incassa') : null;
+  const togli = puoTogliere && !g.tu && !g.fuori;
   const classi = [
     'riga-giocatore',
+    togli ? 'riga-giocatore--togli' : '',
     g.turno ? 'riga-giocatore--turno' : '',
     g.tu ? 'riga-giocatore--tu' : '',
     g.fuori ? 'riga-giocatore--fuori' : '',
@@ -385,7 +387,7 @@ export function RigaGiocatoreGioco({
         )}
       </div>
       {voto && <div className="riga-giocatore__voto">{voto}</div>}
-      {puoTogliere && !g.tu && !g.fuori && (
+      {togli && (
         <span className="riga-giocatore__togli">
           {bloccoTogli ? (
             <span className="con-suggerimento con-suggerimento--destra" data-testo={bloccoTogli}>

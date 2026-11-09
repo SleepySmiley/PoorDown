@@ -168,7 +168,7 @@
   margin-top: calc(var(--k) * 4);
   color: var(--tab-testo);
   font: 500 calc(var(--k) * 15) / 1.25 var(--normale);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 .cartello-turno__tempo {

@@ -973,6 +973,12 @@
   background: var(--quadro-hover);
 }
 
+/* Lo spazio della X resta sempre libero (anche senza passarci sopra): nomi lunghi e chip non ci finiscono sotto. */
+.riga-giocatore.riga-giocatore--togli .riga-giocatore__chi,
+.riga-giocatore.riga-giocatore--togli .riga-giocatore__stato {
+  padding-right: calc(2rem + 6px + var(--s-1) - var(--s-3));
+}
+
 /* ---------- Chat richiusa: una barra in fondo alla colonna ---------- */
 
 .tavolo--partita .chat {
