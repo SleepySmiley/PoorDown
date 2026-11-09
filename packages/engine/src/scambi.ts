@@ -327,9 +327,17 @@ export function proponi(ctx: Contesto, azione: Extract<Azione, { tipo: 'proponi'
       dare: stessoVerso ? sostituito.dare : sostituito.avere,
       avere: stessoVerso ? sostituito.avere : sostituito.dare,
     };
+    if (stessoVerso) scambio.modifica = true;
   }
   s.scambi = [...s.scambi.filter((x) => x !== sostituito), scambio];
-  ctx.eventi.push({ tipo: 'scambio_proposto', scambio: scambio.id, da: scambio.da, a: scambio.a, trattativa: scambio.trattativa });
+  ctx.eventi.push({
+    tipo: 'scambio_proposto',
+    scambio: scambio.id,
+    da: scambio.da,
+    a: scambio.a,
+    trattativa: scambio.trattativa,
+    ...(scambio.modifica ? { modifica: true as const } : {}),
+  });
 }
 
 export function rispondi(ctx: Contesto, azione: Extract<Azione, { tipo: 'accetta' | 'rifiuta' | 'annulla' }>): void {

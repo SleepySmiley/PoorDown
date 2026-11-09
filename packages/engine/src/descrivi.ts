@@ -109,6 +109,7 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
         ? `${nome(evento.offerente)} non ha più i soldi per pagare: ${casella(evento.casella)} resta alla banca.`
         : `Nessuna offerta: ${casella(evento.casella)} resta alla banca.`;
     case 'scambio_proposto':
+      if (evento.modifica) return `${nome(evento.da)} modifica la sua proposta ${a(nome(evento.a))}.`;
       return evento.trattativa > 0
         ? `${nome(evento.da)} fa una controproposta ${a(nome(evento.a))}.`
         : `${nome(evento.da)} propone uno scambio ${a(nome(evento.a))}.`;

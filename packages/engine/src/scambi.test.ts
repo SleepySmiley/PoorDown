@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { assegna, esegui, g, partitaASquadre, partitaDiProva, problemi } from './prove';
 import { effettiScambio, PROPOSTE_IN_ATTESA_MAX, problemiScambio, SCAMBI_APERTI_MAX, valorePacchetto } from './scambi';
+import { descrivi } from './descrivi';
 import { verifica } from './regole';
 import { tabellone } from './tabelloni';
 import type { Azione, IdGiocatore, Impostazioni, Pacchetto, Stato } from './tipi';
@@ -112,6 +113,21 @@ describe('proporre e rispondere', () => {
     s = esegui(s, proposta('a', 'b', { soldi: 90 }, { caselle: [PISA] }, { sostituisce: 3 })).stato;
     expect(s.scambi[0]).toMatchObject({ trattativa: 3, precedente: { dare: pacchetto({ soldi: 80 }), avere: pacchetto({ caselle: [PISA] }) } });
     expect(s.scambi[0]!.precedente).not.toHaveProperty('precedente');
+  });
+
+  it('distingue la modifica di chi ha proposto dalla controproposta dell’altro', () => {
+    let s = esegui(partita(), proposta('a', 'b', { soldi: 10 }, { caselle: [PISA] })).stato;
+    expect(s.scambi[0]!.modifica).toBeUndefined();
+    // Anna cambia la sua proposta: è una modifica, e il registro lo dice.
+    const modifica = esegui(s, proposta('a', 'b', { soldi: 30 }, { caselle: [PISA] }, { sostituisce: 1 }));
+    expect(modifica.eventi).toEqual([{ tipo: 'scambio_proposto', scambio: 2, da: 'a', a: 'b', trattativa: 1, modifica: true }]);
+    expect(descrivi(modifica.eventi[0]!, modifica.stato)).toBe('Anna modifica la sua proposta a Bruno.');
+    s = modifica.stato;
+    expect(s.scambi[0]!.modifica).toBe(true);
+    // Risponde Bruno: controproposta, non modifica.
+    const contro = esegui(s, proposta('b', 'a', { caselle: [PISA] }, { soldi: 50 }, { sostituisce: 2 }));
+    expect(contro.stato.scambi[0]!.modifica).toBeUndefined();
+    expect(descrivi(contro.eventi[0]!, contro.stato)).toBe('Bruno fa una controproposta ad Anna.');
   });
 
   it('gli scambi delle partite salvate senza la versione precedente si accettano e si contropropongono', () => {

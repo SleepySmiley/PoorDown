@@ -320,6 +320,11 @@ export interface Scambio {
    * delle partite salvate prima che ci fosse.
    */
   precedente?: { dare: Pacchetto; avere: Pacchetto };
+  /**
+   * Questa versione l'ha cambiata chi aveva già proposto («Modifica»), non è una risposta dell'altro.
+   * Manca nella proposta originale e nelle partite salvate prima che ci fosse (vale come controproposta).
+   */
+  modifica?: boolean;
 }
 
 /** Un punto del grafico del patrimonio. */
@@ -452,7 +457,15 @@ export type Evento =
   | { tipo: 'asta_vinta'; giocatore: IdGiocatore; casella: number; importo: number }
   /** Nessuno ha offerto, oppure chi ha vinto non ha più i soldi (`offerente`). La proprietà resta libera. */
   | { tipo: 'asta_deserta'; casella: number; offerente: IdGiocatore | null }
-  | { tipo: 'scambio_proposto'; scambio: number; da: IdGiocatore; a: IdGiocatore; trattativa: number }
+  | {
+      tipo: 'scambio_proposto';
+      scambio: number;
+      da: IdGiocatore;
+      a: IdGiocatore;
+      trattativa: number;
+      /** Chi aveva proposto ha cambiato la sua proposta (manca se è una proposta nuova o una controproposta). */
+      modifica?: true;
+    }
   | { tipo: 'scambio_accettato'; scambio: number; da: IdGiocatore; a: IdGiocatore; dare: Pacchetto; avere: Pacchetto }
   | { tipo: 'scambio_rifiutato'; scambio: number; da: IdGiocatore; a: IdGiocatore }
   | { tipo: 'scambio_annullato'; scambio: number; da: IdGiocatore; a: IdGiocatore }

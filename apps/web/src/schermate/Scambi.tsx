@@ -99,11 +99,19 @@ function lati(partita: Stato, sc: Scambio, io: IdGiocatore | null): { sinistra: 
   return sc.a === io ? { sinistra: parteA, destra: parteDa, mio: true } : { sinistra: parteDa, destra: parteA, mio: sc.da === io };
 }
 
-/** Il titolo dello scambio per chi lo guarda: «Bruno ti propone uno scambio», «Controproposta di Bruno · 2ª»… */
+/**
+ * Il titolo dello scambio per chi lo guarda: «Bruno ti propone uno scambio», «Controproposta di Bruno · 2ª»,
+ * «Proposta modificata da Bruno · 2ª» (se l'ha cambiata chi l'aveva fatta)…
+ */
 function titoloScambio(partita: Stato, sc: Scambio, io: IdGiocatore | null): string {
   const da = nomeDi(partita, sc.da);
   const a = nomeDi(partita, sc.a);
   const n = sc.trattativa;
+  if (sc.modifica) {
+    if (sc.a === io) return `Proposta modificata da ${da} · ${n}ª`;
+    if (sc.da === io) return `La tua proposta modificata ${preposizioneA(a)} · ${n}ª`;
+    return `Proposta modificata da ${da} ${preposizioneA(a)} · ${n}ª`;
+  }
   if (sc.a === io) return n > 0 ? `Controproposta di ${da} · ${n}ª` : `${da} ti propone uno scambio`;
   if (sc.da === io) return n > 0 ? `La tua controproposta ${preposizioneA(a)} · ${n}ª` : `La tua proposta ${preposizioneA(a)}`;
   return n > 0 ? `Controproposta di ${da} ${preposizioneA(a)} · ${n}ª` : `${da} propone ${preposizioneA(a)}`;
@@ -1085,7 +1093,8 @@ export function BigliettoProposta({
       <Pedina colore={da.colore} iniziale={inizialeNome(da.nome)} className="pedina--grande" />
       <div className="biglietto-proposta__testo">
         <p className="biglietto-proposta__titolo">
-          <b>{da.nome}</b> {sc.trattativa > 0 ? 'ti fa una controproposta' : 'ti propone uno scambio'}
+          <b>{da.nome}</b>{' '}
+          {sc.modifica ? 'ha modificato la sua proposta' : sc.trattativa > 0 ? 'ti fa una controproposta' : 'ti propone uno scambio'}
         </p>
         <p className="biglietto-proposta__riassunto">
           <span className="biglietto-proposta__parte">
@@ -1143,9 +1152,14 @@ export function esitoScambio(partita: Stato, io: IdGiocatore | null, evento: Eve
     case 'scambio_rifiutato':
       return evento.da === io ? { tipo: 'errore', testo: `${nomeDi(partita, evento.a)} ha rifiutato il tuo scambio.` } : null;
     case 'scambio_proposto':
-      return evento.a === io && evento.trattativa > 0
-        ? { tipo: 'attenzione', testo: `${nomeDi(partita, evento.da)} ti fa una controproposta.`, scambio: evento.scambio }
-        : null;
+      if (evento.a !== io || evento.trattativa === 0) return null;
+      return {
+        tipo: 'attenzione',
+        testo: evento.modifica
+          ? `${nomeDi(partita, evento.da)} ha modificato la sua proposta.`
+          : `${nomeDi(partita, evento.da)} ti fa una controproposta.`,
+        scambio: evento.scambio,
+      };
     case 'scambio_annullato':
       return evento.a === io ? { tipo: 'info', testo: `${nomeDi(partita, evento.da)} ha ritirato lo scambio.` } : null;
     default:
