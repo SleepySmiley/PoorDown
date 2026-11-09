@@ -17,6 +17,7 @@ import { Chip } from '../ui/Chip';
 import { Palette, Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
 import { Finestra } from '../ui/Finestra';
 import { Icona } from '../ui/icone';
+import { Marchio } from '../ui/Marchio';
 import { CURVA, DURATA } from '../ui/movimento';
 import { Pulsante } from '../ui/Pulsante';
 import { PassiDelGioco } from '../ui/Regole';
@@ -160,7 +161,7 @@ export function TestataGioco({
   return (
     <header className="testata-gioco">
       <a
-        className="insegna testata-gioco__insegna"
+        className="testata-gioco__insegna"
         href="/"
         aria-label="PoorDown, esci dalla stanza e torna alla home"
         title="Torna alla home"
@@ -169,7 +170,7 @@ export function TestataGioco({
           onEsci();
         }}
       >
-        PoorDown
+        <Marchio variante="piccolo" />
       </a>
       <ConPopover
         aperto={aperto === 'invita'}

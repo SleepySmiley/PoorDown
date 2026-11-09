@@ -457,10 +457,16 @@
   margin-top: -6px;
 }
 
+/* Il marchio da 32 px: il cartello quadrato con la «P» (ui/Marchio.tsx). */
 .testata-gioco .testata-gioco__insegna {
+  display: inline-flex;
   flex: none;
-  padding: 0.25rem 0.625rem 0.3125rem;
-  font-size: 1.375rem;
+  border-radius: 6px;
+  transition: transform var(--d-rapida) var(--c-arrivo);
+}
+
+.testata-gioco .testata-gioco__insegna:hover {
+  transform: translateY(-1px);
 }
 
 /* Il codice della stanza a palette: è anche il pulsante per invitare. */
