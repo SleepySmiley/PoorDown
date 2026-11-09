@@ -9,6 +9,10 @@ Gioco da tavolo multiplayer in stile Monopoly, da giocare con gli amici sulla st
 
 ## Avvio
 
+**Su Windows:** doppio clic su **`Avvia PoorDown.cmd`**. Controlla Node.js, scarica i pacchetti la prima volta (e dopo ogni aggiornamento), accende il server e apre il browser. Se il gioco è già acceso apre solo il browser. Per spegnerlo si chiude la finestra: le partite restano salvate. La guida per chi gioca, anche per chi non è pratico, è in [GUIDA.md](GUIDA.md).
+
+Dal terminale, su qualunque sistema:
+
 ```sh
 npm install   # solo la prima volta e dopo ogni aggiornamento
 npm start
@@ -61,7 +65,7 @@ Le stanze vengono salvate su file mentre si gioca, così una partita riprende an
 | Comando | Cosa fa |
 |---|---|
 | `npm start` | Compila il sito e avvia il server: è quello per giocare |
-| `npm run dev` | Modalità sviluppo: le modifiche al codice compaiono subito nel browser |
+| `npm run dev` | Modalità sviluppo: le modifiche al codice compaiono subito nel browser. Su `/suoni` si ascoltano tutti i suoni |
 | `npm run build` | Compila solo il sito in `apps/web/dist` |
 | `npm test` | Esegue i test |
 | `npm run lint` | Controlla il codice con ESLint |

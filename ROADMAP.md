@@ -177,7 +177,9 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
   - volume 0–100 con muto in home, lobby e testata di gioco, salvato nel browser; pagina `/suoni` per ascoltarli tutti (solo con `npm run dev`)
 - ~~Layout per telefono e tablet, accessibilità di base~~ tolto: si gioca solo da PC e l'accessibilità non serve (decisione del 2026-11-08)
 - [ ] Test end-to-end con 4 browser, bilanciamento dopo le partite di prova
-- [ ] Avvio con doppio clic su Windows e guida per gli amici
+- [x] Avvio con doppio clic su Windows e guida per gli amici
+  - `Avvia PoorDown.cmd`: controlla Node.js (se manca apre il sito per scaricarlo), installa i pacchetti solo la prima volta e dopo un aggiornamento, prepara il sito in silenzio, accende il server e apre il browser quando è pronto; se il gioco è già acceso apre solo il browser. Chiudendo la finestra il server salva le partite;
+  - [GUIDA.md](GUIDA.md): come entrare con il link, come accendere il gioco, cosa fare se gli amici non si collegano
 
 ---
 

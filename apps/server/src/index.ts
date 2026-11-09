@@ -3,7 +3,7 @@ import path from 'node:path';
 import express from 'express';
 import { Server } from 'socket.io';
 import { NOME_GIOCO, VERSIONE, type EventiClient, type EventiServer, type InfoServer } from '@poordown/engine';
-import { indirizziRete } from './rete';
+import { apriBrowser, indirizziRete } from './rete';
 import { collegaSito } from './sito';
 import { AMBIENTE_REALE } from './stanze/ambiente';
 import { Archivio, cartellaDati } from './stanze/archivio';
@@ -39,7 +39,8 @@ setInterval(() => {
 }, MANUTENZIONE_MS).unref();
 
 // Prima di spegnersi salva le stanze, così le partite riprendono al riavvio.
-for (const segnale of ['SIGINT', 'SIGTERM'] as const) {
+// SIGHUP è la finestra del terminale chiusa su Windows (il modo normale di spegnere dopo il doppio clic).
+for (const segnale of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
   process.on(segnale, () => {
     archivio.salvaOra();
     process.exit(0);
@@ -66,7 +67,11 @@ server.on('error', (errore: NodeJS.ErrnoException) => {
   throw errore;
 });
 
-server.listen(porta, stampaIndirizzi);
+server.listen(porta, () => {
+  stampaIndirizzi();
+  // Avvio con doppio clic (scripts/avvia.js): il browser si apre quando il server è pronto.
+  if (process.env.POORDOWN_APRI === '1') apriBrowser(`http://localhost:${porta}`);
+});
 
 function leggiPorta(): number {
   const valore = Number(process.env.PORT ?? 3000);
@@ -98,7 +103,8 @@ function stampaIndirizzi(): void {
   righe.push(
     '',
     '  Se Windows chiede il permesso del firewall, consenti l\'accesso alle reti private.',
-    '  Per spegnere: Ctrl+C',
+    // Dopo il doppio clic la finestra è solo di PoorDown: chiuderla è il modo più semplice.
+    process.env.POORDOWN_APRI === '1' ? '  Per spegnere: chiudi questa finestra' : '  Per spegnere: Ctrl+C',
     '',
   );
   console.log(righe.join('\n'));

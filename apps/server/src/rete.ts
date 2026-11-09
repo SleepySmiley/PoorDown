@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 
 export interface IndirizzoRete {
@@ -39,4 +40,14 @@ export function scegliIndirizzi(schede: SchedeDiRete): IndirizzoRete[] {
 
 export function indirizziRete(): IndirizzoRete[] {
   return scegliIndirizzi(networkInterfaces());
+}
+
+/** Apre l'indirizzo nel browser predefinito di questo PC (se non ci riesce, l'indirizzo è comunque stampato). */
+export function apriBrowser(indirizzo: string): void {
+  const processo =
+    process.platform === 'win32'
+      ? spawn('cmd', ['/c', `start "" "${indirizzo}"`], { windowsVerbatimArguments: true, stdio: 'ignore', detached: true })
+      : spawn(process.platform === 'darwin' ? 'open' : 'xdg-open', [indirizzo], { stdio: 'ignore', detached: true });
+  processo.on('error', () => {});
+  processo.unref();
 }
