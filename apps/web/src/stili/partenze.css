@@ -313,7 +313,9 @@ button {
   background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--colore) 72%, #fff) 0%, var(--colore) 55%);
   /* I colori delle pedine sono tutti chiari: il testo sopra è sempre scuro. */
   color: var(--inchiostro);
-  font: 600 0.875rem/1 var(--stretto);
+  /* Le iniziali nel Barlow largo: la «O» è tonda e non si confonde con lo zero (nel condensato sono uguali). */
+  font: 600 0.8125rem/1 var(--normale);
+  letter-spacing: -0.03em;
   box-shadow:
     0 0 0 2px #fff,
     0 0 0 3.5px rgb(0 0 0 / 0.55);

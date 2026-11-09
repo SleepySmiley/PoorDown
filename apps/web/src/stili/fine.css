@@ -672,7 +672,7 @@
 
 .grafico__iniziale {
   fill: var(--inchiostro);
-  font: 600 11px var(--stretto);
+  font: 600 10px var(--normale);
 }
 
 .grafico__serie {

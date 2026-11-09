@@ -522,11 +522,19 @@ button.casella:hover {
 }
 
 .casella__iniziale {
-  font-size: calc(var(--k) * 15);
-  font-weight: 700;
-  line-height: 1;
+  /* Una pastiglia scura con la lettera nel colore del proprietario: si legge «di chi è», mai come un numero
+     di case («O ▲▲▲▲» non sembra più «0 case»). Barlow largo: la «O» è tonda. */
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: calc(var(--k) * 15);
+  height: calc(var(--k) * 15);
+  padding: 0 calc(var(--k) * 3);
+  border-radius: var(--r-tondo);
+  background: var(--inchiostro);
+  color: color-mix(in srgb, var(--proprietario) 70%, #fff);
+  font: 600 calc(var(--k) * 11) / 1 var(--normale);
   letter-spacing: -0.02em;
-  opacity: 0.88;
 }
 
 /* Le case e l'albergo: uguali sul tabellone e nella scheda (componente Edifici). */
@@ -1098,7 +1106,8 @@ button.casella:hover {
     var(--colore) 45%,
     color-mix(in srgb, var(--colore) 70%, #000) 100%
   );
-  font: 700 calc(var(--u) * 16) / 1 var(--stretto);
+  font: 600 calc(var(--u) * 15) / 1 var(--normale);
+  letter-spacing: -0.03em;
   letter-spacing: -0.03em;
   text-shadow: 0 calc(var(--u) * 0.8) 0 rgb(255 255 255 / 0.35);
   box-shadow:
