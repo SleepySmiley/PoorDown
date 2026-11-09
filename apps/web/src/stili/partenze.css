@@ -871,6 +871,26 @@ button {
   box-shadow: var(--e2);
 }
 
+/* Un pulsante con il suo popover sotto (ui/ConPopover.tsx): testata di gioco, volume. */
+.con-popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.popover.popover--testata {
+  position: absolute;
+  top: calc(100% + var(--s-2));
+  z-index: 50;
+}
+
+.popover--testata.popover--sinistra {
+  left: 0;
+}
+
+.popover--testata.popover--destra {
+  right: 0;
+}
+
 /* Suggerimento sopra un pulsante (anche disattivato): sul quadro nero, come un cartellino. */
 .con-suggerimento {
   position: relative;

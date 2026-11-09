@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { ASTA_MS, euro, RILANCI, tabellone, verifica, type IdGiocatore, type Stato } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
+import { useSuoniAsta, useTicchettio } from '../suoni/richiami';
 import { useBattito } from '../ui/battito';
 import { caselleVista } from '../ui/caselle';
 import { Pedina, Soldi, Stemma } from '../ui/comuni';
@@ -32,6 +33,11 @@ export function Asta({
 }): ReactNode {
   useBattito(200);
   const asta = partita.asta;
+  const restanti = asta ? Math.max(0, asta.scadenza - collegamento.orologio()) : 0;
+  const secondi = Math.ceil(restanti / 1000);
+  useSuoniAsta(asta, io);
+  // Gli ultimi tre secondi prima del martelletto.
+  useTicchettio(asta && restanti > 0 ? secondi : null, 3, 0.8);
   if (!asta) return null;
   const tab = tabellone(partita.mappa);
   const c = caselleVista(partita.mappa)[asta.casella];
@@ -42,8 +48,6 @@ export function Asta({
   const attuale = migliore?.importo ?? 0;
   const rilancio = migliore ? attuale - (asta.offerte[1]?.importo ?? 0) : 0;
 
-  const restanti = Math.max(0, asta.scadenza - collegamento.orologio());
-  const secondi = Math.ceil(restanti / 1000);
   const quota = Math.min(1, restanti / ASTA_MS);
 
   return (

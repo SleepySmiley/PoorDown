@@ -10,6 +10,7 @@ import type { IdGiocatore } from '@poordown/engine';
 import { statoNavigazione, vai } from '../navigazione';
 import { collegamento, ingressi, postoTenuto } from '../rete/sessione';
 import { useCollegamento } from '../rete/useCollegamento';
+import { useSuoniStanza } from '../suoni/richiami';
 import { avvisa } from '../ui/avvisi';
 import { Dado } from '../ui/comuni';
 import { Gioco } from './Gioco';
@@ -75,6 +76,8 @@ export function Stanza({ codice }: { codice: string }): ReactNode {
   useEffect(() => {
     if (stato.io) ultimoIo.current = stato.io;
   }, [stato.io]);
+
+  useSuoniStanza(codice, stato.io, stato.chat);
 
   // Espulsione: il registro dice che il mio posto è stato tolto dall'host (in lobby o in partita).
   // Vale anche se è successo mentre ero scollegato: al rientro il collegamento passa le voci perse.

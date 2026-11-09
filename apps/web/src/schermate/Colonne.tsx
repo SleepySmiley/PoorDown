@@ -5,6 +5,7 @@ import { AnimatePresence } from 'motion/react';
 import { type IdGiocatore, type MessaggioChat, type VistaStanza } from '@poordown/engine';
 import { CodiceQr } from '../CodiceQr';
 import { linkStanza, useInfoServer } from '../rete/sessione';
+import { Volume } from '../suoni/Volume';
 import { copia } from '../ui/appunti';
 import { Chip } from '../ui/Chip';
 import { Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
@@ -149,6 +150,7 @@ export function ColonnaSinistra({
           PoorDown
         </a>
         <div className="logo-riga__icone">
+          <Volume />
           <PulsanteIcona icona="aiuto" etichetta="Come si gioca" onClick={() => setAiuto(true)} />
         </div>
       </div>

@@ -1,6 +1,6 @@
 /*
  * La colonna sinistra della partita:
- * - TestataGioco: marchio, codice della stanza (apre «Invita»: link, Copia, QR), Impostazioni, Regole e il menu «⋯»
+ * - TestataGioco: marchio, codice della stanza (apre «Invita»: link, Copia, QR), Suoni, Impostazioni, Regole e il menu «⋯»
  *   con «Torna alla home» e «Dichiara bancarotta»;
  * - PannelloGiocatori: una riga su due linee per giocatore (nome intero; saldo a palette e stati scritti),
  *   la riga di chi gioca accesa d'ambra.
@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { euro, type IdGiocatore, type VistaStanza } from '@poordown/engine';
 import { CodiceQr } from '../CodiceQr';
 import { linkStanza, useInfoServer } from '../rete/sessione';
@@ -18,71 +18,14 @@ import { Palette, Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
 import { Finestra } from '../ui/Finestra';
 import { Icona } from '../ui/icone';
 import { Marchio } from '../ui/Marchio';
-import { CURVA, DURATA } from '../ui/movimento';
+import { ConPopover } from '../ui/ConPopover';
+import { Volume } from '../suoni/Volume';
 import { Pulsante } from '../ui/Pulsante';
 import { PassiDelGioco } from '../ui/Regole';
 import { iniziale, variabili } from '../ui/utili';
 import { Binario } from './Colonne';
 import { ContoAllaRovescia } from './Timer';
 import type { Variazione } from './turno';
-
-/* ---------------- Popover della testata ---------------- */
-
-/** Il popover scende di 4 px dal suo pulsante. */
-const SCENDE = {
-  initial: { opacity: 0, y: -4 },
-  animate: { opacity: 1, y: 0, transition: { duration: DURATA.entrata, ease: CURVA.arrivo } },
-  exit: { opacity: 0, y: -4, transition: { duration: DURATA.uscita, ease: CURVA.partenza } },
-} as const;
-
-/** Un pulsante con il suo popover sotto: si chiude con Esc o con un clic fuori. */
-function ConPopover({
-  aperto,
-  onChiudi,
-  pulsante,
-  lato = 'sinistra',
-  className,
-  children,
-}: {
-  aperto: boolean;
-  onChiudi: () => void;
-  pulsante: ReactNode;
-  /** Da che lato del pulsante si allinea il popover. */
-  lato?: 'sinistra' | 'destra';
-  className?: string;
-  children: ReactNode;
-}): ReactNode {
-  const ancora = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!aperto) return;
-    const fuori = (e: MouseEvent) => {
-      if (!ancora.current?.contains(e.target as Node)) onChiudi();
-    };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onChiudi();
-    document.addEventListener('mousedown', fuori);
-    window.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('mousedown', fuori);
-      window.removeEventListener('keydown', esc);
-    };
-  }, [aperto, onChiudi]);
-  return (
-    <div className="con-popover" ref={ancora}>
-      {pulsante}
-      <AnimatePresence>
-        {aperto && (
-          <motion.div
-            key="popover"
-            className={['popover', 'popover--testata', `popover--${lato}`, className ?? ''].filter(Boolean).join(' ')}
-            {...SCENDE}
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 /** Tre puntini: il menu con le altre azioni. */
 function IconaAltro(): ReactNode {
@@ -191,6 +134,7 @@ export function TestataGioco({
         <Invito link={link} />
       </ConPopover>
       <span className="testata-gioco__icone">
+        <Volume misura="piccolo" lato="sinistra" />
         <PulsanteIcona icona="regolazioni" misura="piccolo" etichetta="Impostazioni della stanza" onClick={onImpostazioni} />
         <PulsanteIcona icona="aiuto" misura="piccolo" etichetta="Come si gioca" onClick={() => setAiuto(true)} />
         <ConPopover

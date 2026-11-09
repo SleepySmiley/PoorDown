@@ -13,6 +13,7 @@ import {
 import { vai, vaiAllaStanza } from '../navigazione';
 import { collegamento, postoTenuto, preferenze, usePostoTenuto, type PostoTenuto } from '../rete/sessione';
 import { useCollegamento } from '../rete/useCollegamento';
+import { Volume } from '../suoni/Volume';
 import { avvisa } from '../ui/avvisi';
 import { Palette, Pedina, PulsanteIcona } from '../ui/comuni';
 import { Icona, type NomeIcona } from '../ui/icone';
@@ -376,6 +377,7 @@ export function Home({ invito, onEntra }: { invito?: string; onEntra?: () => voi
   return (
     <div className="home">
       <header className="home__testata">
+        <Volume className="home__volume" />
         <a href="#come-si-gioca" className="home__link">
           <Icona nome="aiuto" />
           Come si gioca

@@ -10,7 +10,8 @@ export interface StatoNavigazione {
   dallaHome?: boolean;
 }
 
-export type Pagina = { tipo: 'home' } | { tipo: 'stanza'; codice: string };
+/** «suoni»: la pagina di prova dei suoni, solo con il server di sviluppo. */
+export type Pagina = { tipo: 'home' } | { tipo: 'stanza'; codice: string } | { tipo: 'suoni' };
 
 const ascoltatori = new Set<() => void>();
 
@@ -43,6 +44,7 @@ function leggi(): string {
 function pagina(percorso: string): Pagina {
   const stanza = /^\/stanza\/([a-z0-9]{5})\/?$/i.exec(percorso);
   if (stanza?.[1]) return { tipo: 'stanza', codice: stanza[1].toLowerCase() };
+  if (import.meta.env.DEV && /^\/suoni\/?$/.test(percorso)) return { tipo: 'suoni' };
   return { tipo: 'home' };
 }
 

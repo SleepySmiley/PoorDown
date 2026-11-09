@@ -502,26 +502,7 @@
   color: var(--testo-1);
 }
 
-/* ---------- Popover della testata ---------- */
-
-.con-popover {
-  position: relative;
-  display: inline-flex;
-}
-
-.popover.popover--testata {
-  position: absolute;
-  top: calc(100% + var(--s-2));
-  z-index: 50;
-}
-
-.popover--testata.popover--sinistra {
-  left: 0;
-}
-
-.popover--testata.popover--destra {
-  right: 0;
-}
+/* ---------- Popover della testata (posizione in partenze.css) ---------- */
 
 .invito {
   display: grid;

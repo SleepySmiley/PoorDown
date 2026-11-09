@@ -28,6 +28,8 @@ import {
   type VoceRegistro,
 } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
+import { suona } from '../suoni/audio';
+import { useGongTurno } from '../suoni/richiami';
 import { avvisa } from '../ui/avvisi';
 import { destinoDeiBeni } from '../ui/beni';
 import { caselleVista } from '../ui/caselle';
@@ -284,6 +286,8 @@ export function Gioco({
   useTitoloScheda(giocoIo !== null && vivo.turno.giocatore === giocoIo, chatRichiusa.nuovi);
   // I saldi cambiano a fine scena, insieme al resto della partita mostrata.
   const variazioni = useVariazioniSaldo(partita.giocatori);
+  // Il gong suona con il cartello «Tocca a te» (la partita mostrata), non prima.
+  useGongTurno(mioTurno ? partita.turno.numero : null);
 
   const mossa = useCallback((m: Mossa, poi?: () => void) => {
     setInviando(true);
@@ -340,6 +344,7 @@ export function Gioco({
         for (const v of voci) {
           const e = v.evento;
           if (e.tipo === 'scambio_proposto' && e.a === io) {
+            suona('proposta');
             const mioTurno = partitaOra?.turno.giocatore === io;
             if (!mioTurno && finestraAttuale.current === null && !altraFinestra.current) {
               setFinestraChiesta({ tipo: 'vedi', id: e.scambio, turno: partitaOra?.turno.numero ?? 0 });

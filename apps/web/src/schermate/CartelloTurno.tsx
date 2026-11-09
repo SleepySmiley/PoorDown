@@ -8,6 +8,7 @@
 
 import type { ReactNode } from 'react';
 import { aOppureAd, TENTATIVI_PRIGIONE, type Attivita, type IdGiocatore, type Mossa, type Stato } from '@poordown/engine';
+import { useTicchettio } from '../suoni/richiami';
 import { Pedina } from '../ui/comuni';
 import { iniziale, variabili } from '../ui/utili';
 import { useTempoTurno } from './tempo';
@@ -62,6 +63,8 @@ export function CartelloTurno({
   onMossa: (m: Mossa) => void;
 }): ReactNode {
   const vista = useTempoTurno(vivo);
+  // Gli ultimi dieci secondi del mio turno ticchettano (il tempo vero, non quello che aspetta le animazioni).
+  useTicchettio(vista && vista.corrente.id === io && !vista.tempo.fermo ? Math.ceil(vista.tempo.rimasto / 1000) : null, 10);
   const corrente = partita.giocatori.find((g) => g.id === partita.turno.giocatore);
   if (!corrente) return null;
   const mio = corrente.id === io;

@@ -170,7 +170,11 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
   - voce di registro e titoli propri per la modifica della propria proposta.
 
 ### Fase 9 — Rifinitura · M
-- [ ] Suoni originali o liberi da diritti, con volume salvato
+- [x] Suoni originali o liberi da diritti, con volume salvato
+  - 38 suoni sintetizzati nel browser (Web Audio, nessun file), sul tema della stazione: gong degli annunci per «Tocca a te», obliteratrice per gli acquisti, fischietto del capotreno all'inizio, sbarre di ferro della prigione, monete, martelletto dell'asta;
+  - partono dalla regia nell'istante della loro animazione; quelli che riguardano gli altri giocatori suonano più piano;
+  - gong ripetuto ogni minuto se tocca a te e la scheda è nascosta, ticchettio negli ultimi 10 s del tuo turno e negli ultimi 3 dell'asta;
+  - volume 0–100 con muto in home, lobby e testata di gioco, salvato nel browser; pagina `/suoni` per ascoltarli tutti (solo con `npm run dev`)
 - ~~Layout per telefono e tablet, accessibilità di base~~ tolto: si gioca solo da PC e l'accessibilità non serve (decisione del 2026-11-08)
 - [ ] Test end-to-end con 4 browser, bilanciamento dopo le partite di prova
 - [ ] Avvio con doppio clic su Windows e guida per gli amici

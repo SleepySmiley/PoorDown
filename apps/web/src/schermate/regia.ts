@@ -11,12 +11,15 @@
  * Se la scheda è nascosta, se ci sono troppi eventi insieme, se arrivano in ritardo (dopo una disconnessione)
  * o se si preferisce meno movimento, si salta direttamente allo stato finale.
  * Le durate delle scene sono in TEMPI (packages/engine/src/tempi.ts), le stesse che fanno aspettare i bot.
+ * I suoni partono da qui, nello stesso istante della loro animazione: quello che non si anima non suona.
+ * Quelli che riguardano gli altri giocatori suonano più piano.
  */
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   durataCarta,
   durataEvento,
+  LIVELLO_ALBERGO,
   passiPedina,
   percorso,
   tabellone,
@@ -30,6 +33,7 @@ import {
   type VoceRegistro,
 } from '@poordown/engine';
 import type { Collegamento } from '../rete/collegamento';
+import { suona } from '../suoni/audio';
 import { DURATA } from '../ui/movimento';
 
 export interface PosizioneMostrata {
@@ -108,6 +112,9 @@ export interface Scena {
   lampeggia: readonly number[];
   timbro: TimbroScambio | null;
 }
+
+/** La forza dei suoni che riguardano gli altri giocatori. */
+const PIANO = 0.6;
 
 /** Con più eventi di così in un colpo solo (es. dopo una risincronizzazione) non si anima. */
 const MAX_ANIMATI = 25;
@@ -464,6 +471,7 @@ export class Regia {
     switch (e.tipo) {
       case 'dadi': {
         this.cambia({ rotola: true, lanci: this.scena.lanci + 1, meta: null, arrivo: null });
+        suona('dadi', { forza: this.forza(e.giocatore) });
         for (const ms of TEMPI.facceDado) {
           if (gen !== this.generazione) return;
           this.cambia({ dadi: [faccia(), faccia()] });
@@ -474,6 +482,7 @@ export class Regia {
         // Appena i dadi si fermano si accende la casella dove andrà la pedina.
         const mossa = this.prossimoMovimento(e.giocatore);
         this.cambia({ dadi: e.dadi, rotola: false, meta: mossa ? { giocatore: e.giocatore, casella: mossa.a } : null });
+        if (e.dadi[0] === e.dadi[1]) suona('doppio', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.dadiFermi);
         return;
       }
@@ -488,6 +497,7 @@ export class Regia {
           if (gen !== this.generazione) return;
           casella = (casella + verso + n) % n;
           this.muovi(e.giocatore, { casella, prigione: false }, tempi[i]);
+          suona('passo', { forza: this.forza(e.giocatore) });
           // Passando dalla Partenza il gettone parte subito, mentre la pedina continua a camminare.
           if (casella === 0 && partenza && !this.anticipate.has(partenza.n)) {
             this.anticipate.add(partenza.n);
@@ -503,6 +513,7 @@ export class Regia {
           passoMs: senza(this.scena.passoMs, e.giocatore),
           arrivi: { ...this.scena.arrivi, [e.giocatore]: (this.scena.arrivi[e.giocatore] ?? 0) + 1 },
         });
+        suona('arrivo', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.fineMovimento);
         return;
       }
@@ -514,6 +525,7 @@ export class Regia {
           sbarre: { n: (this.scena.sbarre?.n ?? 0) + 1, verso: 'giu' },
         });
         this.muovi(e.giocatore, { casella: tab.prigione, prigione: true });
+        suona('prigione', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.prigione);
         if (gen !== this.generazione) return;
         this.cambia({ voli: senza(this.scena.voli, e.giocatore) });
@@ -526,6 +538,7 @@ export class Regia {
       case 'carta': {
         const casella = this.scena.posizioni[e.giocatore]?.casella ?? partita.giocatori.find((g) => g.id === e.giocatore)?.posizione ?? 0;
         this.cambia({ carta: { n: voce.n, giocatore: e.giocatore, mazzo: e.mazzo, carta: e.carta, testo: e.testo, casella } });
+        suona('carta', { forza: this.forza(e.giocatore) });
         await this.attendi(durataCarta(e.testo) - TEMPI.cartaEsce);
         if (gen !== this.generazione) return;
         // La carta esce (AnimatePresence) verso la scheda dell'evento; poi parte il suo effetto.
@@ -538,6 +551,7 @@ export class Regia {
         // Con un erede le proprietà cambiano solo colore; senza, i blocchi si sfilano dal tabellone.
         const caselle = e.erede ? [] : partita.proprieta.flatMap((p, i) => (p?.proprietario === e.giocatore ? [i] : []));
         this.cambia({ bancarotta: { giocatore: e.giocatore, caselle }, meta: null, arrivo: null });
+        suona('bancarotta', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.bancarotta);
         return;
       }
@@ -581,6 +595,7 @@ export class Regia {
     const e = voce.evento;
     const partita = this.scena.partita;
     if (!partita) return;
+    this.suonoEvento(e, partita);
     for (const m of movimentiSoldi(e, partita)) this.muoviSoldi(m, inBase);
     const ritocca = (casella: number, cambia: (p: Proprieta) => Proprieta) => {
       if (!inBase) this.ritoccaProprieta(new Map([[casella, cambia]]));
@@ -630,6 +645,79 @@ export class Regia {
     }
   }
 
+  private mio(id: IdGiocatore | null): boolean {
+    return id !== null && id === this.coll.leggi().io;
+  }
+
+  /** Pieno se riguarda me, più piano se riguarda un altro giocatore. */
+  private forza(id: IdGiocatore | null): number {
+    return this.mio(id) ? 1 : PIANO;
+  }
+
+  /** Il suono di un evento quando va in scena. I soldi che arrivano suonano a parte, con il loro gettone. */
+  private suonoEvento(e: EventoStanza, partita: Stato): void {
+    switch (e.tipo) {
+      case 'acquisto':
+        suona('timbro', { forza: this.forza(e.giocatore) });
+        return;
+      case 'asta':
+        suona('martelletto');
+        return;
+      case 'asta_vinta':
+        suona('aggiudicato', { forza: this.forza(e.giocatore) });
+        return;
+      case 'costruzione':
+        suona(e.livello >= LIVELLO_ALBERGO ? 'albergo' : 'casa', { forza: this.forza(e.giocatore) });
+        return;
+      case 'demolizione':
+      case 'vendita':
+      case 'edifici_venduti':
+        suona('smonta', { forza: this.forza(e.giocatore) });
+        return;
+      case 'ipoteca':
+      case 'riscatto':
+        suona(e.tipo, { forza: this.forza(e.giocatore) });
+        return;
+      case 'affitto':
+      case 'trasferimento':
+        if (this.mio(e.da)) suona('pagamento');
+        return;
+      case 'tassa':
+        if (this.mio(e.giocatore)) suona('pagamento');
+        return;
+      case 'uscita_prigione':
+        suona('liberato', { forza: this.forza(e.giocatore) });
+        return;
+      case 'scambio_accettato':
+        if (this.mio(e.da) || this.mio(e.a)) suona('scambioFatto');
+        else suona('timbroLieve');
+        return;
+      case 'scambio_rifiutato':
+        if (this.mio(e.da) || this.mio(e.a)) suona('scambioRifiutato');
+        else suona('timbroLieve');
+        return;
+      case 'voto':
+        if (this.mio(e.contro)) suona('votoContro');
+        else suona('voto', { forza: PIANO });
+        return;
+      case 'tempo_regalato':
+        if (this.mio(e.a)) suona('tempoRicevuto');
+        return;
+      case 'tempo_chiesto':
+        if (!this.mio(e.giocatore)) suona('tempoChiesto', { forza: PIANO });
+        return;
+      case 'fine': {
+        const io = this.coll.leggi().io;
+        const mia = partita.giocatori.find((g) => g.id === io);
+        const vinto = e.squadra !== undefined ? mia?.squadra === e.squadra : io !== null && e.vincitore === io;
+        suona(vinto ? 'vittoria' : 'fine');
+        return;
+      }
+      default:
+        return;
+    }
+  }
+
   /**
    * Un movimento di denaro: chi paga scende quando il gettone parte, chi incassa sale quando arriva.
    * Il credito resta «in attesa» finché il gettone non arriva, anche se nel frattempo la partita si allinea.
@@ -659,6 +747,8 @@ export class Regia {
       this.cambia({ gettoni: [...this.scena.gettoni, { id, da: m.da, a: m.a, importo: m.importo, ...(m.casella === undefined ? {} : { casella: m.casella }) }] });
       this.dopo(VOLO_GETTONE_MS, () => {
         this.cambia({ gettoni: this.scena.gettoni.filter((g) => g.id !== id) });
+        if (this.mio(m.a)) suona('incasso');
+        else suona('moneta', { forza: m.a === null ? PIANO : 0.8 });
         const credito = this.crediti.get(id);
         if (!credito) return;
         this.crediti.delete(id);
