@@ -4,7 +4,7 @@
  * una partita da due schede.
  */
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { ASSENZA_MS, COLORI, type InfoServer } from '@poordown/engine';
 import { apriCollegamento } from './collegamento';
 import { tokenDelBrowser } from './token';
@@ -166,29 +166,73 @@ export function usePostoTenuto(): PostoTenuto | null {
   );
 }
 
-let info: Promise<InfoServer | null> | null = null;
+/** Ogni quanto si richiedono le informazioni mentre il link online è in preparazione. */
+const ATTESA_LINK_ONLINE_MS = 3_000;
+/** Ogni quanto si ricontrolla il link online quando c'è: dopo una caduta il tunnel ne ha uno nuovo. */
+const CONTROLLO_LINK_ONLINE_MS = 30_000;
 
-/** Nome, versione e indirizzi di rete del server (chiesti una volta sola). */
-export function useInfoServer(): InfoServer | null {
-  const [dati, setDati] = useState<InfoServer | null>(null);
-  useEffect(() => {
-    info ??= fetch('/api/info')
+/**
+ * Nome, versione e indirizzi del server. Si chiedono quando una pagina comincia a usarli e quando si torna sulla
+ * scheda; con il gioco online anche ogni tanto (ogni pochi secondi mentre il link è in preparazione).
+ */
+const infoServer = (() => {
+  let dati: InfoServer | null = null;
+  let inCorso = false;
+  let attesa: ReturnType<typeof setTimeout> | undefined;
+  const ascoltatori = new Set<() => void>();
+
+  function chiedi(): void {
+    if (inCorso) return;
+    inCorso = true;
+    clearTimeout(attesa);
+    void fetch('/api/info')
       .then((r) => (r.ok ? (r.json() as Promise<InfoServer>) : null))
-      .catch(() => null);
-    let attivo = true;
-    void info.then((d) => {
-      if (attivo) setDati(d);
-    });
-    return () => {
-      attivo = false;
-    };
-  }, []);
-  return dati;
+      .catch(() => null)
+      .then((nuovi) => {
+        inCorso = false;
+        // Se non è cambiato niente le pagine non si ridisegnano.
+        if (nuovi && JSON.stringify(nuovi) !== JSON.stringify(dati)) {
+          dati = nuovi;
+          for (const fn of ascoltatori) fn();
+        }
+        if (dati?.online && ascoltatori.size > 0) {
+          attesa = setTimeout(chiedi, dati.pubblico ? CONTROLLO_LINK_ONLINE_MS : ATTESA_LINK_ONLINE_MS);
+        }
+      });
+  }
+
+  return {
+    leggi: () => dati,
+    ascolta(fn: () => void): () => void {
+      ascoltatori.add(fn);
+      if (ascoltatori.size === 1) {
+        chiedi();
+        window.addEventListener('focus', chiedi);
+      }
+      return () => {
+        ascoltatori.delete(fn);
+        if (ascoltatori.size > 0) return;
+        window.removeEventListener('focus', chiedi);
+        clearTimeout(attesa);
+      };
+    },
+  };
+})();
+
+export function useInfoServer(): InfoServer | null {
+  return useSyncExternalStore(
+    (fn) => infoServer.ascolta(fn),
+    () => infoServer.leggi(),
+  );
 }
 
-/** Il link da dare agli amici: se questo PC apre il gioco come "localhost", si usa l'indirizzo di rete. */
-export function linkStanza(codice: string, infoServer: InfoServer | null): string {
+/**
+ * Il link da dare agli amici: quello online se c'è, perché funziona da qualunque posto; altrimenti, se questo PC
+ * apre il gioco come "localhost", l'indirizzo della rete di casa.
+ */
+export function linkStanza(codice: string, info: InfoServer | null): string {
+  if (info?.pubblico) return `${info.pubblico}/stanza/${codice}`;
   const locale = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-  const origine = locale && infoServer?.indirizzi[0] ? infoServer.indirizzi[0] : location.origin;
+  const origine = locale && info?.indirizzi[0] ? info.indirizzi[0] : location.origin;
   return `${origine}/stanza/${codice}`;
 }

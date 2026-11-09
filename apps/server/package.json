@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts --dev",
     "start": "tsx src/index.ts",
+    "online": "tsx src/index.ts --online",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

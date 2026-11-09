@@ -1,6 +1,6 @@
 # PoorDown — Roadmap
 
-Gioco da tavolo multiplayer in stile Monopoly, da giocare con gli amici in **rete locale**. Replica le funzioni e le regole di richup.io, ma ha nome, grafica, tabellone e testi propri.
+Gioco da tavolo multiplayer in stile Monopoly, da giocare con gli amici in **rete locale** o **online** (tunnel dal PC che fa da server). Replica le funzioni e le regole di richup.io, ma ha nome, grafica, tabellone e testi propri.
 
 - **Specifica di riferimento:** i 6 report in [docs/analisi/](docs/analisi/). Ogni fase indica le sezioni da seguire.
 - **Vincoli:** server su un PC della rete locale · interfaccia solo in italiano · si entra con il solo nickname · aspetto originale.
@@ -187,6 +187,15 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
   - `Avvia PoorDown.cmd`: controlla Node.js (se manca apre il sito per scaricarlo), installa i pacchetti solo la prima volta e dopo un aggiornamento, prepara il sito in silenzio, accende il server e apre il browser quando è pronto; se il gioco è già acceso apre solo il browser. Chiudendo la finestra il server salva le partite;
   - [GUIDA.md](GUIDA.md): come entrare con il link, come accendere il gioco, cosa fare se gli amici non si collegano
 
+### Fase 10 — Gioco online · S
+Scelta del 2026-11-09: un **tunnel rapido di Cloudflare** dal PC che fa da server (gratis, senza account né configurazione del modem), invece di un server in cloud.
+- [x] `npm run online` (e il doppio clic) apre il tunnel dopo l'accensione: `cloudflared` installato sul PC, oppure scaricato da solo la prima volta nella cartella dei dati
+- [x] Il link `https://….trycloudflare.com` si annuncia solo quando risponde da internet (controllo con un DNS pubblico, così nessun computer si ricorda un «sito non trovato»); se il tunnel non parte o cade, si riprova da solo e intanto si gioca in casa
+- [x] **Copia** e il codice QR danno il link online appena c'è; la pagina lo ricontrolla ogni 30 s e quando si torna sulla scheda
+- [x] Chi arriva da internet non riceve gli indirizzi della rete di casa; in modalità sviluppo il tunnel non si accende
+- [x] Verificato con due Edge, l'host sul PC e l'ospite dal link pubblico: lobby, inizio partita, dadi, WebSocket `wss://`, ricarica con il posto ritrovato, tunnel chiuso a forza e riaperto con un link nuovo
+- Limite: il link cambia a ogni accensione e il browser lega il giocatore all'indirizzo, quindi chi gioca da lontano non ritrova il posto nelle partite riprese. Un indirizzo fisso richiede un tunnel con nome (account Cloudflare e dominio)
+
 ---
 
 ## 4. Punti non verificati su richup e come li trattiamo
@@ -261,3 +270,4 @@ Dimensioni indicative: **S** piccola · **M** media · **L** grande. Ogni fase s
 6. **Squadre:** le sceglie ognuno; l’host le rinomina, sposta i giocatori e le mescola.
 7. **Dispositivi:** solo PC e portatili (1440×900 e 1920×1080); niente layout per telefono né accessibilità.
 8. **Impaginazione:** libera. Non deve più ricalcare richup: conta che il gioco sia chiaro a colpo d'occhio, bello e animato.
+9. **Gioco online:** tunnel rapido di Cloudflare dal PC che fa da server, acceso dal doppio clic; la rete di casa resta come prima.

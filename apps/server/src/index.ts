@@ -9,12 +9,18 @@ import { AMBIENTE_REALE } from './stanze/ambiente';
 import { Archivio, cartellaDati } from './stanze/archivio';
 import { GestoreStanze } from './stanze/gestore';
 import { collegaTempoReale, type DatiSocket } from './stanze/tempo-reale';
+import { Tunnel } from './tunnel';
 
 /** Ogni quanto si controllano le assenze in lobby e le stanze abbandonate. */
 const MANUTENZIONE_MS = 5_000;
 
 const sviluppo = process.argv.includes('--dev');
 const porta = leggiPorta();
+// In sviluppo il sito lo serve Vite, che non va messo su internet: il gioco online vale solo per la versione compilata.
+const online = process.argv.includes('--online') && !sviluppo;
+if (process.argv.includes('--online') && sviluppo) {
+  console.log('\n  Il gioco online non si accende in modalità sviluppo: usa "npm run online".');
+}
 
 const app = express();
 app.disable('x-powered-by');
@@ -47,12 +53,22 @@ for (const segnale of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
   });
 }
 
-app.get('/api/info', (_req, res) => {
+const tunnel = online ? new Tunnel(porta, cartellaDati(), avvisiTunnel()) : null;
+// Il tunnel è un programma a parte: si spegne con il server.
+process.on('exit', () => tunnel?.ferma());
+
+app.get('/api/info', (req, res) => {
+  // Chi arriva da internet passa dal tunnel, che aggiunge questa intestazione: gli indirizzi di casa non gli servono.
+  const daInternet = req.headers['cf-connecting-ip'] !== undefined;
   const info: InfoServer = {
     nome: NOME_GIOCO,
     versione: VERSIONE,
-    indirizzi: indirizziRete().map(({ ip }) => `http://${ip}:${porta}`),
+    indirizzi: daInternet ? [] : indirizziRete().map(({ ip }) => `http://${ip}:${porta}`),
+    online,
+    pubblico: tunnel?.indirizzo ?? null,
   };
+  // Il browser la richiede finché il link online non è pronto: niente copie vecchie.
+  res.setHeader('Cache-Control', 'no-store');
   res.json(info);
 });
 
@@ -71,6 +87,7 @@ server.listen(porta, () => {
   stampaIndirizzi();
   // Avvio con doppio clic (scripts/avvia.js): il browser si apre quando il server è pronto.
   if (process.env.POORDOWN_APRI === '1') apriBrowser(`http://localhost:${porta}`);
+  tunnel?.avvia();
 });
 
 function leggiPorta(): number {
@@ -82,21 +99,22 @@ function leggiPorta(): number {
   return valore;
 }
 
+/** Una riga del riepilogo: etichetta e valore incolonnati. */
+function voce(etichetta: string, valore: string): string {
+  return `  ${etichetta.padEnd(16)}${valore}`;
+}
+
 function stampaIndirizzi(): void {
   const indirizzi = indirizziRete();
-  const righe = [
-    '',
-    `  ${NOME_GIOCO} ${VERSIONE} è acceso${sviluppo ? ' (modalità sviluppo)' : ''}`,
-    '',
-    `  Su questo PC:   http://localhost:${porta}`,
-  ];
+  // Con il gioco online il link da mandare è quello online: l'indirizzo di rete vale solo per chi è in casa.
+  const perLaRete = online ? 'Rete di casa:' : 'Per gli amici:';
+  const righe = ['', `  ${NOME_GIOCO} ${VERSIONE} è acceso${sviluppo ? ' (modalità sviluppo)' : ''}`, '', voce('Su questo PC:', `http://localhost:${porta}`)];
   if (indirizzi.length === 0) {
-    righe.push('  Per gli amici:  nessuna rete trovata, collega il PC al Wi-Fi o al cavo');
+    righe.push(voce(perLaRete, 'nessuna rete trovata, collega il PC al Wi-Fi o al cavo'));
   } else {
-    indirizzi.forEach(({ scheda, ip }, i) => {
-      righe.push(`  ${i === 0 ? 'Per gli amici: ' : '               '} http://${ip}:${porta}   (${scheda})`);
-    });
+    indirizzi.forEach(({ scheda, ip }, i) => righe.push(voce(i === 0 ? perLaRete : '', `http://${ip}:${porta}   (${scheda})`)));
   }
+  if (online) righe.push(voce('Online:', 'preparo il link per chi gioca da lontano…'));
   if (stanzeRiprese > 0) {
     righe.push('', `  Stanze riprese dall'ultima volta: ${stanzeRiprese}`);
   }
@@ -108,4 +126,28 @@ function stampaIndirizzi(): void {
     '',
   );
   console.log(righe.join('\n'));
+}
+
+function avvisiTunnel(): ConstructorParameters<typeof Tunnel>[2] {
+  let ultimo: string | null = null;
+  return {
+    pronto(indirizzo) {
+      const cambiato = ultimo !== null && ultimo !== indirizzo;
+      ultimo = indirizzo;
+      console.log(
+        [
+          '',
+          voce('Online:', `${indirizzo}${cambiato ? '   (link nuovo: quello di prima non funziona più)' : ''}`),
+          '  Il link della stanza (pulsante «Copia») funziona da qualunque posto.',
+          '',
+        ].join('\n'),
+      );
+    },
+    problema(motivo) {
+      console.log(`\n  Online: non riesco ad aprire il link (${motivo}). Riprovo da solo; intanto si gioca sulla rete di casa.\n`);
+    },
+    nota(testo) {
+      console.log(`\n  ${testo}\n`);
+    },
+  };
 }

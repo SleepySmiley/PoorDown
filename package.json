@@ -16,6 +16,8 @@
     "build": "npm run build -w @poordown/web",
     "prestart": "npm run build",
     "start": "npm run start -w @poordown/server",
+    "preonline": "npm run build",
+    "online": "npm run online -w @poordown/server",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",

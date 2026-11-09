@@ -11,8 +11,15 @@ import type { Azione, CodiceErrore, Evento, IdGiocatore, IdMappa, Impostazioni, 
 export interface InfoServer {
   nome: string;
   versione: string;
-  /** Indirizzi da dare agli amici, il più probabile per primo (es. "http://192.168.1.23:3000"). */
+  /**
+   * Indirizzi della rete di casa da dare agli amici, il più probabile per primo (es. "http://192.168.1.23:3000").
+   * Vuoto per chi arriva da internet.
+   */
   indirizzi: string[];
+  /** Il server è acceso con il gioco online: il link pubblico arriva qualche secondo dopo l'accensione. */
+  online: boolean;
+  /** Link che funziona da qualunque posto (es. "https://parole-a-caso.trycloudflare.com"), quando il tunnel è pronto. */
+  pubblico: string | null;
 }
 
 /* ------------------------------------------------------------------ */

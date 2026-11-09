@@ -1,29 +1,39 @@
 # PoorDown
 
-Gioco da tavolo multiplayer in stile Monopoly, da giocare con gli amici sulla stessa rete di casa. Un PC fa da server, gli altri si collegano dal browser (anche dal telefono). Lavori in corso: vedi [ROADMAP.md](ROADMAP.md).
+Gioco da tavolo multiplayer in stile Monopoly, da giocare con gli amici sulla stessa rete di casa o via internet. Un PC fa da server, gli altri si collegano dal browser (anche dal telefono). Lavori in corso: vedi [ROADMAP.md](ROADMAP.md).
 
 ## Requisiti
 
 - [Node.js](https://nodejs.org) 22.12 o più recente (consigliato 24 LTS), solo sul PC che fa da server.
-- Tutti i giocatori collegati alla stessa rete (Wi-Fi o cavo) di quel PC.
+- Per giocare online: internet sul PC che fa da server; gli amici possono essere ovunque. Senza internet si gioca solo con chi è collegato alla stessa rete (Wi-Fi o cavo) di quel PC.
 
 ## Avvio
 
-**Su Windows:** doppio clic su **`Avvia PoorDown.cmd`**. Controlla Node.js, scarica i pacchetti la prima volta (e dopo ogni aggiornamento), accende il server e apre il browser. Se il gioco è già acceso apre solo il browser. Per spegnerlo si chiude la finestra: le partite restano salvate. La guida per chi gioca, anche per chi non è pratico, è in [GUIDA.md](GUIDA.md).
+**Su Windows:** doppio clic su **`Avvia PoorDown.cmd`**. Controlla Node.js, scarica i pacchetti la prima volta (e dopo ogni aggiornamento), accende il server con il gioco online e apre il browser. Se il gioco è già acceso apre solo il browser. Per spegnerlo si chiude la finestra: le partite restano salvate. La guida per chi gioca, anche per chi non è pratico, è in [GUIDA.md](GUIDA.md).
 
 Dal terminale, su qualunque sistema:
 
 ```sh
 npm install   # solo la prima volta e dopo ogni aggiornamento
-npm start
+npm run online   # oppure "npm start" per la sola rete di casa
 ```
 
-Il terminale mostra due indirizzi:
+Il terminale mostra gli indirizzi:
 
 - **Su questo PC:** `http://localhost:3000`
-- **Per gli amici:** per esempio `http://192.168.1.23:3000`, da aprire su telefono o PC collegati alla stessa rete. La pagina mostra anche un codice QR da inquadrare.
+- **Per gli amici** (**Rete di casa** con il gioco online): per esempio `http://192.168.1.23:3000`, da aprire su telefono o PC collegati alla stessa rete. La pagina mostra anche un codice QR da inquadrare.
+- **Online:** per esempio `https://parole-a-caso.trycloudflare.com`, che funziona da qualunque posto. Compare qualche secondo dopo gli altri.
 
-### Se gli amici non riescono a collegarsi
+### Giocare online
+
+Con il doppio clic o `npm run online` un tunnel di Cloudflare, gratuito e senza account, porta il server su internet. Appena la riga **Online** compare nel terminale, il pulsante **Copia** della stanza (e il codice QR) danno il link online, che funziona per tutti, anche per chi è in casa.
+
+- Il tunnel lo apre il programma `cloudflared`. Se sul PC non è installato, PoorDown lo scarica da solo la prima volta (circa 50 MB, dalle pubblicazioni ufficiali di Cloudflare su GitHub) nella cartella dei dati.
+- Il link si annuncia solo quando risponde davvero da internet. Se internet manca o Cloudflare non risponde, il gioco resta acceso per la rete di casa e il tunnel si riprova da solo.
+- **Il link online cambia a ogni accensione**, e anche se il tunnel cade e si riapre (il terminale lo dice). Chi gioca da lontano deve ricevere quello nuovo, e con il nuovo indirizzo il browser non ritrova il suo posto: nelle partite riprese entra come spettatore. Le partite online conviene finirle senza spegnere il gioco.
+- In modalità sviluppo (`npm run dev`) il gioco online non si accende: il sito servito da Vite non va messo su internet.
+
+### Se gli amici in casa non riescono a collegarsi con l'indirizzo di rete
 
 1. Al primo avvio Windows chiede il permesso del firewall per Node.js: consenti l'accesso alle **reti private**.
 2. La rete di casa deve essere impostata come **privata**: Impostazioni → Rete e Internet → Wi-Fi (o Ethernet) → Tipo di profilo di rete → Privata.
@@ -64,7 +74,8 @@ Le stanze vengono salvate su file mentre si gioca, così una partita riprende an
 
 | Comando | Cosa fa |
 |---|---|
-| `npm start` | Compila il sito e avvia il server: è quello per giocare |
+| `npm run online` | Compila il sito e avvia il server con il gioco online: è quello per giocare (lo usa anche il doppio clic) |
+| `npm start` | Come sopra, ma solo per la rete di casa |
 | `npm run dev` | Modalità sviluppo: le modifiche al codice compaiono subito nel browser. Su `/suoni` si ascoltano tutti i suoni |
 | `npm run build` | Compila solo il sito in `apps/web/dist` |
 | `npm test` | Esegue i test |

@@ -3,7 +3,7 @@
  * 1. controlla la versione di Node.js;
  * 2. se PoorDown è già acceso su questo PC apre solo il browser;
  * 3. installa i pacchetti la prima volta e quando cambiano (dopo un aggiornamento);
- * 4. compila il sito (in silenzio) e accende il server, che apre il browser appena è pronto.
+ * 4. compila il sito (in silenzio) e accende il server con il gioco online, che apre il browser appena è pronto.
  * Per spegnere si chiude la finestra (o Ctrl+C): il server salva le partite prima di uscire.
  */
 
@@ -86,7 +86,7 @@ if (compilazione.status !== 0) {
 }
 
 scrivi('Accendo PoorDown: il browser si apre da solo appena è pronto.');
-const server = spawn('npm run start --silent -w @poordown/server', {
+const server = spawn('npm run online --silent -w @poordown/server', {
   cwd: radice,
   stdio: 'inherit',
   shell: true,
