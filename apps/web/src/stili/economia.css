@@ -28,6 +28,11 @@
   height: 35px;
 }
 
+.asta__stemma.stemma--bandiera {
+  width: 39px;
+  height: 26px;
+}
+
 .asta__icona {
   width: 30px;
   height: 30px;
@@ -408,6 +413,11 @@
 
 .stemma--mini text {
   display: none;
+}
+
+.stemma.stemma--mini.stemma--bandiera {
+  width: 16px;
+  height: 11px;
 }
 
 /* La matita di chi sta scrivendo: un piccolo tratto avanti e indietro. */

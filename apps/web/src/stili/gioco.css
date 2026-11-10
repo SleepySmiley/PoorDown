@@ -509,6 +509,11 @@
   margin: 0 calc(var(--k) * 3);
 }
 
+.evento__stemma.stemma--bandiera {
+  width: calc(var(--k) * 42);
+  height: calc(var(--k) * 28);
+}
+
 .evento__coppia {
   display: inline-flex;
   flex: none;
@@ -814,6 +819,11 @@ button.mie__voce--aperta:hover {
 .stemma--lista {
   width: 22px;
   height: 25px;
+}
+
+.stemma--lista.stemma--bandiera {
+  width: 27px;
+  height: 18px;
 }
 
 .mie__icona {

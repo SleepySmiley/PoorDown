@@ -378,6 +378,7 @@ function CasellaTabellone({
     `casella--${lato}`,
     `casella--${c.tipo}`,
     c.tipo === 'angolo' ? `casella--angolo-${c.angolo}` : '',
+    regione?.bandiera ? 'casella--bandiera' : '',
     p ? 'casella--posseduta' : '',
     p?.ipotecata ? 'casella--ipotecata' : '',
     stato.selezionata ? 'casella--selezionata' : '',

@@ -308,6 +308,28 @@ button.casella:hover {
   translate: -50% 50%;
 }
 
+/* La bandiera è più larga e bassa dello scudo: sporge meno dentro la casella.
+   Nelle colonne resta dritta come i pittogrammi: girata, il tricolore francese sembrerebbe olandese. */
+.casella__stemma.stemma--bandiera {
+  width: calc(var(--k) * 40);
+  height: calc(var(--k) * 27);
+}
+
+.casella--sinistra .casella__stemma.stemma--bandiera {
+  rotate: -90deg;
+}
+
+.casella--destra .casella__stemma.stemma--bandiera {
+  rotate: 90deg;
+}
+
+/* Dritta, nelle colonne la bandiera entra nella casella per mezza larghezza: il nome si scosta
+   (quattro classi: deve vincere anche sul margine del 13×13). */
+.casella--bandiera.casella--citta.casella--sinistra .casella__nome,
+.casella--bandiera.casella--citta.casella--destra .casella__nome {
+  margin-top: calc(var(--k) * 26);
+}
+
 .casella__stemma .stemma__contorno {
   stroke: var(--tab-fondo);
 }
@@ -1282,6 +1304,11 @@ button.casella:hover {
 
 .scheda__stemma text {
   font-size: 8px;
+}
+
+.scheda__stemma.stemma--bandiera {
+  width: 48px;
+  height: 32px;
 }
 
 /* Stazioni e servizi: il pittogramma su un cartello blu, come gli angoli del tabellone. */

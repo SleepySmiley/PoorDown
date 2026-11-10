@@ -102,9 +102,14 @@ export interface Regione {
   sigla: string;
   /** Colore dello stemma, 1–10 (le variabili --g1…--g10). Di solito l'indice della regione più uno. */
   colore: number;
+  /** Il gruppo è un paese: al posto dello stemma si vede la sua bandiera (tabellone Europa). */
+  bandiera?: Bandiera;
   costoCasa: number;
   costoAlbergo: number;
 }
+
+/** Le bandiere disegnate nel browser (ui/bandiere.tsx), con il codice ISO del paese. */
+export type Bandiera = 'IE' | 'CH' | 'AT' | 'GR' | 'PT' | 'NL' | 'PL' | 'ES' | 'FR' | 'DE';
 
 export type Effetto =
   /** Positivo: la banca paga. Negativo: si paga la banca. */

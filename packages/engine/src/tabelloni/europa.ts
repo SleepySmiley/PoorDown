@@ -9,16 +9,16 @@ import { BUSTA, cartolinaComune, viaggio } from './mazzi';
 import { affittiPerPrezzo } from './scala';
 
 const REGIONI: Regione[] = [
-  { nome: 'Irlanda', sigla: 'IRL', colore: 1, costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Svizzera', sigla: 'CHE', colore: 2, costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Austria', sigla: 'AUT', colore: 3, costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Grecia', sigla: 'GRC', colore: 4, costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Portogallo', sigla: 'PRT', colore: 5, costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Paesi Bassi', sigla: 'NLD', colore: 6, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Polonia', sigla: 'POL', colore: 7, costoCasa: 200, costoAlbergo: 200 },
-  { nome: 'Spagna', sigla: 'ESP', colore: 8, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Francia', sigla: 'FRA', colore: 9, costoCasa: 200, costoAlbergo: 200 },
-  { nome: 'Germania', sigla: 'DEU', colore: 10, costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Irlanda', sigla: 'IRL', colore: 1, bandiera: 'IE', costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Svizzera', sigla: 'CHE', colore: 2, bandiera: 'CH', costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Austria', sigla: 'AUT', colore: 3, bandiera: 'AT', costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Grecia', sigla: 'GRC', colore: 4, bandiera: 'GR', costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Portogallo', sigla: 'PRT', colore: 5, bandiera: 'PT', costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Paesi Bassi', sigla: 'NLD', colore: 6, bandiera: 'NL', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Polonia', sigla: 'POL', colore: 7, bandiera: 'PL', costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Spagna', sigla: 'ESP', colore: 8, bandiera: 'ES', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Francia', sigla: 'FRA', colore: 9, bandiera: 'FR', costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Germania', sigla: 'DEU', colore: 10, bandiera: 'DE', costoCasa: 200, costoAlbergo: 200 },
 ];
 
 function citta(nome: string, regione: number, prezzo: number, breve?: string): Casella {

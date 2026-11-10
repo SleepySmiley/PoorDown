@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { euro, type Regione } from '@poordown/engine';
+import { DisegnoBandiera } from './bandiere';
 import { Icona, type NomeIcona } from './icone';
 import { SCORRE } from './movimento';
 import { ritardiPalette, SEPARATORE_PALETTE, variabili } from './utili';
@@ -109,14 +110,48 @@ export function Pedina({
 /** Il profilo dello scudo, nel riquadro 26×30. */
 const SCUDO = 'M3.5 2h19A1.5 1.5 0 0 1 24 3.5V13c0 7.4-5.2 12-11 14.8C7.2 25 2 20.4 2 13V3.5A1.5 1.5 0 0 1 3.5 2z';
 
+/** Raggio degli angoli della bandiera, nel riquadro 30×20. */
+const BORDO_BANDIERA = 2;
+
 /**
  * Scudo della regione con la sigla, smaltato: contorno scuro, filo crema, riflesso in alto.
- * Forma diversa dalle pedine, così non si confondono.
+ * Forma diversa dalle pedine, così non si confondono. Se la regione è un paese, la sua bandiera.
  */
 export function Stemma({ regione, className }: { regione: Regione | undefined; className?: string }): ReactNode {
   // Un id per il riflesso di ogni scudo (useId ha caratteri che negli url() di SVG non servono).
-  const luce = `stemma-luce-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const luce = `stemma-luce-${id}`;
   if (!regione) return null;
+  if (regione.bandiera) {
+    // I paesi: la bandiera smaltata, con lo stesso contorno scuro, riflesso e filo crema dello scudo.
+    const taglio = `stemma-taglio-${id}`;
+    return (
+      <svg
+        className={className ? `stemma stemma--bandiera ${className}` : 'stemma stemma--bandiera'}
+        viewBox="0 0 30 20"
+        role="img"
+        aria-label={regione.nome}
+      >
+        <defs>
+          <clipPath id={taglio}>
+            <rect width="30" height="20" rx={BORDO_BANDIERA} />
+          </clipPath>
+          <linearGradient id={luce} x1="0" y1="0" x2="0.3" y2="1">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.3" />
+            <stop offset="0.48" stopColor="#fff" stopOpacity="0.06" />
+            <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
+            <stop offset="1" stopColor="#000" stopOpacity="0.16" />
+          </linearGradient>
+        </defs>
+        <rect className="stemma__contorno" width="30" height="20" rx={BORDO_BANDIERA} />
+        <g clipPath={`url(#${taglio})`}>
+          <DisegnoBandiera paese={regione.bandiera} />
+          <rect width="30" height="20" fill={`url(#${luce})`} />
+        </g>
+        <rect className="stemma__filo" width="30" height="20" rx={BORDO_BANDIERA} />
+      </svg>
+    );
+  }
   const tinta = regione.colore;
   return (
     <svg className={className ? `stemma ${className}` : 'stemma'} viewBox="0 0 26 30" role="img" aria-label={regione.nome}>

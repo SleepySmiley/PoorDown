@@ -384,6 +384,13 @@ button {
   letter-spacing: 0.02em;
 }
 
+/* La bandiera di un paese: stesso contorno dello scudo, il filo crema sopra le campiture. */
+.stemma__filo {
+  fill: none;
+  stroke: var(--quadro-testo);
+  stroke-width: 1;
+}
+
 /* Dado d'avorio con peso. Le schermate danno solo misura (width, height, padding dei punti) e rotazione:
    tutto il resto scala con il dado (unità cq: il dado è un contenitore). Strati, dal basso:
    ::before lo spessore e l'ombra di contatto, ::after la faccia smussata, sopra i punti incavati.
