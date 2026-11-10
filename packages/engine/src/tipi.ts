@@ -57,6 +57,8 @@ export interface Citta extends CasellaBase {
   tipo: 'citta';
   /** Indice in `Tabellone.regioni`. */
   regione: number;
+  /** La bandiera della città quando il gruppo non è una regione vera (Grandi aree: Isole, Sud…). */
+  bandiera?: Bandiera;
   prezzo: number;
   affitti: Affitti;
 }
@@ -102,14 +104,37 @@ export interface Regione {
   sigla: string;
   /** Colore dello stemma, 1–10 (le variabili --g1…--g10). Di solito l'indice della regione più uno. */
   colore: number;
-  /** Il gruppo è un paese: al posto dello stemma si vede la sua bandiera (tabellone Europa). */
+  /** Al posto dello stemma, la bandiera del paese o della regione del gruppo. */
   bandiera?: Bandiera;
   costoCasa: number;
   costoAlbergo: number;
 }
 
-/** Le bandiere disegnate nel browser (ui/bandiere.tsx), con il codice ISO del paese. */
-export type Bandiera = 'IE' | 'CH' | 'AT' | 'GR' | 'PT' | 'NL' | 'PL' | 'ES' | 'FR' | 'DE';
+/** Le regioni italiane, per le loro bandiere (ui/bandiere-regioni.tsx). */
+export type BandieraRegione =
+  | 'abruzzo'
+  | 'basilicata'
+  | 'calabria'
+  | 'campania'
+  | 'emilia-romagna'
+  | 'friuli'
+  | 'lazio'
+  | 'liguria'
+  | 'lombardia'
+  | 'marche'
+  | 'molise'
+  | 'piemonte'
+  | 'puglia'
+  | 'sardegna'
+  | 'sicilia'
+  | 'toscana'
+  | 'trentino'
+  | 'umbria'
+  | 'valle-aosta'
+  | 'veneto';
+
+/** Le bandiere disegnate nel browser (ui/bandiere.tsx): i paesi con il codice ISO, poi le regioni italiane. */
+export type Bandiera = 'IE' | 'CH' | 'AT' | 'GR' | 'PT' | 'NL' | 'PL' | 'ES' | 'FR' | 'DE' | BandieraRegione;
 
 export type Effetto =
   /** Positivo: la banca paga. Negativo: si paga la banca. */

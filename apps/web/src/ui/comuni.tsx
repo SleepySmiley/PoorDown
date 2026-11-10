@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
-import { euro, type Regione } from '@poordown/engine';
+import { euro, type Bandiera, type Regione } from '@poordown/engine';
 import { DisegnoBandiera } from './bandiere';
 import { Icona, type NomeIcona } from './icone';
 import { SCORRE } from './movimento';
@@ -117,12 +117,22 @@ const BORDO_BANDIERA = 2;
  * Scudo della regione con la sigla, smaltato: contorno scuro, filo crema, riflesso in alto.
  * Forma diversa dalle pedine, così non si confondono. Se la regione è un paese, la sua bandiera.
  */
-export function Stemma({ regione, className }: { regione: Regione | undefined; className?: string }): ReactNode {
+export function Stemma({
+  regione,
+  bandiera,
+  className,
+}: {
+  regione: Regione | undefined;
+  /** La bandiera della singola città, se il gruppo non ne ha una sola (Grandi aree). */
+  bandiera?: Bandiera;
+  className?: string;
+}): ReactNode {
   // Un id per il riflesso di ogni scudo (useId ha caratteri che negli url() di SVG non servono).
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const luce = `stemma-luce-${id}`;
   if (!regione) return null;
-  if (regione.bandiera) {
+  const paese = bandiera ?? regione.bandiera;
+  if (paese) {
     // I paesi: la bandiera smaltata, con lo stesso contorno scuro, riflesso e filo crema dello scudo.
     const taglio = `stemma-taglio-${id}`;
     return (
@@ -145,7 +155,7 @@ export function Stemma({ regione, className }: { regione: Regione | undefined; c
         </defs>
         <rect className="stemma__contorno" width="30" height="20" rx={BORDO_BANDIERA} />
         <g clipPath={`url(#${taglio})`}>
-          <DisegnoBandiera paese={regione.bandiera} />
+          <DisegnoBandiera paese={paese} id={id} />
           <rect width="30" height="20" fill={`url(#${luce})`} />
         </g>
         <rect className="stemma__filo" width="30" height="20" rx={BORDO_BANDIERA} />

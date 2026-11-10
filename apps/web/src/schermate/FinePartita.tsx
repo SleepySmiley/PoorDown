@@ -632,7 +632,7 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
               {visitata && casella ? (
                 <>
                   {casella.gruppo ? (
-                    <Stemma regione={tab.regioni[casella.gruppo - 1]} className="stemma--lista" />
+                    <Stemma regione={tab.regioni[casella.gruppo - 1]} bandiera={casella.bandiera} className="stemma--lista" />
                   ) : (
                     casella.icona && <Icona nome={casella.icona} className="cella__icona" />
                   )}

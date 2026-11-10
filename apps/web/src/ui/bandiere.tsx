@@ -1,5 +1,6 @@
 /*
- * Le bandiere dei paesi del tabellone Europa, disegnate a mano in un rettangolo 30×20 (3:2).
+ * Le bandiere dei gruppi del tabellone: i paesi del tabellone Europa qui, le regioni italiane in bandiere-regioni.tsx.
+ * Disegnate a mano in un rettangolo 30×20 (3:2).
  * Semplificate per restare leggibili a pochi pixel: niente stemmi minuti, solo le campiture
  * e i segni che fanno riconoscere il paese (la croce svizzera, la sfera del Portogallo).
  * Contorno, riflesso e filo li aggiunge lo Stemma (ui/comuni.tsx), uguali per tutte.
@@ -7,6 +8,7 @@
 
 import type { ReactNode } from 'react';
 import type { Bandiera } from '@poordown/engine';
+import { DisegnoRegione } from './bandiere-regioni';
 
 const L = 30;
 const H = 20;
@@ -69,8 +71,11 @@ function Portogallo(): ReactNode {
   );
 }
 
-/** Il disegno di una bandiera, da mettere dentro un <svg viewBox="0 0 30 20">. */
-export function DisegnoBandiera({ paese }: { paese: Bandiera }): ReactNode {
+/**
+ * Il disegno di una bandiera, da mettere dentro un <svg viewBox="0 0 30 20">: i paesi qui, le regioni italiane
+ * in bandiere-regioni.tsx. `id` rende unici nella pagina i ritagli delle bandiere che ne usano.
+ */
+export function DisegnoBandiera({ paese, id }: { paese: Bandiera; id: string }): ReactNode {
   switch (paese) {
     case 'IE':
       return <Verticale colori={['#169B62', '#fff', '#FF883E']} />;
@@ -92,5 +97,7 @@ export function DisegnoBandiera({ paese }: { paese: Bandiera }): ReactNode {
       return <Svizzera />;
     case 'PT':
       return <Portogallo />;
+    default:
+      return <DisegnoRegione regione={paese} id={id} />;
   }
 }

@@ -7,14 +7,14 @@ import type { Affitti, Carta, Casella, Regione, Tabellone } from '../tipi';
 import { BUSTA, GRAZIA } from './mazzi';
 
 const REGIONI: Regione[] = [
-  { nome: 'Valle d’Aosta', sigla: 'VDA', colore: 1, costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Sardegna', sigla: 'SAR', colore: 2, costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Toscana', sigla: 'TOS', colore: 3, costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Sicilia', sigla: 'SIC', colore: 4, costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Veneto', sigla: 'VEN', colore: 5, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Campania', sigla: 'CAM', colore: 6, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Lazio', sigla: 'LAZ', colore: 7, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Lombardia', sigla: 'LOM', colore: 8, costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Valle d’Aosta', sigla: 'VDA', colore: 1, bandiera: 'valle-aosta', costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Sardegna', sigla: 'SAR', colore: 2, bandiera: 'sardegna', costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Toscana', sigla: 'TOS', colore: 3, bandiera: 'toscana', costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Sicilia', sigla: 'SIC', colore: 4, bandiera: 'sicilia', costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Veneto', sigla: 'VEN', colore: 5, bandiera: 'veneto', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Campania', sigla: 'CAM', colore: 6, bandiera: 'campania', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Lazio', sigla: 'LAZ', colore: 7, bandiera: 'lazio', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Lombardia', sigla: 'LOM', colore: 8, bandiera: 'lombardia', costoCasa: 200, costoAlbergo: 200 },
 ];
 
 function citta(nome: string, regione: number, prezzo: number, affitti: Affitti): Casella {

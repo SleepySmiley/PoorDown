@@ -27,6 +27,7 @@ import {
   verifica,
   type Attivita,
   type Azione,
+  type Bandiera,
   type BozzaScambio,
   type EffettoScambio,
   type Evento,
@@ -122,6 +123,8 @@ interface Voce {
   chiave: string;
   testo: string;
   regione?: Regione;
+  /** La bandiera della città, se diversa da quella del gruppo (Grandi aree). */
+  bandiera?: Bandiera;
   /** Prezzo di listino (0 se ipotecata); manca per soldi e Carte Grazia. */
   prezzo?: number;
 }
@@ -137,6 +140,7 @@ function voci(partita: Stato, p: Pacchetto): Voce[] {
       chiave: `c${n}`,
       testo: c.nome,
       regione: c.tipo === 'citta' ? tab.regioni[c.regione] : undefined,
+      bandiera: c.tipo === 'citta' ? c.bandiera : undefined,
       prezzo: partita.proprieta[n]?.ipotecata ? 0 : c.prezzo,
     });
   }
@@ -158,7 +162,7 @@ function Riassunto({ partita, p, max = 2 }: { partita: Stato; p: Pacchetto; max?
     <span className="riassunto">
       {v.slice(0, max).map((x) => (
         <span key={x.chiave} className="riassunto__voce">
-          {x.regione && <Stemma regione={x.regione} className="stemma--mini" />}
+          {x.regione && <Stemma regione={x.regione} bandiera={x.bandiera} className="stemma--mini" />}
           {x.testo}
         </span>
       ))}
@@ -469,7 +473,7 @@ function Lato({
               const corpo = (
                 <>
                   {c.gruppo !== undefined ? (
-                    <Stemma regione={tab.regioni[c.gruppo - 1]} className="stemma--lista" />
+                    <Stemma regione={tab.regioni[c.gruppo - 1]} bandiera={c.bandiera} className="stemma--lista" />
                   ) : (
                     c.icona && <Icona nome={c.icona} className="voce-scambio__icona" />
                   )}

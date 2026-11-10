@@ -9,14 +9,14 @@ import { BUSTA, cartolinaComune, viaggio } from './mazzi';
 import { affittiPerPrezzo } from './scala';
 
 const REGIONI: Regione[] = [
-  { nome: 'Salento', sigla: 'SAL', colore: 1, costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Langhe', sigla: 'LAN', colore: 2, costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Cinque Terre', sigla: 'CTE', colore: 3, costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Lago di Garda', sigla: 'GAR', colore: 4, costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Lago di Como', sigla: 'COM', colore: 5, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Costiera amalfitana', sigla: 'AMA', colore: 6, costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Dolomiti', sigla: 'DOL', colore: 7, costoCasa: 200, costoAlbergo: 200 },
-  { nome: 'Costa Smeralda', sigla: 'SME', colore: 8, costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Salento', sigla: 'SAL', colore: 1, bandiera: 'puglia', costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Langhe', sigla: 'LAN', colore: 2, bandiera: 'piemonte', costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Cinque Terre', sigla: 'CTE', colore: 3, bandiera: 'liguria', costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Lago di Garda', sigla: 'GAR', colore: 4, bandiera: 'veneto', costoCasa: 100, costoAlbergo: 100 },
+  { nome: 'Lago di Como', sigla: 'COM', colore: 5, bandiera: 'lombardia', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Costiera amalfitana', sigla: 'AMA', colore: 6, bandiera: 'campania', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Dolomiti', sigla: 'DOL', colore: 7, bandiera: 'trentino', costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Costa Smeralda', sigla: 'SME', colore: 8, bandiera: 'sardegna', costoCasa: 200, costoAlbergo: 200 },
 ];
 
 function citta(nome: string, regione: number, prezzo: number, breve?: string): Casella {
@@ -35,8 +35,8 @@ const CASELLE: Casella[] = [
   { tipo: 'stazione', nome: 'Stazione Nord', breve: 'Nord', prezzo: 200 },
   citta('Vernazza', 2, 140),
   citta('Monterosso', 2, 160),
-  citta('Sirmione', 3, 180),
-  citta('Riva del Garda', 3, 200, 'Riva'),
+  citta('Bardolino', 3, 180),
+  citta('Malcesine', 3, 200),
   { tipo: 'prigione', nome: 'Prigione' },
   BUSTA_CASELLA,
   CARTOLINA_CASELLA,
@@ -54,7 +54,7 @@ const CASELLE: Casella[] = [
   citta('Positano', 5, 280),
   { tipo: 'stazione', nome: 'Stazione Sud', breve: 'Sud', prezzo: 200 },
   citta('Ortisei', 6, 300),
-  citta('Cortina d’Ampezzo', 6, 320, 'Cortina'),
+  citta('Canazei', 6, 320),
   citta('Arzachena', 7, 350),
   citta('Porto Cervo', 7, 400),
   { tipo: 'vai_in_prigione', nome: 'Vai in prigione' },
@@ -75,10 +75,10 @@ const CARTOLINA = [
   viaggio('Vai a Otranto.', 2),
   viaggio('Vai ad Alba.', 4),
   viaggio('Vai a Monterosso.', 7),
-  viaggio('Vai a Riva del Garda.', 9),
+  viaggio('Vai a Malcesine.', 9),
   viaggio('Vai a Bellagio.', 22),
   viaggio('Vai a Positano.', 24),
-  viaggio('Vai a Cortina d’Ampezzo.', 27),
+  viaggio('Vai a Canazei.', 27),
   viaggio('Vai a Porto Cervo.', 29),
   ...cartolinaComune({ servizi: false, indietro: 1 }),
 ];

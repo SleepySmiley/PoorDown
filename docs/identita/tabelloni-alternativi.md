@@ -116,6 +116,8 @@ Ogni lato è una sola area d’Italia, da 5 o 6 città: completarla è difficile
 | 3. Centro | CEN | Rieti, Arezzo, Terni, Lucca, Ancona, Perugia | 150 |
 | 4. Nord | NOR | Udine, Trento, Genova, Bologna, Torino | 150 |
 
+Le aree non hanno una bandiera vera: ogni città mostra quella della sua regione (Oristano la Sardegna, Bari la Puglia…). Il gruppo resta il lato intero.
+
 ### Le 40 caselle
 
 | # | Casella | Tipo | Prezzo | Base | 1 casa | 2 case | 3 case | 4 case | Albergo |
@@ -190,11 +192,13 @@ Località di vacanza solo su due lati; gli altri due sono carte, tasse e un Rimb
 | 1. Salento | SAL | Gallipoli, Otranto | 50 |
 | 2. Langhe | LAN | Barolo, Alba | 50 |
 | 3. Cinque Terre | CTE | Vernazza, Monterosso | 100 |
-| 4. Lago di Garda | GAR | Sirmione, Riva del Garda | 100 |
+| 4. Lago di Garda | GAR | Bardolino, Malcesine | 100 |
 | 5. Lago di Como | COM | Varenna, Bellagio | 150 |
 | 6. Costiera amalfitana | AMA | Amalfi, Positano | 150 |
-| 7. Dolomiti | DOL | Ortisei, Cortina d’Ampezzo | 200 |
+| 7. Dolomiti | DOL | Ortisei, Canazei | 200 |
 | 8. Costa Smeralda | SME | Arzachena, Porto Cervo | 200 |
+
+Ogni gruppo ha la bandiera della sua regione (Puglia, Piemonte, Liguria, Veneto, Lombardia, Campania, Trentino-Alto Adige, Sardegna): per questo il Garda è tutto sulla sponda veneta e le Dolomiti tutte in Trentino-Alto Adige.
 
 ### Le 40 caselle
 
@@ -208,8 +212,8 @@ Località di vacanza solo su due lati; gli altri due sono carte, tasse e un Rimb
 | 5 | Stazione Nord | Stazione | 200 |  |  |  |  |  |  |
 | 6 | Vernazza | Città, gruppo 3 | 140 | 9 | 35 | 110 | 300 | 400 | 490 |
 | 7 | Monterosso | Città, gruppo 3 | 160 | 11 | 45 | 140 | 360 | 480 | 580 |
-| 8 | Sirmione | Città, gruppo 4 | 180 | 13 | 55 | 160 | 430 | 560 | 680 |
-| 9 | Riva del Garda | Città, gruppo 4 | 200 | 15 | 65 | 190 | 500 | 650 | 780 |
+| 8 | Bardolino | Città, gruppo 4 | 180 | 13 | 55 | 160 | 430 | 560 | 680 |
+| 9 | Malcesine | Città, gruppo 4 | 200 | 15 | 65 | 190 | 500 | 650 | 780 |
 | 10 | Prigione | Angolo |  |  |  |  |  |  |  |
 | 11 | Busta | Carta |  |  |  |  |  |  |  |
 | 12 | Cartolina | Carta |  |  |  |  |  |  |  |
@@ -227,7 +231,7 @@ Località di vacanza solo su due lati; gli altri due sono carte, tasse e un Rimb
 | 24 | Positano | Città, gruppo 6 | 280 | 25 | 105 | 320 | 805 | 1025 | 1215 |
 | 25 | Stazione Sud | Stazione | 200 |  |  |  |  |  |  |
 | 26 | Ortisei | Città, gruppo 7 | 300 | 28 | 120 | 360 | 890 | 1125 | 1325 |
-| 27 | Cortina d’Ampezzo | Città, gruppo 7 | 320 | 31 | 135 | 400 | 980 | 1225 | 1450 |
+| 27 | Canazei | Città, gruppo 7 | 320 | 31 | 135 | 400 | 980 | 1225 | 1450 |
 | 28 | Arzachena | Città, gruppo 8 | 350 | 35 | 155 | 460 | 1110 | 1375 | 1615 |
 | 29 | Porto Cervo | Città, gruppo 8 | 400 | 44 | 190 | 580 | 1350 | 1625 | 1925 |
 | 30 | Vai in prigione | Angolo |  |  |  |  |  |  |  |
@@ -247,10 +251,10 @@ Località di vacanza solo su due lati; gli altri due sono carte, tasse e un Rimb
 2. Vai a Otranto.
 3. Vai ad Alba.
 4. Vai a Monterosso.
-5. Vai a Riva del Garda.
+5. Vai a Malcesine.
 6. Vai a Bellagio.
 7. Vai a Positano.
-8. Vai a Cortina d’Ampezzo.
+8. Vai a Canazei.
 9. Vai a Porto Cervo.
 10. Vai alla stazione più vicina.
 11. Torna indietro di una casella.
