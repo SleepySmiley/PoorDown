@@ -10,8 +10,8 @@ export interface StatoNavigazione {
   dallaHome?: boolean;
 }
 
-/** «suoni»: la pagina di prova dei suoni, solo con il server di sviluppo. */
-export type Pagina = { tipo: 'home' } | { tipo: 'stanza'; codice: string } | { tipo: 'suoni' };
+/** «suoni»: la pagina di prova dei suoni, solo con il server di sviluppo. «pannello»: il pannello di controllo. */
+export type Pagina = { tipo: 'home' } | { tipo: 'stanza'; codice: string } | { tipo: 'suoni' } | { tipo: 'pannello' };
 
 const ascoltatori = new Set<() => void>();
 
@@ -45,6 +45,7 @@ function pagina(percorso: string): Pagina {
   const stanza = /^\/stanza\/([a-z0-9]{5})\/?$/i.exec(percorso);
   if (stanza?.[1]) return { tipo: 'stanza', codice: stanza[1].toLowerCase() };
   if (import.meta.env.DEV && /^\/suoni\/?$/.test(percorso)) return { tipo: 'suoni' };
+  if (/^\/pannello\/?$/.test(percorso)) return { tipo: 'pannello' };
   return { tipo: 'home' };
 }
 

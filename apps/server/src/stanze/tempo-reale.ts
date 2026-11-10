@@ -61,6 +61,10 @@ const canale = (codice: string) => `stanza:${codice}`;
 export interface TempoReale {
   /** Da chiamare ogni pochi secondi: assenze in lobby, scadenze rimaste indietro e stanze abbandonate. */
   manutenzione(): void;
+  /** Manda a tutti la stanza cambiata da fuori (il pannello di controllo) e la salva. */
+  aggiorna(stanza: Stanza): void;
+  /** Avvisa chi è nella stanza che è stata chiusa (già tolta dal gestore) e la toglie dal salvataggio. */
+  chiusa(stanza: Stanza): void;
   /** Spegne le sveglie delle scadenze (per chiudere il server). */
   ferma(): void;
 }
@@ -123,6 +127,19 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
   }
 
   for (const stanza of gestore.tutte()) programmaSveglia(stanza);
+
+  /** Chi seguiva la stanza chiusa torna alla home (il browser lo fa quando riceve `stanza_chiusa`). */
+  function avvisaChiusura(stanza: Stanza): void {
+    clearTimeout(sveglie.get(stanza.codice));
+    sveglie.delete(stanza.codice);
+    for (const id of io.sockets.adapter.rooms.get(canale(stanza.codice)) ?? []) {
+      const socket = io.sockets.sockets.get(id);
+      if (!socket) continue;
+      socket.emit('stanza_chiusa', stanza.codice);
+      socket.data.stanza = null;
+      void socket.leave(canale(stanza.codice));
+    }
+  }
 
   function lascia(socket: SocketGioco, esplicito: boolean): void {
     const stanza = socket.data.stanza === null ? undefined : gestore.trova(socket.data.stanza);
@@ -341,16 +358,15 @@ export function collegaTempoReale(io: ServerGioco, gestore: GestoreStanze, dopoM
           console.error(`  Errore nell'aggiornamento della stanza ${stanza.codice}:`, errore);
         }
       }
-      for (const stanza of chiuse) {
-        for (const id of io.sockets.adapter.rooms.get(canale(stanza.codice)) ?? []) {
-          const socket = io.sockets.sockets.get(id);
-          if (!socket) continue;
-          socket.emit('stanza_chiusa', stanza.codice);
-          socket.data.stanza = null;
-          void socket.leave(canale(stanza.codice));
-        }
-      }
+      for (const stanza of chiuse) avvisaChiusura(stanza);
       if (chiuse.length > 0) dopoModifica();
+    },
+    aggiorna(stanza) {
+      diffondi(stanza);
+    },
+    chiusa(stanza) {
+      avvisaChiusura(stanza);
+      dopoModifica();
     },
     ferma() {
       for (const sveglia of sveglie.values()) clearTimeout(sveglia);

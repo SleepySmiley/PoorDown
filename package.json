@@ -18,6 +18,7 @@
     "start": "npm run start -w @poordown/server",
     "preonline": "npm run build",
     "online": "npm run online -w @poordown/server",
+    "pannello": "npm run pannello --silent -w @poordown/server --",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",

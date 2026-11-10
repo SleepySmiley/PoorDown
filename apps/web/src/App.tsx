@@ -10,6 +10,8 @@ import './stili/stanza.css';
 
 /** La pagina di prova dei suoni (/suoni): solo con il server di sviluppo, non entra nella versione compilata. */
 const PaginaSuoni = import.meta.env.DEV ? lazy(() => import('./suoni/PaginaSuoni')) : null;
+/** Il pannello di controllo (/pannello): si scarica a parte, solo da chi lo apre. */
+const PaginaPannello = lazy(() => import('./pannello/PaginaPannello'));
 
 /** Sceglie la pagina dall'indirizzo: "/" è la home, "/stanza/<codice>" una stanza. */
 export function App(): ReactNode {
@@ -18,7 +20,7 @@ export function App(): ReactNode {
   // Tornando alla home (anche con il tasto Indietro) si smette di seguire la stanza.
   // Se in partita il posto resta, la home offre di rientrare.
   useEffect(() => {
-    if (pagina.tipo !== 'home' && pagina.tipo !== 'suoni') return;
+    if (pagina.tipo === 'stanza') return;
     ingressi.dimentica();
     const seguita = collegamento.codiceSeguito();
     if (seguita === null) return;
@@ -34,6 +36,10 @@ export function App(): ReactNode {
       ) : pagina.tipo === 'suoni' && PaginaSuoni ? (
         <Suspense>
           <PaginaSuoni />
+        </Suspense>
+      ) : pagina.tipo === 'pannello' ? (
+        <Suspense>
+          <PaginaPannello />
         </Suspense>
       ) : (
         <Home />

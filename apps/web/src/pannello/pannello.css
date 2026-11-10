@@ -1,0 +1,1008 @@
+/*
+ * Pannello di controllo (/pannello): la cabina di comando della stazione.
+ * Stesso sistema «Partenze» del gioco: il blu segnale per i comandi, l'ambra per chi è di turno,
+ * il rosso solo per ciò che toglie (giocatori, stanze, partite). Pensato per il PC.
+ */
+
+/* =====================================================================
+   Ingresso: accesso e pannello non ancora attivo
+   ===================================================================== */
+
+.pc-ingresso {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--s-6) var(--s-4);
+  background:
+    radial-gradient(60rem 30rem at 50% -10%, rgb(42 100 200 / 0.12), transparent 70%),
+    var(--sfondo);
+}
+
+.pc-ingresso__cartello {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+  width: min(26rem, 100%);
+  padding: var(--s-6) var(--s-6) var(--s-5);
+  border-radius: var(--r-3);
+  background: var(--sup-1);
+  box-shadow: var(--e2);
+}
+
+.pc-ingresso__marchio {
+  font-size: 3rem;
+}
+
+.pc-ingresso__sopra {
+  color: var(--testo-2);
+  font: var(--t-etichetta);
+  font-size: 0.9375rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pc-ingresso__testo {
+  color: var(--testo-2);
+  text-align: center;
+}
+
+.pc-accesso {
+  display: grid;
+  gap: var(--s-4);
+  width: 100%;
+  margin-top: var(--s-2);
+}
+
+.pc-accesso__campo {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.pc-accesso__errore {
+  min-height: 1.35em;
+  margin-top: calc(var(--s-2) * -1);
+  color: var(--rosso-testo);
+  font: var(--t-piccolo);
+}
+
+.pc-spento {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+  width: 100%;
+}
+
+.pittogramma.pc-spento__icona {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 3px var(--cartello),
+    inset 0 0 0 4.5px #fff;
+}
+
+.pc-spento__comando {
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-1);
+  background: var(--quadro);
+  color: var(--ambra-testo);
+  font: 600 1.125rem/1.2 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  box-shadow: inset 0 0 0 1px var(--quadro-linea);
+  user-select: all;
+}
+
+/* =====================================================================
+   Struttura: testata, elenco delle stanze, scheda
+   ===================================================================== */
+
+.pc {
+  --testa-pc: 3.5rem;
+
+  min-height: 100vh;
+  background: var(--sfondo);
+}
+
+.pc-testa {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  height: var(--testa-pc);
+  padding: 0 var(--s-5);
+  border-bottom: 1px solid var(--linea);
+  background: var(--sup-1);
+}
+
+.pc-testa__marchio {
+  font-size: 1.75rem;
+}
+
+.pc-testa__titolo {
+  color: var(--testo-1);
+  font: var(--t-titolo-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pc-testa__spazio {
+  flex: 1;
+}
+
+.pc-diretta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--verde-testo);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pc-diretta__luce {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--verde);
+  box-shadow: 0 0 0 3px var(--verde-velo);
+  animation: pc-battito 2s var(--c-viaggio) infinite;
+}
+
+.pc-diretta--spenta {
+  color: var(--rosso-testo);
+}
+
+.pc-diretta--spenta .pc-diretta__luce {
+  background: var(--rosso);
+  box-shadow: 0 0 0 3px var(--rosso-velo);
+  animation: none;
+}
+
+@keyframes pc-battito {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.pc-corpo {
+  display: grid;
+  grid-template-columns: 18.5rem minmax(0, 1fr);
+}
+
+.pc-stanze {
+  position: sticky;
+  top: var(--testa-pc);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  height: calc(100vh - var(--testa-pc));
+  padding: var(--s-4);
+  overflow-y: auto;
+  border-right: 1px solid var(--linea);
+}
+
+.pc-stanze__titolo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin-bottom: var(--s-1);
+  color: var(--testo-2);
+  font: var(--t-etichetta);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pc-stanze__conta {
+  color: var(--testo-3);
+}
+
+.pc-voce {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: var(--s-3);
+  border: 0;
+  border-radius: var(--r-2);
+  background: var(--sup-1);
+  box-shadow: var(--e1);
+  color: var(--testo-1);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--d-rapida),
+    box-shadow var(--d-rapida);
+}
+
+.pc-voce:hover {
+  background: var(--sup-2);
+}
+
+.pc-voce[aria-current='true'] {
+  background: var(--sup-2);
+  box-shadow: inset 0 0 0 2px var(--segnale);
+}
+
+.pc-voce__riga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.pc-voce__codice {
+  font: 700 1.375rem/1 var(--stretto);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pc-voce__pedine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 10px;
+}
+
+.pc-pedina--assente {
+  opacity: 0.45;
+}
+
+.pc-pedina--fuori {
+  opacity: 0.2;
+}
+
+.pc-voce__info {
+  color: var(--testo-2);
+  font: var(--t-piccolo);
+}
+
+.pc-voce__info--tenue {
+  color: var(--testo-3);
+}
+
+.pc-vuoto {
+  color: var(--testo-3);
+  font: var(--t-piccolo);
+}
+
+.pc-vuoto--grande {
+  padding: var(--s-8) 0;
+  font: var(--t-corpo);
+  text-align: center;
+}
+
+.pc-scheda {
+  min-width: 0;
+  padding: var(--s-5) var(--s-6) var(--s-8);
+}
+
+/* =====================================================================
+   Testata della stanza: il quadro nero con il codice a palette
+   ===================================================================== */
+
+.pc-stanza__testa {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-2);
+  background: var(--quadro);
+  box-shadow: inset 0 0 0 1px var(--quadro-linea);
+}
+
+.pc-stanza__codice {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.pc-stanza__codice .etichetta {
+  color: var(--quadro-tenue);
+}
+
+.pc-stanza__stato {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.pc-stanza__chip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pc-stanza__chip .chip:not(.chip--ambra, .chip--segnale, .chip--rosso) {
+  --chip-fondo: var(--quadro-hover);
+  --chip-testo: var(--quadro-tenue);
+}
+
+.pc-stanza__riga {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--quadro-testo);
+  font: var(--t-nome);
+}
+
+.pc-stanza__azioni {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-2);
+}
+
+/* Le schede delle sezioni: una riga di tasti sotto il quadro. */
+.pc-sezioni {
+  display: flex;
+  gap: var(--s-1);
+  margin: var(--s-4) 0 var(--s-5);
+  border-bottom: 1px solid var(--linea);
+}
+
+.pc-sezioni__voce {
+  position: relative;
+  padding: var(--s-3) var(--s-4);
+  border: 0;
+  background: none;
+  color: var(--testo-2);
+  font: var(--t-nome);
+  cursor: pointer;
+  transition: color var(--d-rapida);
+}
+
+.pc-sezioni__voce:hover {
+  color: var(--testo-1);
+}
+
+.pc-sezioni__voce::after {
+  content: '';
+  position: absolute;
+  inset: auto var(--s-3) -1px;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--segnale);
+  transform: scaleX(0);
+  transition: transform var(--d-lista) var(--c-arrivo);
+}
+
+.pc-sezioni__voce[aria-current='true'] {
+  color: var(--testo-1);
+}
+
+.pc-sezioni__voce[aria-current='true']::after {
+  transform: scaleX(1);
+}
+
+/* =====================================================================
+   Controlli condivisi
+   ===================================================================== */
+
+.campo.pc-scelta {
+  width: auto;
+  max-width: 15rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.pc-numero {
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-1);
+  background: var(--quadro);
+  transition:
+    border-color var(--d-rapida),
+    box-shadow var(--d-rapida);
+}
+
+.pc-numero:focus-within {
+  border-color: var(--segnale);
+  box-shadow: 0 0 0 3px var(--segnale-velo);
+}
+
+.pc-numero--bozza {
+  border-color: var(--ambra);
+}
+
+.pc-numero__input {
+  width: 7.5rem;
+  padding: 0 var(--s-1) 0 var(--s-3);
+  border: 0;
+  background: none;
+  color: var(--flap-testo);
+  font: 600 1.125rem/1 var(--stretto);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  text-align: right;
+}
+
+.pc-numero__input:focus {
+  outline: none;
+}
+
+.pc-numero__input:disabled {
+  color: var(--testo-3);
+}
+
+.pc-numero__unita {
+  padding-right: var(--s-3);
+  color: var(--quadro-tenue);
+  font: 600 1rem/1 var(--stretto);
+}
+
+.pc-nome {
+  width: 100%;
+  max-width: 12rem;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-1);
+  background: none;
+  color: var(--testo-1);
+  font: var(--t-nome);
+  transition:
+    border-color var(--d-rapida),
+    background-color var(--d-rapida);
+}
+
+.pc-nome:hover:not(:disabled) {
+  border-color: var(--linea-forte);
+}
+
+.pc-nome:focus {
+  outline: none;
+  border-color: var(--segnale);
+  background: var(--sup-2);
+}
+
+.pc-nome--bozza {
+  border-color: var(--ambra);
+}
+
+.pc-segmenti {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--r-1);
+  background: var(--quadro);
+  box-shadow: inset 0 0 0 1px var(--quadro-linea);
+}
+
+.pc-segmenti__tasto {
+  min-width: 2rem;
+  height: 1.875rem;
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--quadro-tenue);
+  font: 600 0.9375rem/1 var(--stretto);
+  cursor: pointer;
+  transition:
+    background-color var(--d-rapida),
+    color var(--d-rapida);
+}
+
+.pc-segmenti__tasto:hover:not(:disabled) {
+  background: var(--quadro-hover);
+  color: var(--quadro-testo);
+}
+
+.pc-segmenti__tasto[aria-pressed='true'] {
+  background: var(--segnale);
+  color: #fff;
+}
+
+.pc-segmenti__tasto:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pc-nota {
+  color: var(--testo-3);
+  font: var(--t-piccolo);
+}
+
+/* =====================================================================
+   Giocatori
+   ===================================================================== */
+
+.pc-tabella-scorre {
+  overflow-x: auto;
+}
+
+.pc-tabella {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pc-tabella th {
+  padding: 0 var(--s-3) var(--s-2);
+  color: var(--testo-3);
+  font: var(--t-etichetta);
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pc-tabella td {
+  padding: var(--s-3);
+  border-top: 1px solid var(--linea);
+  vertical-align: middle;
+}
+
+.pc-giocatore--turno td {
+  background: var(--ambra-velo);
+}
+
+.pc-giocatore--turno td:first-child {
+  box-shadow: inset 3px 0 0 var(--ambra);
+}
+
+.pc-giocatore--fuori td {
+  color: var(--testo-3);
+}
+
+.pc-giocatore--fuori .pedina {
+  opacity: 0.4;
+}
+
+.pc-giocatore__chi {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 13rem;
+}
+
+.pc-giocatore__testo {
+  display: grid;
+  gap: 3px;
+}
+
+.pc-giocatore__nome-fisso {
+  font: var(--t-nome);
+}
+
+.pc-giocatore__chip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pc-giocatore__chip:empty {
+  display: none;
+}
+
+.pc-giocatore__nota {
+  color: var(--testo-3);
+  font: var(--t-piccolo);
+}
+
+.pc-giocatore__nota--rossa {
+  color: var(--rosso-testo);
+}
+
+.pc-giocatore__fuori {
+  font: var(--t-piccolo);
+}
+
+.pc-saldo {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.pc-saldo__passi {
+  display: flex;
+  gap: 4px;
+}
+
+.pc-passo {
+  height: 1.5rem;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--sup-3);
+  color: var(--testo-2);
+  font: 600 0.8125rem/1 var(--stretto);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--d-rapida),
+    color var(--d-rapida);
+}
+
+.pc-passo:hover:not(:disabled) {
+  background: var(--sup-4);
+  color: var(--testo-1);
+}
+
+.pc-passo:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pc-cella-interruttore {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.pc-giocatore__azioni {
+  display: flex;
+  gap: var(--s-2);
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* In lobby: chi è seduto. */
+.pc-posti {
+  display: grid;
+  gap: var(--s-2);
+  max-width: 48rem;
+}
+
+.pc-posto {
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 14rem) 1fr auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--sup-1);
+  box-shadow: var(--e1);
+}
+
+.pc-posto__chip {
+  display: flex;
+  gap: 4px;
+}
+
+.pc-posto__azioni {
+  display: flex;
+  gap: var(--s-2);
+}
+
+/* =====================================================================
+   Proprietà
+   ===================================================================== */
+
+.pc-proprieta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(34rem, 1fr));
+  gap: var(--s-5);
+}
+
+.pc-gruppo__titolo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+  color: var(--testo-1);
+  font: var(--t-titolo-3);
+}
+
+.pc-gruppo__stemma {
+  width: 1.375rem;
+  height: auto;
+}
+
+.pc-gruppo__righe {
+  display: grid;
+  gap: 4px;
+}
+
+.pc-casella {
+  --colore: transparent;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 10rem auto auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-1);
+  background: var(--sup-1);
+  box-shadow:
+    inset 4px 0 0 var(--colore),
+    var(--e1);
+}
+
+.pc-casella__nome {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  font: var(--t-nome);
+}
+
+.pc-casella__nome .icona {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--testo-2);
+}
+
+.pc-casella__prezzo {
+  margin-left: var(--s-2);
+  color: var(--testo-3);
+  font: var(--t-piccolo);
+}
+
+.pc-casella .campo.pc-scelta {
+  width: 100%;
+}
+
+.pc-casella__vuoto {
+  width: 0;
+}
+
+.pc-casella__ipoteca {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.pc-casella__etichetta {
+  color: var(--testo-3);
+  font: var(--t-etichetta);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* =====================================================================
+   Riquadri: turno e dadi, regole e fine
+   ===================================================================== */
+
+.pc-griglia {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: var(--s-5);
+  align-items: start;
+}
+
+.pc-colonna {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.pc-riquadro {
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border-radius: var(--r-2);
+  background: var(--sup-1);
+  box-shadow: var(--e1);
+}
+
+.pc-riquadro--pericolo {
+  box-shadow:
+    inset 0 3px 0 var(--rosso),
+    var(--e1);
+}
+
+.pc-riquadro__titolo {
+  color: var(--testo-1);
+  font: var(--t-titolo-2);
+}
+
+.pc-modulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-3);
+}
+
+.pc-modulo__campo {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.pc-modulo__campo .etichetta {
+  color: var(--testo-2);
+}
+
+.pc-modulo .campo.pc-scelta {
+  max-width: 20rem;
+  height: 2.5rem;
+}
+
+.pc-turno {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--quadro);
+  box-shadow: inset 0 0 0 1px var(--quadro-linea);
+}
+
+.pc-turno__chi {
+  color: var(--quadro-testo);
+  font: var(--t-titolo-3);
+}
+
+.pc-turno__fase {
+  margin-top: 2px;
+  color: var(--ambra-testo);
+  font: var(--t-corpo);
+}
+
+.pc-turno__dadi {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.pc-turno__dadi .dado {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 7px;
+}
+
+.pc-turno__dadi .dado .punto {
+  width: 7px;
+  height: 7px;
+}
+
+.pc-deciso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--ambra-velo);
+  color: var(--ambra-testo);
+}
+
+.pc-deciso .pc-turno__dadi {
+  margin-top: 0;
+}
+
+.pc-facce {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.pc-faccia {
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity var(--d-rapida),
+    background-color var(--d-rapida);
+}
+
+.pc-faccia:hover:not(:disabled) {
+  opacity: 0.9;
+  background: var(--sup-2);
+}
+
+.pc-faccia[aria-pressed='true'] {
+  opacity: 1;
+  background: var(--segnale-velo);
+  box-shadow: inset 0 0 0 2px var(--segnale);
+}
+
+.pc-faccia:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.pc-faccia .dado {
+  width: 2.125rem;
+  height: 2.125rem;
+  padding: 6px;
+}
+
+.pc-faccia .dado .punto {
+  width: 6px;
+  height: 6px;
+}
+
+.pc-regole {
+  display: grid;
+}
+
+.pc-regola {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--linea);
+}
+
+.pc-regola:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.pc-regola__nome {
+  display: block;
+  font: var(--t-nome);
+}
+
+.pc-regola__descrizione {
+  display: block;
+  color: var(--testo-3);
+  font: var(--t-piccolo);
+}
+
+/* =====================================================================
+   Registro e stato completo
+   ===================================================================== */
+
+.pc-registro {
+  display: grid;
+  max-width: 56rem;
+}
+
+.pc-registro__riga {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--linea);
+}
+
+.pc-registro__ora {
+  color: var(--testo-3);
+  font: 500 0.9375rem/1.45 var(--stretto);
+  font-variant-numeric: tabular-nums;
+}
+
+.pc-json {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.pc-json__barra {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.pc-json__barra .pc-nota {
+  flex: 1;
+}
+
+.pc-json__errore {
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-1);
+  background: var(--rosso-velo);
+  color: var(--rosso-testo);
+  font: var(--t-piccolo);
+}
+
+.pc-json__testo {
+  width: 100%;
+  height: calc(100vh - 22rem);
+  min-height: 24rem;
+  padding: var(--s-4);
+  border: 1px solid var(--quadro-linea);
+  border-radius: var(--r-2);
+  background: var(--quadro);
+  color: var(--quadro-testo);
+  font: 400 0.875rem/1.5 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  tab-size: 2;
+  resize: vertical;
+}
+
+.pc-json__testo:focus {
+  outline: none;
+  border-color: var(--segnale);
+}
+
+.pc-json__testo--bozza {
+  border-color: var(--ambra);
+}

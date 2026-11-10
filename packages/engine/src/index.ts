@@ -55,6 +55,22 @@ export {
 } from './impostazioni';
 export { finitaPerDurata, ultimoTurno } from './turni';
 export { nomeCasuale, pulisciNome } from './nomi';
+export {
+  GRAZIE_MAX,
+  modificaPartita,
+  problemaStato,
+  REGOLE_MODIFICABILI,
+  SOLDI_MAX_PANNELLO,
+  type ComandoPannello,
+  type DadiDecisi,
+  type DettaglioPannello,
+  type EsitoModifica,
+  type ModificaPartita,
+  type RegolaModificabile,
+  type StanzaNelPannello,
+  type StatoAccessoPannello,
+  type TipoComandoPannello,
+} from './pannello';
 export { creaPartita, type NuovoGiocatore } from './partita';
 export {
   ATTESA_RISPOSTA_MS,

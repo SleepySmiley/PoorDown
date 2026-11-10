@@ -5,6 +5,7 @@ import {
   LUNGHEZZA_CODICE,
   type PostoInPartita,
   type StanzaInElenco,
+  type StanzaNelPannello,
 } from '@poordown/engine';
 import type { Ambiente } from './ambiente';
 import { Stanza, type DatiStanza, type Token } from './stanza';
@@ -120,6 +121,21 @@ export class GestoreStanze {
       aperte.push(stanza);
     }
     return { aperte, chiuse };
+  }
+
+  /** Chiude subito la stanza (dal pannello). Restituisce la stanza chiusa, se c'era. */
+  chiudi(codice: string): Stanza | undefined {
+    const stanza = this.trova(codice);
+    if (stanza) this.stanze.delete(stanza.codice);
+    return stanza;
+  }
+
+  /** Tutte le stanze per il pannello: prima le partite in corso, poi le lobby, poi quelle finite. */
+  elencoPannello(): StanzaNelPannello[] {
+    const ordine = { partita: 0, lobby: 1, finita: 2 } as const;
+    return this.tutte()
+      .sort((a, b) => ordine[a.fase] - ordine[b.fase] || a.codice.localeCompare(b.codice))
+      .map((s) => s.vocePannello());
   }
 
   esporta(): DatiStanza[] {

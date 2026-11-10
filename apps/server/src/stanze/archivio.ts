@@ -23,6 +23,11 @@ interface FileStanze {
 
 export function cartellaDati(): string {
   if (process.env.POORDOWN_DATI) return path.resolve(process.env.POORDOWN_DATI);
+  return cartellaPredefinita();
+}
+
+/** La cartella dei dati di PoorDown su questo PC, senza guardare POORDOWN_DATI. */
+export function cartellaPredefinita(): string {
   if (process.platform === 'win32' && process.env.LOCALAPPDATA) return path.join(process.env.LOCALAPPDATA, 'PoorDown');
   return path.join(homedir(), '.poordown');
 }

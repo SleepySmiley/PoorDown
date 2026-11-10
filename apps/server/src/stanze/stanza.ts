@@ -22,6 +22,7 @@ import {
   IMPOSTAZIONI_PREDEFINITE,
   LUNGHEZZA_CODICE,
   mescola,
+  modificaPartita,
   mosseDeiBot,
   NOME_SQUADRA_MAX,
   nomeCasuale,
@@ -37,7 +38,11 @@ import {
   vistaPartita,
   type Attivita,
   type Azione,
+  type Caso,
   type CodiceErroreServer,
+  type ComandoPannello,
+  type DadiDecisi,
+  type DettaglioPannello,
   type Esito,
   type Evento,
   type EventoStanza,
@@ -49,6 +54,7 @@ import {
   type Mossa,
   type PostoInPartita,
   type Risposta,
+  type StanzaNelPannello,
   type Stato,
   type VistaStanza,
   type VoceRegistro,
@@ -140,6 +146,17 @@ export interface MessaggioInStanza extends MessaggioChat {
   lettori?: IdGiocatore[];
 }
 
+/** Le modifiche del pannello che si possono annullare, al massimo. */
+export const ANNULLA_PANNELLO_MAX = 30;
+
+/** Com'era la stanza prima di una modifica del pannello: serve ad annullarla. */
+interface Fotografia {
+  partita: Stato | null;
+  fase: FaseStanza;
+  impostazioni: Impostazioni;
+  nomi: Map<IdGiocatore, string>;
+}
+
 /** La stanza come si salva su file. */
 export interface DatiStanza {
   codice: string;
@@ -210,6 +227,13 @@ export class Stanza {
   private fineScena = 0;
   /** Il turno in cui ogni bot ha proposto l'ultimo scambio: non insiste a ogni turno. */
   private readonly ultimaProposta = new Map<IdGiocatore, number>();
+  /** Il prossimo tiro deciso dal pannello; `null` se i dadi sono liberi. Non si salva. */
+  private dadiDecisi: DadiDecisi | null = null;
+  /**
+   * Com'era la stanza prima di ogni modifica del pannello, dalla più vecchia. Si svuota appena la partita va avanti
+   * da sola (una mossa, una scadenza): da lì annullare cancellerebbe anche quello che hanno fatto i giocatori.
+   */
+  private pilaPannello: Fotografia[] = [];
 
   constructor(
     readonly codice: string,
@@ -440,6 +464,8 @@ export class Stanza {
     this.partita = esito.stato;
     this.pausaDa = null;
     this.fineScena = 0;
+    this.pilaPannello = [];
+    this.dadiDecisi = null;
     this.ultimaProposta.clear();
     this.aggiornaPresenze();
     this.segna(...esito.eventi);
@@ -466,6 +492,8 @@ export class Stanza {
     this.partita = null;
     this.pausaDa = null;
     this.prossimaMossaBot = null;
+    this.pilaPannello = [];
+    this.dadiDecisi = null;
     this.registro = [];
     this.togliAttivita(() => true);
     for (const p of this.posti) if (p.offlineDa !== null) p.offlineDa = adesso;
@@ -492,7 +520,8 @@ export class Stanza {
     if (this.fase !== 'partita' || !this.partita) return no('partita_non_in_corso', 'La partita non è in corso.');
     this.scadenzeDellaPartita();
     if (this.fase !== 'partita' || !this.partita) return no('partita_non_in_corso', 'La partita è appena finita.');
-    const esito = applica(this.partita, { ...mossa, giocatore: posto.id } as Azione, this.amb.caso, this.amb.adesso());
+    const azione = { ...mossa, giocatore: posto.id } as Azione;
+    const esito = applica(this.partita, azione, this.casoPer(azione), this.amb.adesso());
     if (!esito.ok) return no(esito.codice, esito.messaggio);
     this.registra(esito);
     return si(null);
@@ -648,8 +677,7 @@ export class Stanza {
 
   /** Uguale per tutti: il posto di ciascuno si aggiunge a parte con `io()`. */
   vista(): VistaStanza {
-    const seduti = new Set(this.posti.map((p) => p.token));
-    const spettatori = new Set([...this.connessioni.values()].filter((t) => !seduti.has(t))).size;
+    const spettatori = this.spettatori();
     return {
       codice: this.codice,
       fase: this.fase,
@@ -785,7 +813,7 @@ export class Stanza {
     if (mosse.length === 0) return;
     const scelta = mosse[this.amb.caso.intero(mosse.length)]!;
     const adesso = this.amb.adesso();
-    let esito = applica(partita, scelta.azione, this.amb.caso, adesso);
+    let esito = applica(partita, scelta.azione, this.casoPer(scelta.azione), adesso);
     if (!esito.ok) {
       // Non dovrebbe succedere: per non fermare la partita, il bot di turno finisce il turno come può.
       console.error(`  Mossa del bot rifiutata (${scelta.azione.tipo}): ${esito.messaggio}`);
@@ -840,8 +868,189 @@ export class Stanza {
   }
 
   /* ------------------------------------------------------------------ */
+  /* Pannello di controllo                                               */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Esegue un comando del pannello di controllo. Restituisce il motivo se non si può fare, altrimenti `null`.
+   * Le modifiche alla partita (e i nomi) si possono annullare finché la partita non va avanti.
+   */
+  pannello(comando: ComandoPannello): string | null {
+    switch (comando.tipo) {
+      case 'dadi':
+        return this.decidiDadi(comando.dadi, comando.giocatore);
+      case 'host': {
+        const posto = this.posti.find((p) => p.id === comando.giocatore);
+        if (!posto) return 'Questo giocatore non è più nella stanza.';
+        if (posto.bot) return 'Un bot non può fare l’host.';
+        if (this.host === posto.id) return null;
+        this.host = posto.id;
+        this.segna({ tipo: 'nuovo_host', giocatore: posto.id, nome: posto.nome });
+        return null;
+      }
+      case 'espelli': {
+        if (this.fase !== 'lobby') return 'In partita si usa «Togli dalla partita».';
+        const posto = this.posti.find((p) => p.id === comando.giocatore);
+        if (!posto) return 'Questo giocatore non è più nella stanza.';
+        if (posto.bot && this.impostazioni.bot) this.prossimoBot = this.amb.adesso() + RIMPIAZZO_BOT_MS;
+        this.rimuovi(posto, 'espulsione');
+        return null;
+      }
+      case 'nome': {
+        const posto = this.posti.find((p) => p.id === comando.giocatore);
+        const inPartita = this.partita?.giocatori.some((g) => g.id === comando.giocatore) ?? false;
+        if (!posto && !inPartita) return 'Questo giocatore non è più nella stanza.';
+        const nome = pulisciNome(comando.nome);
+        if (!nome) return 'Il nome è vuoto.';
+        const prima = this.fotografia();
+        if (posto) posto.nome = nome;
+        if (this.partita && inPartita) {
+          this.partita = {
+            ...this.partita,
+            giocatori: this.partita.giocatori.map((g) => (g.id === comando.giocatore ? { ...g, nome } : g)),
+          };
+        }
+        this.ricorda(prima);
+        this.segna();
+        return null;
+      }
+      default: {
+        if (!this.partita) return 'La partita non è ancora cominciata.';
+        const esito = modificaPartita(this.partita, comando, this.amb.caso, this.amb.adesso());
+        if (!esito.ok) return esito.messaggio;
+        const prima = this.fotografia();
+        // La stanza tiene le stesse regole della partita (la lobby della prossima partita parte da qui).
+        if (comando.tipo === 'regole' || comando.tipo === 'stato') this.impostazioni = { ...esito.stato.impostazioni };
+        // Lo stato scritto a mano può riaprire una partita finita.
+        this.fase = esito.stato.fase === 'finita' ? 'finita' : 'partita';
+        this.registra({ ok: true, stato: esito.stato, eventi: esito.eventi }, true);
+        this.ricorda(prima);
+        return null;
+      }
+    }
+  }
+
+  /** Torna a com'era la stanza prima dell'ultima modifica del pannello. */
+  annullaPannello(): string | null {
+    const foto = this.pilaPannello.pop();
+    if (!foto) return 'Non c’è niente da annullare: dopo l’ultima modifica la partita è andata avanti.';
+    this.partita = foto.partita;
+    this.fase = foto.fase;
+    this.impostazioni = foto.impostazioni;
+    for (const p of this.posti) p.nome = foto.nomi.get(p.id) ?? p.nome;
+    const aperti = new Set(this.partita?.scambi.map((x) => x.id) ?? []);
+    this.togliAttivita((_, a) => this.fase !== 'partita' || (a.tipo !== 'crea' && !aperti.has(a.scambio)));
+    this.aggiornaPresenze();
+    this.segna(...this.passaHost());
+    return null;
+  }
+
+  /** La stanza com'è, per il pannello: tutto tranne i token. */
+  dettaglioPannello(): DettaglioPannello {
+    return {
+      codice: this.codice,
+      fase: this.fase,
+      versione: this.versione,
+      host: this.host,
+      impostazioni: { ...this.impostazioni },
+      posti: this.posti.map(({ id, nome, colore, bot, squadra, offlineDa }) => ({
+        id,
+        nome,
+        colore,
+        bot,
+        squadra,
+        connesso: offlineDa === null,
+      })),
+      nomiSquadre: [...this.nomiSquadre],
+      spettatori: this.spettatori(),
+      partita: this.partita,
+      registro: this.registro.slice(-40),
+      dadi: this.dadiDecisi,
+      annullabile: this.pilaPannello.length > 0,
+      inPausa: this.pausaDa !== null,
+      adesso: this.amb.adesso(),
+    };
+  }
+
+  /** La riga della stanza nell'elenco del pannello. */
+  vocePannello(): StanzaNelPannello {
+    const partita = this.partita;
+    const fuori = new Set(partita?.giocatori.filter((g) => g.eliminato).map((g) => g.id) ?? []);
+    const diTurno = partita && this.fase === 'partita' ? partita.giocatori.find((g) => g.id === partita.turno.giocatore) : undefined;
+    return {
+      codice: this.codice,
+      fase: this.fase,
+      privata: this.impostazioni.stanzaPrivata,
+      mappa: this.impostazioni.mappa,
+      giocatori: this.posti.map((p) => ({
+        nome: p.nome,
+        colore: p.colore,
+        bot: p.bot,
+        connesso: p.offlineDa === null,
+        fuori: fuori.has(p.id),
+      })),
+      turno: partita && this.fase !== 'lobby' ? partita.turno.numero : null,
+      diTurno: diTurno?.nome ?? null,
+      spettatori: this.spettatori(),
+      inPausa: this.pausaDa !== null,
+    };
+  }
+
+  private decidiDadi(dadi: [number, number] | null, id: IdGiocatore | null): string | null {
+    if (dadi === null) {
+      this.dadiDecisi = null;
+      return null;
+    }
+    if (this.fase !== 'partita' || !this.partita) return 'I dadi si decidono a partita in corso.';
+    if (!dadi.every((d) => Number.isInteger(d) && d >= 1 && d <= 6)) return 'Ogni dado va da 1 a 6.';
+    if (id !== null && !this.inGioco(id)) return 'Questo giocatore non è in gioco.';
+    this.dadiDecisi = { dadi: [dadi[0], dadi[1]], giocatore: id };
+    return null;
+  }
+
+  /**
+   * Il caso per un'azione: per il tiro deciso dal pannello, i due dadi escono come scelto (e la scelta si consuma);
+   * per tutto il resto, il caso vero.
+   */
+  private casoPer(azione: Azione): Caso {
+    const decisi = this.dadiDecisi;
+    const vero = this.amb.caso;
+    if (!decisi || azione.tipo !== 'lancia' || (decisi.giocatore !== null && decisi.giocatore !== azione.giocatore)) return vero;
+    // `tiraDadi` chiede i due dadi (intero(6)) per primi.
+    const valori = [decisi.dadi[0] - 1, decisi.dadi[1] - 1];
+    return {
+      intero: (n) => {
+        if (n !== 6 || valori.length === 0) return vero.intero(n);
+        const valore = valori.shift()!;
+        if (valori.length === 0) this.dadiDecisi = null;
+        return valore;
+      },
+    };
+  }
+
+  private fotografia(): Fotografia {
+    return {
+      partita: this.partita && structuredClone(this.partita),
+      fase: this.fase,
+      impostazioni: { ...this.impostazioni },
+      nomi: new Map(this.posti.map((p) => [p.id, p.nome])),
+    };
+  }
+
+  private ricorda(foto: Fotografia): void {
+    this.pilaPannello.push(foto);
+    if (this.pilaPannello.length > ANNULLA_PANNELLO_MAX) this.pilaPannello.shift();
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Aiuti                                                               */
   /* ------------------------------------------------------------------ */
+
+  /** Persone che guardano senza essere sedute. */
+  private spettatori(): number {
+    const seduti = new Set(this.posti.map((p) => p.token));
+    return new Set([...this.connessioni.values()].filter((t) => !seduti.has(t))).size;
+  }
 
   private postoDi(token: Token): Posto | undefined {
     return this.posti.find((p) => p.token === token);
@@ -925,10 +1134,11 @@ export class Stanza {
    * (o di chi è uscito). Se esce l'ultimo giocatore collegato, la partita va in pausa come quando chiude la pagina.
    * Il ruolo di host passa come dice `passaHost`.
    */
-  private registra(esito: Extract<Esito, { ok: true }>): void {
+  private registra(esito: Extract<Esito, { ok: true }>, dalPannello = false): void {
     const partita = esito.stato;
     this.partita = partita;
     if (partita.fase === 'finita') this.fase = 'finita';
+    if (!dalPannello) this.pilaPannello = [];
     const aperti = new Set(partita.scambi.map((x) => x.id));
     const fuori = new Set(partita.giocatori.filter((g) => g.eliminato).map((g) => g.id));
     this.togliAttivita(

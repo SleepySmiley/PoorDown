@@ -255,7 +255,7 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
 }
 
 /** La partita finisce: vince `vincitore` (a squadre, con tutta la sua squadra). `durata`: per la durata massima. */
-function chiudiPartita(ctx: Contesto, vincitore: Giocatore | undefined, durata = false): void {
+export function chiudiPartita(ctx: Contesto, vincitore: Giocatore | undefined, durata = false): void {
   const { s } = ctx;
   s.fase = 'finita';
   s.vincitore = vincitore?.id ?? null;
@@ -276,7 +276,7 @@ function chiudiPartita(ctx: Contesto, vincitore: Giocatore | undefined, durata =
  * La durata massima è arrivata: vince il patrimonio più alto tra chi è ancora in gioco. A squadre vince la squadra
  * con il patrimonio più alto (sommando i suoi giocatori ancora in gioco). A pari merito, chi viene prima nei turni.
  */
-function chiudiPerDurata(ctx: Contesto): void {
+export function chiudiPerDurata(ctx: Contesto): void {
   const { s } = ctx;
   const rimasti = attivi(s);
   const valore = new Map(rimasti.map((g) => [g.id, patrimonio(s, g.id)]));

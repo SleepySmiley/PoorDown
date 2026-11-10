@@ -3,6 +3,7 @@ import path from 'node:path';
 import express from 'express';
 import { Server } from 'socket.io';
 import { NOME_GIOCO, VERSIONE, type EventiClient, type EventiServer, type InfoServer } from '@poordown/engine';
+import { collegaPannello } from './pannello/rotte';
 import { apriBrowser, indirizziRete } from './rete';
 import { collegaSito } from './sito';
 import { AMBIENTE_REALE } from './stanze/ambiente';
@@ -71,6 +72,9 @@ app.get('/api/info', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json(info);
 });
+
+// Il pannello di controllo (/pannello): chiede il nome e la password scelti con "npm run pannello".
+collegaPannello(app, gestore, tempoReale);
 
 await collegaSito(app, server, sviluppo);
 
