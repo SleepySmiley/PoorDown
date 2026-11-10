@@ -54,7 +54,7 @@ export function Asta({
     <RiquadroTabellone titolo="Asta" className="asta">
       <p className="asta__proprieta">
         {c?.gruppo !== undefined ? (
-          <Stemma regione={tab.regioni[c.gruppo - 1]} bandiera={c.bandiera} className="asta__stemma" />
+          <Stemma regione={tab.regioni[c.gruppo - 1]} className="asta__stemma" />
         ) : (
           c?.icona && <Icona nome={c.icona} className="asta__icona" />
         )}

@@ -5,7 +5,7 @@ Tre tabelloni oltre al Classico ([tabellone-e-carte.md](tabellone-e-carte.md)), 
 | Tabellone | Caselle | Tema | Cosa cambia nel gioco |
 |---|---|---|---|
 | **Europa** | 48 (12 per lato) | Città europee, un gruppo per paese (Italia esclusa) | Giro più lungo: si passa meno spesso dalla Partenza. Tre servizi (luce, gas, acqua): con tre il moltiplicatore è ×20 |
-| **Grandi aree** | 40 | Macroaree italiane: Isole, Sud, Centro, Nord | Un solo gruppo per lato, da 5 o 6 città: completarlo è difficile, ma vale un lato intero |
+| **Grandi aree** | 40 | Quattro regioni italiane, una per lato: Sicilia, Puglia, Toscana, Veneto | Un solo gruppo per lato, da 5 o 6 città: completarlo è difficile, ma vale un lato intero |
 | **Colpo di fortuna** | 40 | Località turistiche italiane, un gruppo per zona | Città solo sui lati 1 e 3; i lati 2 e 4 sono carte, tasse e un **Rimborso** (+50 €). Niente servizi, Cartolina da 20 carte con più mete |
 
 Regole comuni:
@@ -107,68 +107,68 @@ Regole comuni:
 
 ## Grandi aree
 
-Ogni lato è una sola area d’Italia, da 5 o 6 città: completarla è difficile, ma vale un lato intero.
+Ogni lato è una sola regione d’Italia, da 5 o 6 città: completarla è difficile, ma vale un lato intero.
 
 | Gruppo | Sigla | Città | Casa e albergo |
 |---|---|---|---|
-| 1. Isole | ISO | Oristano, Nuoro, Agrigento, Trapani, Messina | 50 |
-| 2. Sud | SUD | Campobasso, Potenza, Cosenza, Pescara, Reggio Calabria, Bari | 125 |
-| 3. Centro | CEN | Rieti, Arezzo, Terni, Lucca, Ancona, Perugia | 150 |
-| 4. Nord | NOR | Udine, Trento, Genova, Bologna, Torino | 150 |
+| 1. Sicilia | SIC | Trapani, Agrigento, Messina, Catania, Palermo | 50 |
+| 2. Puglia | PUG | Foggia, Brindisi, Taranto, Lecce, Barletta, Bari | 125 |
+| 3. Toscana | TOS | Arezzo, Pisa, Livorno, Lucca, Siena, Firenze | 150 |
+| 4. Veneto | VEN | Casalserugo, San Pietro Viminario, Abano Terme, Vigodarzere, Mestrino | 150 |
 
-Le aree non hanno una bandiera vera: ogni città mostra quella della sua regione (Oristano la Sardegna, Bari la Puglia…). Il gruppo resta il lato intero.
+Prima i lati erano macroaree (Isole, Sud, Centro, Nord); sono diventati regioni intere perché ogni lato abbia una bandiera vera sola. I paesi del Veneto, in provincia di Padova, li ha scelti l’utente.
 
 ### Le 40 caselle
 
 | # | Casella | Tipo | Prezzo | Base | 1 casa | 2 case | 3 case | 4 case | Albergo |
 |---|---|---|---|---|---|---|---|---|---|
 | 0 | Partenza | Angolo |  |  |  |  |  |  |  |
-| 1 | Oristano | Città, gruppo 1 | 60 | 3 | 10 | 35 | 100 | 140 | 170 |
+| 1 | Trapani | Città, gruppo 1 | 60 | 3 | 10 | 35 | 100 | 140 | 170 |
 | 2 | Busta | Carta |  |  |  |  |  |  |  |
-| 3 | Nuoro | Città, gruppo 1 | 70 | 4 | 15 | 45 | 120 | 170 | 200 |
+| 3 | Agrigento | Città, gruppo 1 | 70 | 4 | 15 | 45 | 120 | 170 | 200 |
 | 4 | Imposta sul reddito | Tassa: 10% del contante |  |  |  |  |  |  |  |
 | 5 | Stazione Nord | Stazione | 200 |  |  |  |  |  |  |
-| 6 | Agrigento | Città, gruppo 1 | 100 | 6 | 25 | 70 | 190 | 260 | 320 |
-| 7 | Trapani | Città, gruppo 1 | 110 | 6 | 25 | 80 | 220 | 290 | 360 |
+| 6 | Messina | Città, gruppo 1 | 100 | 6 | 25 | 70 | 190 | 260 | 320 |
+| 7 | Catania | Città, gruppo 1 | 110 | 6 | 25 | 80 | 220 | 290 | 360 |
 | 8 | Cartolina | Carta |  |  |  |  |  |  |  |
-| 9 | Messina | Città, gruppo 1 | 120 | 7 | 30 | 90 | 250 | 330 | 400 |
+| 9 | Palermo | Città, gruppo 1 | 120 | 7 | 30 | 90 | 250 | 330 | 400 |
 | 10 | Prigione | Angolo |  |  |  |  |  |  |  |
-| 11 | Campobasso | Città, gruppo 2 | 140 | 9 | 35 | 110 | 300 | 400 | 490 |
+| 11 | Foggia | Città, gruppo 2 | 140 | 9 | 35 | 110 | 300 | 400 | 490 |
 | 12 | Rete elettrica | Servizio | 150 |  |  |  |  |  |  |
-| 13 | Potenza | Città, gruppo 2 | 150 | 10 | 40 | 120 | 330 | 440 | 530 |
-| 14 | Cosenza | Città, gruppo 2 | 160 | 11 | 45 | 140 | 360 | 480 | 580 |
+| 13 | Brindisi | Città, gruppo 2 | 150 | 10 | 40 | 120 | 330 | 440 | 530 |
+| 14 | Taranto | Città, gruppo 2 | 160 | 11 | 45 | 140 | 360 | 480 | 580 |
 | 15 | Stazione Est | Stazione | 200 |  |  |  |  |  |  |
-| 16 | Pescara | Città, gruppo 2 | 170 | 12 | 50 | 150 | 395 | 520 | 630 |
+| 16 | Lecce | Città, gruppo 2 | 170 | 12 | 50 | 150 | 395 | 520 | 630 |
 | 17 | Busta | Carta |  |  |  |  |  |  |  |
-| 18 | Reggio Calabria | Città, gruppo 2 | 180 | 13 | 55 | 160 | 430 | 560 | 680 |
+| 18 | Barletta | Città, gruppo 2 | 180 | 13 | 55 | 160 | 430 | 560 | 680 |
 | 19 | Bari | Città, gruppo 2 | 200 | 15 | 65 | 190 | 500 | 650 | 780 |
 | 20 | Vacanza | Angolo |  |  |  |  |  |  |  |
-| 21 | Rieti | Città, gruppo 3 | 220 | 17 | 75 | 220 | 570 | 740 | 880 |
+| 21 | Arezzo | Città, gruppo 3 | 220 | 17 | 75 | 220 | 570 | 740 | 880 |
 | 22 | Cartolina | Carta |  |  |  |  |  |  |  |
-| 23 | Arezzo | Città, gruppo 3 | 230 | 18 | 80 | 230 | 610 | 780 | 940 |
-| 24 | Terni | Città, gruppo 3 | 240 | 20 | 85 | 250 | 645 | 830 | 995 |
+| 23 | Pisa | Città, gruppo 3 | 230 | 18 | 80 | 230 | 610 | 780 | 940 |
+| 24 | Livorno | Città, gruppo 3 | 240 | 20 | 85 | 250 | 645 | 830 | 995 |
 | 25 | Stazione Sud | Stazione | 200 |  |  |  |  |  |  |
 | 26 | Lucca | Città, gruppo 3 | 250 | 21 | 90 | 270 | 680 | 880 | 1050 |
 | 27 | Acquedotto | Servizio | 150 |  |  |  |  |  |  |
-| 28 | Ancona | Città, gruppo 3 | 260 | 22 | 95 | 280 | 720 | 920 | 1100 |
-| 29 | Perugia | Città, gruppo 3 | 280 | 25 | 105 | 320 | 805 | 1025 | 1215 |
+| 28 | Siena | Città, gruppo 3 | 260 | 22 | 95 | 280 | 720 | 920 | 1100 |
+| 29 | Firenze | Città, gruppo 3 | 280 | 25 | 105 | 320 | 805 | 1025 | 1215 |
 | 30 | Vai in prigione | Angolo |  |  |  |  |  |  |  |
-| 31 | Udine | Città, gruppo 4 | 300 | 28 | 120 | 360 | 890 | 1125 | 1325 |
-| 32 | Trento | Città, gruppo 4 | 310 | 29 | 130 | 380 | 930 | 1175 | 1400 |
+| 31 | Casalserugo | Città, gruppo 4 | 300 | 28 | 120 | 360 | 890 | 1125 | 1325 |
+| 32 | San Pietro Viminario | Città, gruppo 4 | 310 | 29 | 130 | 380 | 930 | 1175 | 1400 |
 | 33 | Busta | Carta |  |  |  |  |  |  |  |
-| 34 | Genova | Città, gruppo 4 | 330 | 32 | 140 | 420 | 1025 | 1275 | 1500 |
+| 34 | Abano Terme | Città, gruppo 4 | 330 | 32 | 140 | 420 | 1025 | 1275 | 1500 |
 | 35 | Stazione Ovest | Stazione | 200 |  |  |  |  |  |  |
 | 36 | Cartolina | Carta |  |  |  |  |  |  |  |
-| 37 | Bologna | Città, gruppo 4 | 360 | 37 | 160 | 480 | 1150 | 1425 | 1675 |
+| 37 | Vigodarzere | Città, gruppo 4 | 360 | 37 | 160 | 480 | 1150 | 1425 | 1675 |
 | 38 | Tassa di soggiorno | Tassa: 75 € |  |  |  |  |  |  |  |
-| 39 | Torino | Città, gruppo 4 | 400 | 44 | 190 | 580 | 1350 | 1625 | 1925 |
+| 39 | Mestrino | Città, gruppo 4 | 400 | 44 | 190 | 580 | 1350 | 1625 | 1925 |
 
 ### Cartolina
 
 1. Torna alla Partenza.
-2. Vai a Campobasso.
-3. Vai a Terni.
-4. Vai a Torino.
+2. Vai a Foggia.
+3. Vai a Livorno.
+4. Vai a Mestrino.
 5. Vai alla Stazione Nord.
 6. Vai alla stazione più vicina.
 7. Vai al servizio più vicino.

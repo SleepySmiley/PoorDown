@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
-import { euro, type Bandiera, type Regione } from '@poordown/engine';
+import { euro, type Regione } from '@poordown/engine';
 import { DisegnoBandiera } from './bandiere';
 import { Icona, type NomeIcona } from './icone';
 import { SCORRE } from './movimento';
@@ -117,21 +117,12 @@ const BORDO_BANDIERA = 2;
  * Scudo della regione con la sigla, smaltato: contorno scuro, filo crema, riflesso in alto.
  * Forma diversa dalle pedine, così non si confondono. Se la regione è un paese, la sua bandiera.
  */
-export function Stemma({
-  regione,
-  bandiera,
-  className,
-}: {
-  regione: Regione | undefined;
-  /** La bandiera della singola città, se il gruppo non ne ha una sola (Grandi aree). */
-  bandiera?: Bandiera;
-  className?: string;
-}): ReactNode {
+export function Stemma({ regione, className }: { regione: Regione | undefined; className?: string }): ReactNode {
   // Un id per il riflesso di ogni scudo (useId ha caratteri che negli url() di SVG non servono).
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const luce = `stemma-luce-${id}`;
   if (!regione) return null;
-  const paese = bandiera ?? regione.bandiera;
+  const paese = regione.bandiera;
   if (paese) {
     // I paesi: la bandiera smaltata, con lo stesso contorno scuro, riflesso e filo crema dello scudo.
     const taglio = `stemma-taglio-${id}`;

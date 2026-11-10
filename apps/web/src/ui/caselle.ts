@@ -3,7 +3,7 @@
  * I dati veri (prezzi, affitti, regioni) vengono dal motore; qui si aggiunge solo l'aspetto.
  */
 
-import { euro, tabellone, type Bandiera, type Casella, type IdMappa, type Tabellone } from '@poordown/engine';
+import { euro, tabellone, type Casella, type IdMappa, type Tabellone } from '@poordown/engine';
 import type { NomeIcona } from './icone';
 
 export type TipoVista = 'citta' | 'stazione' | 'servizio' | 'carta' | 'tassa' | 'premio' | 'angolo';
@@ -23,8 +23,6 @@ export interface CasellaVista {
   gruppo?: number;
   /** Colore dello stemma della regione (le variabili --g1…--g10), solo per le città. */
   tinta?: number;
-  /** La bandiera della città, se diversa da quella del gruppo (Grandi aree). */
-  bandiera?: Bandiera;
   /** Angoli: 0 Partenza, 1 Prigione, 2 Vacanza, 3 Vai in prigione (per gli arrotondamenti e la disposizione). */
   angolo?: number;
   icona?: NomeIcona;
@@ -44,14 +42,7 @@ function vista(tab: Tabellone, c: Casella, n: number): CasellaVista {
   const lato = tab.caselle.length / 4;
   switch (c.tipo) {
     case 'citta':
-      return {
-        ...base,
-        tipo: 'citta',
-        prezzo: c.prezzo,
-        gruppo: c.regione + 1,
-        tinta: tab.regioni[c.regione]?.colore ?? c.regione + 1,
-        ...(c.bandiera ? { bandiera: c.bandiera } : {}),
-      };
+      return { ...base, tipo: 'citta', prezzo: c.prezzo, gruppo: c.regione + 1, tinta: tab.regioni[c.regione]?.colore ?? c.regione + 1 };
     case 'stazione':
       return { ...base, tipo: 'stazione', prezzo: c.prezzo, icona: 'treno' };
     case 'servizio':

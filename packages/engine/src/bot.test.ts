@@ -225,7 +225,7 @@ describe('decisioni dei bot', () => {
   });
 
   it('nelle regioni grandi e divise compra una città alla volta da chi ne ha di meno', () => {
-    // Grandi aree, Nord: Udine 31, Trento 32, Genova 34, Bologna 37, Torino 39 (400 €).
+    // Grandi aree, Veneto: Casalserugo 31, San Pietro Viminario 32, Abano Terme 34, Vigodarzere 37, Mestrino 39 (400 €).
     const nord = (c: number[], d: number[]) => assegna(assegna(assegna(assegna(partitaDiProva(4, { mappa: 'grandi_aree' }), 'a', 31, 32), 'b', 34), 'c', ...c), 'd', ...d);
     // 'a' ne ha due, gli altri una a testa: chiede la più cara, pagandola quanto basta perché un bot accetti.
     const s = nord([37], [39]);
@@ -282,7 +282,7 @@ describe('decisioni dei bot', () => {
     // Toscana: Siena 11 (140), Pisa 13 (150), Firenze 14 (160). 'a' ha Siena e chiede Pisa e Firenze insieme:
     // nessuna delle due da sola gli completa la regione, ma insieme sì.
     expect(risposta(assegna(assegna(partitaDiProva(2), 'a', 11), 'b', 13, 14), [], 345, [13, 14], 0)).toBe('rifiuta');
-    // Grandi aree, Nord: 'a' ha Udine e Trento e chiede le altre tre città per poco più del loro prezzo (1090).
+    // Grandi aree, Veneto: 'a' ha Casalserugo e San Pietro Viminario e chiede le altre tre città per poco più del loro prezzo (1090).
     const nord = assegna(assegna(partitaDiProva(2, { mappa: 'grandi_aree' }), 'a', 31, 32), 'b', 34, 37, 39);
     expect(risposta(nord, [], 1200, [34, 37, 39], 0)).toBe('rifiuta');
     // Al contrario: il bot ha Siena, e Pisa con Firenze gli completano la Toscana. Le paga volentieri più del prezzo.

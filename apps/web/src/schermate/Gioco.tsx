@@ -842,7 +842,7 @@ export function Gioco({
                             }}
                           >
                             {c.gruppo ? (
-                              <Stemma regione={tab.regioni[c.gruppo - 1]} bandiera={c.bandiera} className="stemma--lista" />
+                              <Stemma regione={tab.regioni[c.gruppo - 1]} className="stemma--lista" />
                             ) : (
                               c.icona && <Icona nome={c.icona} className="mie__icona" />
                             )}

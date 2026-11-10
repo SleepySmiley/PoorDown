@@ -57,8 +57,6 @@ export interface Citta extends CasellaBase {
   tipo: 'citta';
   /** Indice in `Tabellone.regioni`. */
   regione: number;
-  /** La bandiera della città quando il gruppo non è una regione vera (Grandi aree: Isole, Sud…). */
-  bandiera?: Bandiera;
   prezzo: number;
   affitti: Affitti;
 }

@@ -191,7 +191,7 @@ export function SchedaProprieta({
     <Contenitore className={classi} style={stile} aria-label={`Scheda di ${c.nome}`} {...(animata ? COMPARSA : {})}>
       <header className={regione ? 'scheda__testa' : 'scheda__testa scheda__testa--senza-regione'}>
         {regione ? (
-          <Stemma regione={regione} bandiera={c.bandiera} className="scheda__stemma" />
+          <Stemma regione={regione} className="scheda__stemma" />
         ) : (
           c.icona && (
             <span className="scheda__pittogramma">
@@ -378,7 +378,7 @@ function CasellaTabellone({
     `casella--${lato}`,
     `casella--${c.tipo}`,
     c.tipo === 'angolo' ? `casella--angolo-${c.angolo}` : '',
-    (c.bandiera ?? regione?.bandiera) ? 'casella--bandiera' : '',
+    regione?.bandiera ? 'casella--bandiera' : '',
     p ? 'casella--posseduta' : '',
     p?.ipotecata ? 'casella--ipotecata' : '',
     stato.selezionata ? 'casella--selezionata' : '',
@@ -433,7 +433,7 @@ function CasellaTabellone({
     // la corsia delle pedine, poi prezzo o blocco del proprietario (carte e tasse: il nome).
     corpo = (
       <span className="casella__corpo">
-        {c.gruppo !== undefined && <Stemma regione={regione} bandiera={c.bandiera} className="casella__stemma" />}
+        {c.gruppo !== undefined && <Stemma regione={regione} className="casella__stemma" />}
         {(c.icona || c.importo) && (
           <span className="casella__segnale">
             {c.icona && <IconaCasella nome={c.icona} className="casella__icona" />}
