@@ -1,0 +1,7 @@
+# Nel pacchetto .vsix entra solo l'estensione compilata (vedi scripts/compila.mjs), con icona e documenti.
+**
+!dist/**
+!media/icona.png
+!README.md
+!CHANGELOG.md
+!LICENSE*

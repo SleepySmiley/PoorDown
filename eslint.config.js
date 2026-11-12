@@ -10,7 +10,7 @@ export default defineConfig([
   js.configs.recommended,
   tseslint.configs.recommended,
   {
-    files: ['**/*.{js,ts}'],
+    files: ['**/*.{js,mjs,ts}'],
     ignores: ['apps/web/src/**'],
     languageOptions: { globals: globals.node },
   },

@@ -3,6 +3,7 @@ import path from 'node:path';
 import express from 'express';
 import { Server } from 'socket.io';
 import { NOME_GIOCO, VERSIONE, type EventiClient, type EventiServer, type InfoServer } from '@poordown/engine';
+import { avvisaGenitore, conGenitore, spegniConIlGenitore } from './genitore';
 import { collegaPannello } from './pannello/rotte';
 import { apriBrowser, indirizziRete } from './rete';
 import { collegaSito } from './sito';
@@ -46,13 +47,14 @@ setInterval(() => {
 }, MANUTENZIONE_MS).unref();
 
 // Prima di spegnersi salva le stanze, così le partite riprendono al riavvio.
-// SIGHUP è la finestra del terminale chiusa su Windows (il modo normale di spegnere dopo il doppio clic).
-for (const segnale of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
-  process.on(segnale, () => {
-    archivio.salvaOra();
-    process.exit(0);
-  });
+function spegni(): void {
+  archivio.salvaOra();
+  process.exit(0);
 }
+// SIGHUP è la finestra del terminale chiusa su Windows (il modo normale di spegnere dopo il doppio clic).
+for (const segnale of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) process.on(segnale, spegni);
+// Dentro VS Code i segnali non servono (su Windows un processo figlio si chiude solo a forza): lo chiede l'estensione.
+spegniConIlGenitore(spegni);
 
 const tunnel = online ? new Tunnel(porta, cartellaDati(), avvisiTunnel()) : null;
 // Il tunnel è un programma a parte: si spegne con il server.
@@ -80,6 +82,7 @@ await collegaSito(app, server, sviluppo);
 
 server.on('error', (errore: NodeJS.ErrnoException) => {
   if (errore.code === 'EADDRINUSE') {
+    avvisaGenitore({ tipo: 'porta-occupata', porta });
     console.error(`\n  La porta ${porta} è già occupata: forse ${NOME_GIOCO} è già acceso in un'altra finestra.`);
     console.error('  Chiudi l\'altra finestra, oppure scegli un\'altra porta con la variabile PORT (vedi README).\n');
     process.exit(1);
@@ -89,6 +92,7 @@ server.on('error', (errore: NodeJS.ErrnoException) => {
 
 server.listen(porta, () => {
   stampaIndirizzi();
+  avvisaGenitore({ tipo: 'acceso', porta, indirizzi: indirizziRete().map(({ ip }) => `http://${ip}:${porta}`) });
   // Avvio con doppio clic (scripts/avvia.js): il browser si apre quando il server è pronto.
   if (process.env.POORDOWN_APRI === '1') apriBrowser(`http://localhost:${porta}`);
   tunnel?.avvia();
@@ -125,11 +129,16 @@ function stampaIndirizzi(): void {
   righe.push(
     '',
     '  Se Windows chiede il permesso del firewall, consenti l\'accesso alle reti private.',
-    // Dopo il doppio clic la finestra è solo di PoorDown: chiuderla è il modo più semplice.
-    process.env.POORDOWN_APRI === '1' ? '  Per spegnere: chiudi questa finestra' : '  Per spegnere: Ctrl+C',
+    comeSpegnere(),
     '',
   );
   console.log(righe.join('\n'));
+}
+
+function comeSpegnere(): string {
+  if (conGenitore()) return '  Per spegnere: comando «PoorDown: Spegni il gioco», oppure chiudi VS Code';
+  // Dopo il doppio clic la finestra è solo di PoorDown: chiuderla è il modo più semplice.
+  return process.env.POORDOWN_APRI === '1' ? '  Per spegnere: chiudi questa finestra' : '  Per spegnere: Ctrl+C';
 }
 
 function avvisiTunnel(): ConstructorParameters<typeof Tunnel>[2] {
@@ -138,6 +147,7 @@ function avvisiTunnel(): ConstructorParameters<typeof Tunnel>[2] {
     pronto(indirizzo) {
       const cambiato = ultimo !== null && ultimo !== indirizzo;
       ultimo = indirizzo;
+      avvisaGenitore({ tipo: 'online', indirizzo });
       console.log(
         [
           '',
@@ -148,6 +158,7 @@ function avvisiTunnel(): ConstructorParameters<typeof Tunnel>[2] {
       );
     },
     problema(motivo) {
+      avvisaGenitore({ tipo: 'problema-online', motivo });
       console.log(`\n  Online: non riesco ad aprire il link (${motivo}). Riprovo da solo; intanto si gioca sulla rete di casa.\n`);
     },
     nota(testo) {

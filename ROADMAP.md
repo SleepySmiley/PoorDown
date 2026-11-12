@@ -196,6 +196,18 @@ Scelta del 2026-11-09: un **tunnel rapido di Cloudflare** dal PC che fa da serve
 - [x] Verificato con due Edge, l'host sul PC e l'ospite dal link pubblico: lobby, inizio partita, dadi, WebSocket `wss://`, ricarica con il posto ritrovato, tunnel chiuso a forza e riaperto con un link nuovo
 - Limite: il link cambia a ogni accensione e il browser lega il giocatore all'indirizzo, quindi chi gioca da lontano non ritrova il posto nelle partite riprese. Un indirizzo fisso richiede un tunnel con nome (account Cloudflare e dominio)
 
+### Fase 11 — Estensione di VS Code · M
+Scelta del 2026-11-12: un'estensione che accende il server di sempre e mostra il sito in un riquadro, invece di riscrivere il sito per le webview. Da pubblicare sul Marketplace.
+- [x] `apps/vscode`: comandi Avvia (anche online), Avvia solo per la rete di casa, Entra in una partita con un link, Copia l'indirizzo, Pannello di controllo (apertura e nome/password senza terminale), Messaggi del server, Spegni; barra di stato con gli indirizzi e «Tocca a te»; impostazione `poordown.porta`
+- [x] Il server gira con il Node.js di VS Code in un processo a parte, parla con l'estensione sul canale IPC e si spegne salvando quando lei lo chiede o sparisce; se sulla porta c'è già un PoorDown si usa quello
+- [x] Il sito, dentro VS Code, manda il titolo alla scheda e copia i link tramite l'estensione (solo link http(s), al massimo uno al secondo)
+- [x] `npm run estensione` crea `poordown.vsix` (1,2 MB) con estensione, server in un file solo, sito e licenze dei 120 pacchetti inclusi
+- [x] Verificato in una copia isolata di VS Code 1.125 con il `.vsix` scompattato, lontano dai pacchetti del progetto: attivazione, accensione, gioco caricato nel riquadro che risponde all'estensione, secondo Avvia senza secondo server, spegnimento con porta liberata e partite salvate. Il server compilato, provato a parte: porta occupata, spegnimento chiesto e VS Code che sparisce
+- [x] I link della rete di casa (`http://192.168…`) si aprono nel riquadro come quelli online
+- [ ] Gioco online dentro l'estensione non provato (su questo PC manca `cloudflared`): il tunnel è lo stesso di `npm run online`
+- [x] Editore `PoorDown` creato sul Marketplace; licenza MIT
+- [ ] Pubblicazione: caricare `poordown.vsix` dalla pagina dell'editore (vedi README)
+
 ---
 
 ## 4. Punti non verificati su richup e come li trattiamo

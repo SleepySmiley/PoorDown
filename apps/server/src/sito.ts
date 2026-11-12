@@ -9,7 +9,8 @@ const cartellaWeb = fileURLToPath(new URL('../../web/', import.meta.url));
 /**
  * Collega il sito al server.
  * - Sviluppo: Vite gira dentro questo processo, sulla stessa porta, con aggiornamento istantaneo.
- * - Normale: serve la versione compilata in apps/web/dist.
+ * - Normale: serve la versione compilata in apps/web/dist, o nella cartella indicata da POORDOWN_SITO
+ *   (l'estensione di VS Code porta con sé la sua copia del sito).
  */
 export async function collegaSito(app: Express, server: ServerHttp, sviluppo: boolean): Promise<void> {
   if (sviluppo) {
@@ -27,7 +28,7 @@ export async function collegaSito(app: Express, server: ServerHttp, sviluppo: bo
     return;
   }
 
-  const cartellaBuild = path.join(cartellaWeb, 'dist');
+  const cartellaBuild = process.env.POORDOWN_SITO ? path.resolve(process.env.POORDOWN_SITO) : path.join(cartellaWeb, 'dist');
   const paginaPrincipale = path.join(cartellaBuild, 'index.html');
   if (!existsSync(paginaPrincipale)) {
     throw new Error('Manca la versione compilata del sito: avvia con "npm start" oppure esegui prima "npm run build".');

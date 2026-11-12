@@ -19,6 +19,7 @@
     "preonline": "npm run build",
     "online": "npm run online -w @poordown/server",
     "pannello": "npm run pannello --silent -w @poordown/server --",
+    "estensione": "npm run pacchetto -w apps/vscode",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",

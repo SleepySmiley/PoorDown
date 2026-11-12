@@ -78,6 +78,7 @@ Le stanze vengono salvate su file mentre si gioca, così una partita riprende an
 | `npm start` | Come sopra, ma solo per la rete di casa |
 | `npm run dev` | Modalità sviluppo: le modifiche al codice compaiono subito nel browser. Su `/suoni` si ascoltano tutti i suoni |
 | `npm run build` | Compila solo il sito in `apps/web/dist` |
+| `npm run estensione` | Crea l'estensione di VS Code in `apps/vscode/poordown.vsix` |
 | `npm test` | Esegue i test |
 | `npm run lint` | Controlla il codice con ESLint |
 | `npm run typecheck` | Controlla i tipi TypeScript |
@@ -89,7 +90,29 @@ Le stanze vengono salvate su file mentre si gioca, così una partita riprende an
 packages/engine   regole del gioco, condivise tra server e browser
 apps/server       server Node: serve il sito e gestisce stanze e partite (Express + Socket.IO)
 apps/web          interfaccia (React + Vite)
+apps/vscode       estensione di VS Code: accende il server e apre il gioco in un riquadro
 docs/analisi      analisi di riferimento usata come specifica
 ```
+
+## Estensione di VS Code
+
+L'estensione fa da VS Code quello che fa il doppio clic: accende il gioco (anche online) e lo apre in un riquadro, senza installare Node.js, perché usa quello di VS Code. Gli amici entrano dal browser come sempre. Cosa vede chi la installa: [apps/vscode/README.md](apps/vscode/README.md), che è anche la pagina del Marketplace.
+
+Come è fatta:
+
+- `npm run estensione` compila tutto in `apps/vscode/dist` (estensione, server in un file solo con esbuild, sito, licenze dei pacchetti inclusi) e crea `apps/vscode/poordown.vsix`;
+- il server gira in un processo a parte, con `POORDOWN_GENITORE=vscode`: racconta all'estensione quando è acceso, il link online e la porta occupata, e si spegne (salvando) quando lei lo chiede o quando VS Code si chiude ([genitore.ts](apps/server/src/genitore.ts));
+- il riquadro è una webview con il sito in una cornice; il sito se ne accorge e manda a VS Code il titolo della pagina («● Tocca a te» sulla scheda) e i link da copiare ([vscode.ts](apps/web/src/vscode.ts)).
+
+Per provarla senza pubblicarla: in VS Code, Estensioni → «…» → **Installa da VSIX…** e scegli `apps/vscode/poordown.vsix`.
+
+### Pubblicarla sul Marketplace
+
+1. L'editore è `PoorDown` su [marketplace.visualstudio.com/manage](https://marketplace.visualstudio.com/manage): il suo ID, maiuscole comprese, è il campo `publisher` di `apps/vscode/package.json`.
+2. L'estensione è sotto licenza MIT ([apps/vscode/LICENSE](apps/vscode/LICENSE)).
+3. `npm run estensione`, poi dalla pagina dell'editore **New extension → Visual Studio Code** e carica `poordown.vsix`. In alternativa da terminale: `npx @vscode/vsce@4.1.0 login <editore>` e `npx @vscode/vsce@4.1.0 publish --packagePath apps/vscode/poordown.vsix`.
+4. Per VSCodium, Cursor e gli altri editor che usano Open VSX: `npx ovsx publish apps/vscode/poordown.vsix -p <token>` con un token di [open-vsx.org](https://open-vsx.org).
+
+A ogni nuova versione aumenta `version` in `apps/vscode/package.json` e scrivi le novità in `apps/vscode/CHANGELOG.md`.
 
 In sviluppo il server avvia Vite al suo interno, quindi sito e partite stanno sempre sullo stesso indirizzo e sulla stessa porta. Il codice TypeScript viene eseguito con `tsx`, senza un passaggio di compilazione per il server.
