@@ -18,7 +18,7 @@ import {
   type Stato,
 } from '@poordown/engine';
 import { caselleVista, type CasellaVista } from '../ui/caselle';
-import { Pedina, Soldi, Stemma } from '../ui/comuni';
+import { Pedina, SfondoBandiera, Soldi, Stemma } from '../ui/comuni';
 import { CORNICE, FASCIA_VISITA, FUGA, geometria, righeAffitto, type Geometria } from '../ui/geometria';
 import { Icona, IconaCasella } from '../ui/icone';
 import { COMPARSA, CURVA, DURATA } from '../ui/movimento';
@@ -472,6 +472,8 @@ function CasellaTabellone({
       aria-label={`${c.nome}${descrizione}`}
       aria-expanded={stato.selezionata}
     >
+      {/* Fuori dal corpo, che nelle colonne è ruotato: la bandiera sfocata resta dritta. */}
+      {c.tipo === 'citta' && <SfondoBandiera regione={regione} className="casella__sfondo" />}
       {corpo}
     </button>
   );

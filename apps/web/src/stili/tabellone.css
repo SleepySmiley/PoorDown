@@ -1,6 +1,7 @@
 /* Tabellone: 11×11 (13×13 con 48 caselle), Partenza in alto a sinistra, senso orario.
    È un oggetto sul tavolo: una lastra con la cornice, caselle smaltate separate da fughe, il centro incassato.
-   La luce viene sempre dall'alto. L'unico colore pieno sulle caselle è il proprietario; la regione sta nello stemma;
+   La luce viene sempre dall'alto. L'unico colore pieno sulle caselle è il proprietario; la regione sta nello stemma
+   (e, molto sfocata, nella bandiera sotto le città);
    il blu segnaletica solo sui cartelli degli angoli. Tutte le misure in k (1 k = 1 px con il tabellone da 820 px). */
 
 .tabellone {
@@ -102,6 +103,46 @@ button.casella:hover {
   --buco: var(--tab-casella-hover);
 
   background: linear-gradient(180deg, var(--tab-casella-hover) 0%, var(--tab-casella-alto) 100%);
+}
+
+/* Città: sotto il nome la bandiera della regione, stirata e molto sfocata. Non si legge come bandiera,
+   colora la casella del suo paese e stacca le proprietà da carte, tasse e angoli.
+   Rientra di 1 k così il filo di luce e l'ombra dello smalto restano visibili; il disegno sborda
+   oltre il ritaglio perché la sfocatura non sbiadisca verso i bordi. */
+.casella__sfondo {
+  position: absolute;
+  inset: 1px;
+  overflow: hidden;
+  border-radius: inherit;
+  opacity: 0.5;
+  pointer-events: none;
+  transition:
+    opacity var(--d-lenta),
+    filter var(--d-lenta);
+}
+
+.casella__sfondo svg {
+  position: absolute;
+  inset: calc(var(--k) * -14);
+  width: calc(100% + var(--k) * 28);
+  height: calc(100% + var(--k) * 28);
+  filter: blur(calc(var(--k) * 11)) saturate(1.15);
+}
+
+/* Un velo scuro sopra la bandiera: le bande chiare (bianco, giallo) non spengono il nome crema. */
+.casella__sfondo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(20 22 28 / 0.28), rgb(20 22 28 / 0.42));
+}
+
+button.casella:hover .casella__sfondo {
+  opacity: 0.68;
+}
+
+.casella--citta .casella__nome {
+  text-shadow: 0 1px calc(var(--k) * 3) rgb(0 0 0 / 0.55);
 }
 
 .casella--selezionata {
@@ -698,6 +739,11 @@ button.casella:hover {
 
 .casella--ipotecata::before {
   opacity: 1;
+}
+
+/* Ipotecata: la bandiera sfocata si spegne e lascia vedere il tratteggio. */
+.casella--ipotecata .casella__sfondo {
+  opacity: 0;
 }
 
 .casella--ipotecata .casella__nome,

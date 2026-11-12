@@ -174,6 +174,22 @@ export function Stemma({ regione, className }: { regione: Regione | undefined; c
   );
 }
 
+/**
+ * La bandiera della regione stirata su tutta la casella, da sfocare (tabellone.css): non si legge come bandiera,
+ * dà solo il colore del paese e fa riconoscere al volo le proprietà dalle altre caselle.
+ */
+export function SfondoBandiera({ regione, className }: { regione: Regione | undefined; className?: string }): ReactNode {
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!regione?.bandiera) return null;
+  return (
+    <span className={className} aria-hidden="true">
+      <svg viewBox="0 0 30 20" preserveAspectRatio="none">
+        <DisegnoBandiera paese={regione.bandiera} id={`sfondo-${id}`} />
+      </svg>
+    </span>
+  );
+}
+
 const PUNTI: Record<number, number[]> = {
   1: [5],
   2: [1, 9],
