@@ -78,13 +78,26 @@ export class ServerLocale {
   }
 
   /** Accende il server (o trova quello già acceso). Rifiuta con `PortaOccupata` se la porta è di un altro programma. */
-  accendi(porta: number, online: boolean): Promise<StatoServer> {
-    if (this.accensione) return this.accensione;
-    if (this._stato.tipo === 'acceso' || this._stato.tipo === 'altrove') return Promise.resolve(this._stato);
-    this.accensione = this.avvia(porta, online).finally(() => {
-      this.accensione = null;
-    });
+  async accendi(porta: number, online: boolean): Promise<StatoServer> {
+    // Quello acceso altrove può essersi spento (l'altra finestra chiusa): allora si accende il nostro.
+    if (!this.accensione) await this.verifica();
+    if (!this.accensione) {
+      if (this._stato.tipo === 'acceso' || this._stato.tipo === 'altrove') return this._stato;
+      this.accensione = this.avvia(porta, online).finally(() => {
+        this.accensione = null;
+      });
+    }
     return this.accensione;
+  }
+
+  /**
+   * Lo stato, dopo aver guardato se quello acceso altrove risponde ancora. Nessuno avvisa questa finestra quando
+   * l'altra lo spegne: senza questo controllo resterebbe «acceso» per sempre e non si potrebbe riaccendere da qui.
+   */
+  async verifica(): Promise<StatoServer> {
+    const stato = this._stato;
+    if (stato.tipo === 'altrove' && !(await infoServer(stato.porta)) && this._stato === stato) this.cambia({ tipo: 'spento' });
+    return this._stato;
   }
 
   private async avvia(porta: number, online: boolean): Promise<StatoServer> {

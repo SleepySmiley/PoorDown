@@ -8,6 +8,11 @@ import { useSyncExternalStore } from 'react';
 const CHIAVE = 'poordown:volume';
 const PREDEFINITO = 70;
 
+/**
+ * Il volume salvato. Tutto dentro il try, anche il solo nominare `localStorage`: in una cornice di un altro sito
+ * con l'archivio bloccato già leggerlo lancia un errore (anche con `typeof`), e qui siamo all'avvio della pagina.
+ * Senza archivio (o nei test) vale il predefinito.
+ */
 function leggiSalvato(): number {
   try {
     const salvato = localStorage.getItem(CHIAVE);
@@ -18,7 +23,7 @@ function leggiSalvato(): number {
   }
 }
 
-let valore = typeof localStorage === 'undefined' ? PREDEFINITO : leggiSalvato();
+let valore = leggiSalvato();
 let udibile = valore > 0 ? valore : PREDEFINITO;
 const ascoltatori = new Set<() => void>();
 

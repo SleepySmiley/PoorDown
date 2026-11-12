@@ -36,6 +36,11 @@ export async function collegaSito(app: Express, server: ServerHttp, sviluppo: bo
 
   // I file in /assets hanno l'impronta nel nome: il browser può tenerli in cache per sempre.
   app.use('/assets', express.static(path.join(cartellaBuild, 'assets'), { immutable: true, maxAge: '1y' }));
+  // Un file che non c'è (es. di una versione precedente, chiesto da una pagina rimasta aperta) è un 404,
+  // non la pagina dell'app: al posto di uno script il browser riceverebbe HTML.
+  app.use('/assets', (_req, res) => {
+    res.sendStatus(404);
+  });
   app.use(express.static(cartellaBuild, { index: false }));
   // Ogni altro indirizzo (es. /stanza/abcde) apre l'app, che decide cosa mostrare.
   app.use((req, res, next) => {
@@ -44,6 +49,8 @@ export async function collegaSito(app: Express, server: ServerHttp, sviluppo: bo
       return;
     }
     res.setHeader('Cache-Control', 'no-cache');
-    res.sendFile(paginaPrincipale);
+    // Con `root` il controllo sui file nascosti guarda solo 'index.html': il percorso assoluto
+    // dell'estensione installata passa da ~/.vscode, e send risponderebbe 404 per quel punto.
+    res.sendFile('index.html', { root: cartellaBuild });
   });
 }

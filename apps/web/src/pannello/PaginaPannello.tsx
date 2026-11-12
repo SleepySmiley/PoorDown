@@ -142,6 +142,9 @@ function Spento({ onRiprova }: { onRiprova: () => void }): ReactNode {
         nella cartella di PoorDown e scrivi
       </p>
       <code className="pc-spento__comando">npm run pannello</code>
+      <p className="pc-ingresso__testo">
+        Con l’estensione di VS Code usa invece il comando «PoorDown: Imposta l’accesso al pannello di controllo».
+      </p>
       <Pulsante variante="primario" largo onClick={onRiprova}>
         Fatto, riprova
       </Pulsante>

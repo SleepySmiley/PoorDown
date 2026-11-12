@@ -1,5 +1,9 @@
 # Novità
 
+## 0.1.1
+
+- Corretto: con l'estensione installata il riquadro del gioco mostrava «Not Found» invece della partita.
+
 ## 0.1.0
 
 Prima versione.

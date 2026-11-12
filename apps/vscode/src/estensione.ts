@@ -186,7 +186,7 @@ export function activate(contesto: vscode.ExtensionContext): ApiPoorDown {
   }
 
   async function apriGioco(): Promise<void> {
-    const stato = locale.stato;
+    const stato = await locale.verifica();
     if (acceso(stato)) await apriLocale(stato.porta);
     else await accendiEApri(true);
   }
@@ -233,7 +233,7 @@ export function activate(contesto: vscode.ExtensionContext): ApiPoorDown {
   }
 
   async function apriPannelloDiControllo(): Promise<void> {
-    const stato = locale.stato;
+    const stato = await locale.verifica();
     if (!acceso(stato)) {
       const scelta = await vscode.window.showInformationMessage('Il pannello di controllo si apre con il gioco acceso.', 'Avvia il gioco');
       if (scelta) await accendiEApri(true);
@@ -265,7 +265,7 @@ export function activate(contesto: vscode.ExtensionContext): ApiPoorDown {
   }
 
   async function spegni(): Promise<void> {
-    const stato = locale.stato;
+    const stato = await locale.verifica();
     if (stato.tipo === 'altrove') {
       void vscode.window.showInformationMessage(
         'PoorDown è acceso fuori da questa finestra (in un’altra finestra di VS Code o con il doppio clic): spegnilo da lì.',
@@ -291,7 +291,8 @@ export function activate(contesto: vscode.ExtensionContext): ApiPoorDown {
 
   async function menu(): Promise<void> {
     type Voce = vscode.QuickPickItem & { azione: () => unknown };
-    const stato = locale.stato;
+    // Le voci giuste anche se il PoorDown acceso altrove nel frattempo si è spento.
+    const stato = await locale.verifica();
     const voci: Voce[] = acceso(stato)
       ? [
           { label: '$(play) Apri il gioco', azione: apriGioco },

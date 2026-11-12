@@ -58,10 +58,13 @@ export function StatoCompleto({ partita, esegui }: { partita: Stato; esegui: Ese
           misura="piccolo"
           icona="copia"
           onClick={() =>
-            void navigator.clipboard.writeText(testo).then(
-              () => avvisa('Stato copiato.', 'successo'),
-              () => avvisa('Non riesco a copiare.', 'errore'),
-            )
+            // Su http://192.168.x.x il browser non dà navigator.clipboard: lì si avvisa invece di lanciare un errore.
+            void Promise.resolve()
+              .then(() => navigator.clipboard.writeText(testo))
+              .then(
+                () => avvisa('Stato copiato.', 'successo'),
+                () => avvisa('Non riesco a copiare.', 'errore'),
+              )
           }
         >
           Copia

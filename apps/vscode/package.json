@@ -2,7 +2,7 @@
   "name": "poordown",
   "displayName": "PoorDown",
   "description": "Gioco da tavolo multiplayer da giocare con gli amici: accendi la partita e gioca dentro VS Code.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "PoorDown",
   "license": "MIT",
   "private": true,
@@ -122,6 +122,7 @@
           "default": 3000,
           "minimum": 1,
           "maximum": 65535,
+          "scope": "machine",
           "markdownDescription": "La porta del gioco su questo PC. Cambiala solo se la 3000 è già usata da un altro programma: gli amici in casa useranno l'indirizzo con la porta nuova."
         }
       }

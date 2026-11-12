@@ -87,6 +87,13 @@ server.on('error', (errore: NodeJS.ErrnoException) => {
     console.error('  Chiudi l\'altra finestra, oppure scegli un\'altra porta con la variabile PORT (vedi README).\n');
     process.exit(1);
   }
+  // Su Windows una porta può essere riservata dal sistema (Hyper-V, WSL, Docker): non è occupata, ma non si può usare.
+  if (errore.code === 'EACCES') {
+    avvisaGenitore({ tipo: 'porta-occupata', porta });
+    console.error(`\n  La porta ${porta} non si può usare su questo PC (il sistema la tiene per sé o mancano i permessi).`);
+    console.error('  Scegli un\'altra porta con la variabile PORT (vedi README).\n');
+    process.exit(1);
+  }
   throw errore;
 });
 
