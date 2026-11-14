@@ -31,6 +31,39 @@ Ogni volta che volete giocare:
 
 La finestra nera deve restare aperta mentre giocate (si può ridurre a icona). Il PC non deve andare in sospensione.
 
+## Il pannello di controllo
+
+Il pannello serve a chi ha acceso il gioco per sistemare a mano una partita: ridare i soldi dopo un errore, spostare una pedina, passare il turno, togliere chi se n’è andato. Le modifiche arrivano subito a tutti e non passano dalle regole del turno, quindi usalo con giudizio.
+
+**Attivarlo (una volta sola)**
+
+1. Accendi il gioco almeno una volta con «Avvia PoorDown»: la prima accensione scarica anche quello che serve al pannello.
+2. Apri la cartella di PoorDown, clicca sulla barra dell’indirizzo in alto, scrivi `cmd` e premi Invio. Si apre una finestra nera già in quella cartella.
+3. Scrivi `npm run pannello` e premi Invio. Scegli un nome e una password di almeno 8 caratteri (mentre la scrivi vedi solo asterischi), poi ripeti la password.
+
+Nome e password valgono subito, anche a gioco acceso. Sul PC non restano scritti in chiaro: se li dimentichi, rifai il comando e scegline di nuovi. Per spegnere il pannello scrivi `npm run pannello -- --togli`.
+
+Con l’estensione di VS Code non serve la finestra nera: usa il comando **PoorDown: Imposta l’accesso al pannello di controllo**, e per aprirlo **PoorDown: Apri il pannello di controllo**.
+
+**Entrare**
+
+Nel gioco non c’è un pulsante che porta al pannello: aggiungi `/pannello` all’indirizzo del gioco. Sul PC che l’ha acceso è `http://localhost:3000/pannello`. Funziona anche con il link online (`https://parole-a-caso.trycloudflare.com/pannello`), quindi da qualunque posto: per questo la password deve essere buona e non va data a chi gioca.
+
+Dopo 5 tentativi sbagliati l’accesso si blocca per 15 minuti. Una volta dentro resti dentro per 12 ore, o finché non spegni il gioco.
+
+**Cosa si può fare**
+
+A sinistra ci sono tutte le stanze accese, a destra quella che scegli, aggiornata dal vivo. Per ogni stanza:
+
+- **Giocatori**: nome, soldi, casella, prigione, Vacanza e carte Grazia di ognuno; **Dai il turno** a qualcuno o **Togli** dalla partita. Prima dell’inizio puoi rinominare, espellere e scegliere chi è l’host.
+- **Proprietà**: chi possiede cosa, case e albergo, ipoteche.
+- **Turno e dadi**: a chi passa il turno e quanto fa il prossimo tiro dei dadi.
+- **Regole e fine**: accendere o spegnere le regole facoltative, i soldi nella cassa della Vacanza, finire la partita scegliendo chi vince.
+- **Registro**: tutto quello che è successo nella stanza, con l’ora.
+- **Stato completo**: l’intera partita in formato testo (JSON), per quello che le altre sezioni non coprono. Toccalo solo se sai cosa stai cambiando: il gioco rifiuta le modifiche che non tornano.
+
+In alto, **Annulla l’ultima modifica** rimette le cose com’erano, finché la partita non è andata avanti. **Chiudi la stanza** la chiude per tutti.
+
 ## Se qualcosa non va
 
 **Il link online non funziona**
