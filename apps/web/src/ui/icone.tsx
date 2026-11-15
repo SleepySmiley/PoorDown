@@ -210,6 +210,31 @@ const TRACCIATI = {
     </>
   ),
   grafico: <path d="M4 4v16h16M7.5 15.5l3.5-4.5 3 2.5 5-6.5" />,
+  /* Sistema solare: mezzi spaziali, servizi e teletrasporto. */
+  razzo: (
+    <>
+      <path d="M12 2.5c3 2.2 4.5 5.6 4.5 9.5v4h-9v-4c0-3.9 1.5-7.3 4.5-9.5z" />
+      <circle cx="12" cy="9.5" r="1.8" />
+      <path d="M7.5 13 4.5 16v3l3-1.5M16.5 13l3 3v3l-3-1.5M10.5 19.5 12 22l1.5-2.5" />
+    </>
+  ),
+  ossigeno: (
+    <>
+      <circle cx="9" cy="14.5" r="4.5" />
+      <circle cx="16.5" cy="7.5" r="3" />
+      <circle cx="17.5" cy="17" r="1.8" />
+    </>
+  ),
+  pianeta: (
+    <>
+      <circle cx="12" cy="12" r="5.5" />
+      <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-20 12 12)" />
+    </>
+  ),
+  wifi: <path d="M2.5 9a14 14 0 0 1 19 0M5.8 12.6a9 9 0 0 1 12.4 0M9.2 16.1a4.4 4.4 0 0 1 5.6 0M12 19.6h0" />,
+  scintilla: (
+    <path d="M11 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7zM18.5 15.5c.3 1.9 1 2.7 2.9 2.9-1.9.3-2.6 1-2.9 2.9-.3-1.9-1-2.6-2.9-2.9 1.9-.2 2.6-1 2.9-2.9z" />
+  ),
 } as const;
 
 export type NomeIcona = keyof typeof TRACCIATI;
@@ -219,6 +244,15 @@ const BUCO = { fill: 'none', stroke: 'var(--buco, #2a2e37)', strokeWidth: 1.8, s
 
 /** Icone piene delle caselle del tabellone: si leggono da lontano, come i pittogrammi dei cartelli. */
 const PIENE = {
+  razzo: (
+    <>
+      <path
+        fillRule="evenodd"
+        d="M12 2c3.4 2.4 5 6 5 10.2V16H7v-3.8C7 8 8.6 4.4 12 2zm0 5.6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
+      />
+      <path d="M7 12.6 4 15.7V20l3-1.8zM17 12.6l3 3.1V20l-3-1.8zM9.8 17.4h4.4L12 22z" />
+    </>
+  ),
   treno: (
     <>
       <path

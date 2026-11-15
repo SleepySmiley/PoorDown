@@ -707,6 +707,7 @@ export function Gioco({
                   passoMs: scena.passoMs[g.id],
                   arrivi: scena.arrivi[g.id],
                   volo: scena.voli[g.id],
+                  teletrasporto: scena.teletrasporti[g.id],
                   sprofonda: scena.bancarotta?.giocatore === g.id,
                   evidenziata: inCorso && g.id === corrente?.id,
                 };

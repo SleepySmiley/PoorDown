@@ -55,6 +55,14 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
         ? `${nome(evento.giocatore)} tira ${evento.dadi[0]} e ${evento.dadi[1]} e va ${dove}.`
         : `${nome(evento.giocatore)} va ${dove}.`;
     }
+    case 'teletrasporto':
+      return `${nome(evento.giocatore)} si teletrasporta ${destinazione(tab.caselle[evento.a]!)}.`;
+    case 'robin_hood':
+      return `${nome(evento.da)} ha più contante di tutti e dà ${euro(evento.importo)} ${a(nome(evento.a))}, che ne ha meno di tutti.`;
+    case 'moneta':
+      return evento.testa
+        ? `Esce testa: ${nome(evento.giocatore)} riceve ${euro(evento.importo)}.`
+        : `Esce croce: ${nome(evento.giocatore)} paga ${euro(evento.importo)}.`;
     case 'partenza':
       return evento.arrivo
         ? `${nome(evento.giocatore)} si ferma sulla Partenza e riceve ${euro(evento.importo)}.`

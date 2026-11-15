@@ -165,6 +165,18 @@ export const CATALOGO = {
     fruscio(u, c, { f: 2500, q: 0.8, durata: 0.08, volume: 0.1 * k });
   },
 
+  /**
+   * Teletrasporto (carte folli del Sistema solare): uno zap che scende mentre la pedina sparisce,
+   * poi uno che sale e una nota chiara quando ricompare.
+   */
+  teletrasporto: (u, t, k) => {
+    tono(u, t, { f: 1900, a: 240, glide: 0.34, durata: 0.38, volume: 0.1 * k, attacco: 0.004 });
+    fruscio(u, t, { f: 4200, a: 700, q: 2, attacco: 0.04, durata: 0.32, volume: 0.06 * k });
+    const r = t + (TEMPI.teletrasporto * 0.46) / 1000;
+    tono(u, r, { f: 300, a: 2300, glide: 0.28, tipo: 'triangle', durata: 0.32, volume: 0.07 * k });
+    nota(u, r + 0.24, { f: NOTE.E6, durata: 0.7, volume: 0.075 * k, eco: 0.5 });
+  },
+
   /** Fuori di prigione: le sbarre risalgono strisciando e due note leggere. */
   liberato: (u, t, k) => {
     fruscio(u, t, { f: 800, a: 3200, q: 4, attacco: 0.05, durata: 0.28, volume: 0.04 * k });
@@ -322,6 +334,7 @@ export const DESCRIZIONI: Record<NomeSuono, string> = {
   riscatto: 'Riscatto',
   carta: 'Carta pescata',
   prigione: 'In prigione',
+  teletrasporto: 'Teletrasporto (carte del Sistema solare)',
   liberato: 'Fuori di prigione',
   tuoTurno: 'Tocca a te',
   partenza: 'Inizio della partita',

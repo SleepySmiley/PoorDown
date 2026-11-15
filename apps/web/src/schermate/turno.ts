@@ -47,15 +47,17 @@ export type Momento =
   | { tipo: 'viaggio'; casella: number }
   | { tipo: 'arrivo'; casella: number; affitto: boolean }
   | { tipo: 'carta'; mazzo: NomeMazzo }
-  | { tipo: 'prigione' };
+  | { tipo: 'prigione' }
+  | { tipo: 'teletrasporto' };
 
-/** Il momento della scena di chi gioca, dal più vistoso: carta, volo in prigione, dadi, viaggio, arrivo. */
+/** Il momento della scena di chi gioca, dal più vistoso: carta, volo in prigione, teletrasporto, dadi, viaggio, arrivo. */
 export function momentoScena(
-  scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'>,
+  scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'> & Partial<Pick<Scena, 'teletrasporti'>>,
   giocatore: IdGiocatore,
 ): Momento | null {
   if (scena.carta?.giocatore === giocatore) return { tipo: 'carta', mazzo: scena.carta.mazzo };
   if (scena.voli[giocatore]) return { tipo: 'prigione' };
+  if (scena.teletrasporti?.[giocatore]) return { tipo: 'teletrasporto' };
   if (scena.rotola) return { tipo: 'dadi' };
   if (scena.meta?.giocatore === giocatore) return { tipo: 'viaggio', casella: scena.meta.casella };
   if (scena.arrivo) return { tipo: 'arrivo', casella: scena.arrivo.casella, affitto: scena.arrivo.tono === 'affitto' };
@@ -72,6 +74,8 @@ function fraseMomento(partita: Stato, mio: boolean, momento: Momento, fase: Stat
     }
     case 'prigione':
       return mio ? 'Vai in prigione' : 'va in prigione';
+    case 'teletrasporto':
+      return mio ? 'Ti teletrasporti…' : 'si teletrasporta…';
     case 'dadi':
       return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
     case 'viaggio': {
@@ -156,7 +160,12 @@ export function fraseTurno({
       ? `Sei su ${casella.nome}: comprala o mettila all’asta`
       : `Sei su ${casella.nome}: puoi comprarla per ${euro(casella.prezzo)}`;
   }
-  if (t.rilancio) return mio ? 'Doppio! Tira ancora' : 'ha fatto doppio: tira ancora';
+  if (t.rilancio) {
+    // Il tiro in più può venire anche da una carta («Gravità zero»): «Doppio!» solo se i dadi lo erano.
+    const doppio = t.dadi !== null && t.dadi[0] === t.dadi[1];
+    if (doppio) return mio ? 'Doppio! Tira ancora' : 'ha fatto doppio: tira ancora';
+    return mio ? 'Tira ancora i dadi' : 'tira ancora i dadi';
+  }
   if (g.vacanza) return mio ? 'Sei in vacanza: salterai il prossimo turno' : 'va in vacanza: salta il prossimo turno';
   return scambio ?? (mio ? 'Puoi costruire, scambiare o finire il turno' : 'può costruire, scambiare o finire il turno');
 }
@@ -176,6 +185,9 @@ const IMPORTANTI = new Set<string>([
   'tassa',
   'premio',
   'prigione',
+  'teletrasporto',
+  'robin_hood',
+  'moneta',
   'prigione_fallita',
   'uscita_prigione',
   'vacanza',

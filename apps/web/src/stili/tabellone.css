@@ -1048,6 +1048,22 @@ button.casella:hover .casella__sfondo {
     animation: volo-prigione var(--d-prigione) linear;
   }
 
+  /* Teletrasporto: la pedina si solleva, gira e sparisce in un lampo; la posizione salta mentre non si vede,
+     poi ricompare girando sulla casella d'arrivo, con un piccolo rimbalzo. */
+  .segnaposto--teletrasporto {
+    transition:
+      left 0s linear calc(var(--d-teletrasporto) * 0.44),
+      top 0s linear calc(var(--d-teletrasporto) * 0.44);
+  }
+
+  .segnaposto--teletrasporto .segnaposto__salto {
+    animation: teletrasporto var(--d-teletrasporto) linear both;
+  }
+
+  .segnaposto--teletrasporto .segnaposto__ombra {
+    animation: ombra-teletrasporto var(--d-teletrasporto) linear both;
+  }
+
   /* Bancarotta: la pedina sprofonda nel tabellone. */
   .segnaposto--sprofonda .segnaposto__disco {
     animation: sprofonda var(--d-viaggio) var(--c-partenza) var(--d-lenta) both;
@@ -1089,6 +1105,59 @@ button.casella:hover .casella__sfondo {
   to {
     opacity: 0;
     transform: translate(-50%, -50%) scale(2.6);
+  }
+}
+
+@keyframes teletrasporto {
+  0% {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1);
+  }
+
+  14% {
+    transform: translateY(-30%) scale(1.18);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5);
+  }
+
+  40% {
+    opacity: 0;
+    filter: brightness(2.6) saturate(0.4);
+    transform: translateY(-45%) rotate(300deg) scale(0.05);
+  }
+
+  48% {
+    opacity: 0;
+    filter: brightness(2.6) saturate(0.4);
+    transform: translateY(-45%) rotate(-300deg) scale(0.05);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+
+  82% {
+    opacity: 1;
+    filter: brightness(1.5);
+    transform: translateY(-12%) rotate(0deg) scale(1.16);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.4, 1);
+  }
+
+  100% {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
+@keyframes ombra-teletrasporto {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  40%,
+  48% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
   }
 }
 

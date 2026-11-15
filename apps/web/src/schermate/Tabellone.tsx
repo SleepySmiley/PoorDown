@@ -496,6 +496,8 @@ export interface Segnaposto {
   arrivi?: number;
   /** In volo verso la prigione: trema, si solleva, vola ad arco. */
   volo?: boolean;
+  /** Teletrasporto (carte folli): sparisce girando in un lampo e ricompare sulla casella d'arrivo. */
+  teletrasporto?: boolean;
   /** Bancarotta: sprofonda nel tabellone. */
   sprofonda?: boolean;
   evidenziata?: boolean;
@@ -649,6 +651,7 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
     p.evidenziata ? 'segnaposto--turno' : '',
     p.passoMs !== undefined ? 'segnaposto--cammina' : '',
     p.volo ? 'segnaposto--volo' : '',
+    p.teletrasporto ? 'segnaposto--teletrasporto' : '',
     p.sprofonda ? 'segnaposto--sprofonda' : '',
   ]
     .filter(Boolean)
@@ -664,7 +667,7 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
           '--colore': `var(--p${p.colore})`,
           ...(p.passoMs !== undefined ? { '--passo': `${p.passoMs}ms` } : {}),
         }),
-        zIndex: p.evidenziata || p.volo ? 20 : posa.strato,
+        zIndex: p.evidenziata || p.volo || p.teletrasporto ? 20 : posa.strato,
       }}
     >
       <span className="segnaposto__ombra" key={`ombra-${p.passo ?? 0}`} />
@@ -770,6 +773,7 @@ export function Tabellone({
         '--fascia': String(FASCIA_VISITA),
         '--targa': String(TARGA),
         '--d-prigione': `${TEMPI.prigione}ms`,
+        '--d-teletrasporto': `${TEMPI.teletrasporto}ms`,
       })}
     >
       <div className={classiGriglia} style={{ gridTemplateColumns: geo.tracce, gridTemplateRows: geo.tracce }}>

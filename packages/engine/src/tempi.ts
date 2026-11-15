@@ -26,6 +26,8 @@ export const TEMPI = {
   fineMovimento: 200,
   /** Il volo in prigione: la pedina trema, si solleva, vola ad arco e le sbarre scendono. */
   prigione: 1150,
+  /** Il teletrasporto delle carte folli: la pedina sparisce in un lampo e ricompare sulla casella d'arrivo. */
+  teletrasporto: 950,
   /** La carta pescata esce dalla casella e arriva al centro girandosi. */
   cartaEntra: 400,
   /** Il tempo di leggerla: tanto per carattere, tra un minimo e un massimo. */
@@ -58,6 +60,8 @@ export const EVENTI_CON_SOLDI: ReadonlySet<Evento['tipo']> = new Set<Evento['tip
   'affitto',
   'tassa',
   'premio',
+  'robin_hood',
+  'moneta',
 ]);
 
 /** Il rotolamento dei dadi, dal primo lancio alla pausa con i dadi fermi. */
@@ -101,6 +105,8 @@ export function durataEvento(e: Evento, caselle: number): number {
       return passiPedina(percorso(e, caselle).passi).reduce((t, ms) => t + ms, 0) + TEMPI.fineMovimento;
     case 'prigione':
       return TEMPI.prigione;
+    case 'teletrasporto':
+      return TEMPI.teletrasporto;
     case 'carta':
       return durataCarta(e.testo);
     case 'partenza':

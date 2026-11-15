@@ -92,6 +92,8 @@ export interface Scena {
   arrivi: Readonly<Record<IdGiocatore, number>>;
   /** Pedine in volo verso la prigione. */
   voli: Readonly<Record<IdGiocatore, true>>;
+  /** Pedine che si teletrasportano (carte folli): spariscono in un lampo e ricompaiono altrove. */
+  teletrasporti: Readonly<Record<IdGiocatore, true>>;
   /** Dove sta andando la pedina: la casella si accende appena i dadi si fermano. */
   meta: { giocatore: IdGiocatore; casella: number } | null;
   /** Dove si è fermato chi gioca, fino a fine turno. */
@@ -163,7 +165,10 @@ export function movimentiSoldi(e: EventoStanza, partita: Stato): MovimentoSoldi[
   const tab = tabellone(partita.mappa);
   switch (e.tipo) {
     case 'affitto':
+    case 'robin_hood':
       return movimento(e.da, e.a, e.importo);
+    case 'moneta':
+      return e.testa ? movimento(null, e.giocatore, e.importo) : movimento(e.giocatore, null, e.importo);
     case 'trasferimento':
       return movimento(e.da, e.a, e.importo);
     case 'tassa':
@@ -216,6 +221,13 @@ export function movimentiSoldi(e: EventoStanza, partita: Stato): MovimentoSoldi[
  * `null` se nel turno non si è ancora mosso, se ha tirato di nuovo o se è finito in prigione.
  */
 export function arrivoDelTurno(registro: readonly VoceRegistro[], fino = Infinity): Arrivo | null {
+  // Chi gioca il turno: le carte folli spostano anche gli altri (scambio di posto, buco nero), e i loro salti non contano.
+  let chi: IdGiocatore | undefined;
+  for (let i = registro.length - 1; i >= 0 && chi === undefined; i--) {
+    const v = registro[i]!;
+    if (v.n <= fino && v.evento.tipo === 'turno') chi = v.evento.giocatore;
+  }
+  const altro = (id: IdGiocatore) => chi !== undefined && id !== chi;
   const affitti = new Set<string>();
   for (let i = registro.length - 1; i >= 0; i--) {
     const v = registro[i]!;
@@ -226,10 +238,14 @@ export function arrivoDelTurno(registro: readonly VoceRegistro[], fino = Infinit
         affitti.add(`${e.da}:${e.casella}`);
         break;
       case 'movimento':
+      case 'teletrasporto':
+        if (altro(e.giocatore)) break;
         return { casella: e.a, tono: affitti.has(`${e.giocatore}:${e.a}`) ? 'affitto' : 'normale' };
+      case 'prigione':
+        if (altro(e.giocatore)) break;
+        return null;
       case 'turno':
       case 'dadi':
-      case 'prigione':
       case 'inizio':
       case 'fine':
       case 'nuova_partita':
@@ -314,6 +330,7 @@ export class Regia {
       passoMs: {},
       arrivi: {},
       voli: {},
+      teletrasporti: {},
       meta: null,
       arrivo: arrivoDelTurno(s.registro),
       dadi: partita?.turno.dadi ?? [5, 2],
@@ -432,6 +449,7 @@ export class Regia {
       posizioni: {},
       passoMs: {},
       voli: {},
+      teletrasporti: {},
       meta: null,
       arrivo: arrivoDelTurno(s.registro, this.ultimaVista),
       rotola: false,
@@ -530,6 +548,21 @@ export class Regia {
         if (gen !== this.generazione) return;
         this.cambia({ voli: senza(this.scena.voli, e.giocatore) });
         return;
+      case 'teletrasporto': {
+        // Sparisce in un lampo, la posizione salta mentre non si vede (CSS), poi ricompare e manda l'onda.
+        const diChiGioca = partita.turno.giocatore === e.giocatore;
+        this.cambia({ meta: null, arrivo: null, teletrasporti: { ...this.scena.teletrasporti, [e.giocatore]: true } });
+        this.muovi(e.giocatore, { casella: e.a, prigione: false });
+        suona('teletrasporto', { forza: this.forza(e.giocatore) });
+        await this.attendi(TEMPI.teletrasporto);
+        if (gen !== this.generazione) return;
+        this.cambia({
+          teletrasporti: senza(this.scena.teletrasporti, e.giocatore),
+          arrivo: diChiGioca ? { casella: e.a, tono: 'normale' } : this.scena.arrivo,
+          arrivi: { ...this.scena.arrivi, [e.giocatore]: (this.scena.arrivi[e.giocatore] ?? 0) + 1 },
+        });
+        return;
+      }
       case 'uscita_prigione': {
         const casella = this.scena.posizioni[e.giocatore]?.casella ?? partita.giocatori.find((g) => g.id === e.giocatore)?.posizione;
         if (casella !== undefined) this.cambia({ posizioni: { ...this.scena.posizioni, [e.giocatore]: { casella, prigione: false } } });
@@ -568,7 +601,9 @@ export class Regia {
     for (const v of this.coda) {
       const e = v.evento;
       if (e.tipo === 'movimento' && e.giocatore === id) return e;
-      if (e.tipo === 'dadi' || e.tipo === 'turno' || e.tipo === 'prigione' || e.tipo === 'movimento') return undefined;
+      if (e.tipo === 'dadi' || e.tipo === 'turno' || e.tipo === 'prigione' || e.tipo === 'movimento' || e.tipo === 'teletrasporto') {
+        return undefined;
+      }
     }
     return undefined;
   }
@@ -578,7 +613,7 @@ export class Regia {
     for (const v of this.coda) {
       const e = v.evento;
       if (e.tipo === 'partenza') return e.giocatore === id && !e.arrivo ? v : undefined;
-      if (e.tipo === 'movimento' || e.tipo === 'dadi' || e.tipo === 'turno') return undefined;
+      if (e.tipo === 'movimento' || e.tipo === 'teletrasporto' || e.tipo === 'dadi' || e.tipo === 'turno') return undefined;
     }
     return undefined;
   }
@@ -680,7 +715,11 @@ export class Regia {
         return;
       case 'affitto':
       case 'trasferimento':
+      case 'robin_hood':
         if (this.mio(e.da)) suona('pagamento');
+        return;
+      case 'moneta':
+        if (!e.testa && this.mio(e.giocatore)) suona('pagamento');
         return;
       case 'tassa':
         if (this.mio(e.giocatore)) suona('pagamento');

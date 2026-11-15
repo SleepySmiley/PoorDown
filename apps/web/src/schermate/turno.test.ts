@@ -110,6 +110,7 @@ describe('fraseTurno', () => {
     // Secondo tiro dopo un doppio: la partita mostrata dice ancora «tira ancora», ma la pedina è già arrivata.
     const doppio = partita((x) => {
       x.turno.fase = 'dopo_lancio';
+      x.turno.dadi = [3, 3];
       x.turno.rilancio = true;
     });
     expect(frase(doppio, 'a', { occupata: true, momento: arrivo })).toMatch(/^Sei ad? /);
@@ -151,10 +152,21 @@ describe('fraseTurno', () => {
     expect(frase(debito, 'a')).toBe('Sei in debito di 120 €: vendi o fai uno scambio');
     const doppio = partita((s) => {
       s.turno.fase = 'dopo_lancio';
+      s.turno.dadi = [4, 4];
       s.turno.rilancio = true;
     });
     expect(frase(doppio, 'a')).toBe('Doppio! Tira ancora');
     expect(frase(doppio, 'b')).toBe('ha fatto doppio: tira ancora');
+  });
+
+  it('il tiro in più di una carta («Gravità zero») non è un doppio', () => {
+    const carta = partita((s) => {
+      s.turno.fase = 'dopo_lancio';
+      s.turno.dadi = [2, 3];
+      s.turno.rilancio = true;
+    });
+    expect(frase(carta, 'a')).toBe('Tira ancora i dadi');
+    expect(frase(carta, 'b')).toBe('tira ancora i dadi');
   });
 
   it('per chi aspetta dice se sta preparando uno scambio', () => {

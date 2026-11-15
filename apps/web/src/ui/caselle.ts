@@ -30,10 +30,13 @@ export interface CasellaVista {
 
 const ICONE_SERVIZI: NomeIcona[] = ['fulmine', 'fiamma', 'goccia'];
 
-/** Le icone dei servizi seguono il nome: luce, gas, acqua. */
+/** Le icone dei servizi seguono il nome: luce, gas, acqua; nel Sistema solare ossigeno, gravità e Wi-Fi. */
 function iconaServizio(nome: string): NomeIcona {
   if (/gas/i.test(nome)) return 'fiamma';
   if (/acqu/i.test(nome)) return 'goccia';
+  if (/ossigeno/i.test(nome)) return 'ossigeno';
+  if (/gravit/i.test(nome)) return 'pianeta';
+  if (/wi-?fi/i.test(nome)) return 'wifi';
   return ICONE_SERVIZI[0]!;
 }
 
@@ -44,7 +47,8 @@ function vista(tab: Tabellone, c: Casella, n: number): CasellaVista {
     case 'citta':
       return { ...base, tipo: 'citta', prezzo: c.prezzo, gruppo: c.regione + 1, tinta: tab.regioni[c.regione]?.colore ?? c.regione + 1 };
     case 'stazione':
-      return { ...base, tipo: 'stazione', prezzo: c.prezzo, icona: 'treno' };
+      // Nel Sistema solare le stazioni sono mezzi spaziali (Navetta, Capsula, Astronave, Sonda).
+      return { ...base, tipo: 'stazione', prezzo: c.prezzo, icona: tab.id === 'sistema_solare' ? 'razzo' : 'treno' };
     case 'servizio':
       return { ...base, tipo: 'servizio', prezzo: c.prezzo, icona: iconaServizio(c.nome) };
     case 'carta':

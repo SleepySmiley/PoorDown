@@ -158,6 +158,40 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
         ),
         dettaglio: maiuscolaIniziale(MOTIVO_PRIGIONE[e.motivo]),
       };
+    case 'teletrasporto':
+      return {
+        icona: 'scintilla',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> si teletrasporta
+          </>
+        ),
+        dettaglio: nomeCasella(e.a),
+      };
+    case 'robin_hood':
+      return {
+        coppia: [e.da, e.a],
+        titolo: (
+          <>
+            <b>{nome(e.da)}</b> dà {aOppureAd(nome(e.a))} <b>{nome(e.a)}</b>
+          </>
+        ),
+        dettaglio: 'Robin Hood: dal più ricco al più povero',
+        importo: { valore: e.importo, tono: tono(io, e.da, e.a) },
+      };
+    case 'moneta':
+      return {
+        icona: 'monete',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            Esce {e.testa ? 'testa' : 'croce'}: <b>{nome(e.giocatore)}</b> {e.testa ? 'incassa' : 'paga'}
+          </>
+        ),
+        dettaglio: 'Testa o croce',
+        importo: { valore: e.importo, tono: e.testa ? tono(io, null, e.giocatore) : tono(io, e.giocatore, null) },
+      };
     case 'prigione_fallita':
       return {
         icona: 'prigione',

@@ -117,7 +117,7 @@ function verificaNelTurno(stato: Stato, g: Giocatore, azione: Azione): Errore | 
 
     case 'fine_turno':
       if (t.fase !== 'dopo_lancio') return errore('non_ancora_lanciato', 'Prima devi tirare i dadi.');
-      if (t.rilancio) return errore('devi_rilanciare', 'Hai fatto un doppio: tira ancora.');
+      if (t.rilancio) return errore('devi_rilanciare', 'Devi tirare ancora i dadi.');
       if (daDecidere) return decidi;
       if (g.saldo < 0) return errore('saldo_negativo', SALDO_NEGATIVO);
       return null;
@@ -501,11 +501,27 @@ function arriva(ctx: Contesto, g: Giocatore): void {
 }
 
 function mandaInPrigione(ctx: Contesto, g: Giocatore, motivo: 'casella' | 'carta' | 'tre_doppi'): void {
+  incarcera(ctx, g, motivo);
+  ctx.turnoFinito = true;
+}
+
+/**
+ * Mette in cella senza toccare il turno: serve anche per gli avversari (carta del buco nero).
+ * Spegne la vacanza, così nessuno salta un turno e poi si ritrova anche in prigione.
+ */
+function incarcera(ctx: Contesto, g: Giocatore, motivo: 'casella' | 'carta' | 'tre_doppi'): void {
   g.posizione = ctx.tab.prigione;
   g.prigione = 0;
+  g.vacanza = false;
   ctx.s.statistiche.prigione[g.id] = (ctx.s.statistiche.prigione[g.id] ?? 0) + 1;
   ctx.eventi.push({ tipo: 'prigione', giocatore: g.id, motivo });
-  ctx.turnoFinito = true;
+}
+
+/** Sposta la pedina con un salto (carte folli): niente passi, niente Partenza, niente effetto della casella. */
+function teletrasporta(ctx: Contesto, g: Giocatore, a: number): void {
+  const da = g.posizione;
+  g.posizione = a;
+  ctx.eventi.push({ tipo: 'teletrasporto', giocatore: g.id, da, a });
 }
 
 function esciDiPrigione(ctx: Contesto, g: Giocatore, modo: 'doppio' | 'cauzione' | 'grazia'): void {
@@ -585,6 +601,66 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
       pagaBanca(ctx, g, importo, true);
       return;
     }
+    case 'casuale': {
+      const a = (g.posizione + 1 + ctx.caso.intero(n - 1)) % n;
+      teletrasporta(ctx, g, a);
+      arriva(ctx, g);
+      return;
+    }
+    case 'scambia_posto': {
+      const avversari = attivi(s).filter(
+        (x) => x.id !== g.id && !compagni(s, g.id, x.id) && x.prigione === null && x.posizione !== g.posizione,
+      );
+      if (avversari.length === 0) return;
+      const altro = avversari[ctx.caso.intero(avversari.length)]!;
+      const mia = g.posizione;
+      teletrasporta(ctx, g, altro.posizione);
+      teletrasporta(ctx, altro, mia);
+      arriva(ctx, g);
+      return;
+    }
+    case 'robin_hood': {
+      // A pari contante vince il primo nell'ordine dei turni. Il ricco dà al massimo quello che ha.
+      let ricco: Giocatore | undefined;
+      let povero: Giocatore | undefined;
+      for (const x of attivi(s)) {
+        if (!ricco || x.saldo > ricco.saldo) ricco = x;
+        if (!povero || x.saldo < povero.saldo) povero = x;
+      }
+      if (!ricco || !povero || ricco.id === povero.id || compagni(s, ricco.id, povero.id)) return;
+      const importo = Math.min(effetto.importo, ricco.saldo);
+      if (importo <= 0) return;
+      ctx.eventi.push({ tipo: 'robin_hood', da: ricco.id, a: povero.id, importo });
+      paga(ctx, ricco, povero.id, importo);
+      return;
+    }
+    case 'avversari_in_prigione':
+      for (const altro of attivi(s)) {
+        if (altro.id === g.id || compagni(s, g.id, altro.id) || altro.prigione !== null) continue;
+        incarcera(ctx, altro, 'carta');
+      }
+      return;
+    case 'moneta': {
+      const testa = ctx.caso.intero(2) === 0;
+      ctx.eventi.push({ tipo: 'moneta', giocatore: g.id, testa, importo: effetto.importo });
+      if (testa) accredita(ctx, g, effetto.importo);
+      else pagaBanca(ctx, g, effetto.importo, true);
+      return;
+    }
+    case 'tutti_soldi':
+      for (const x of attivi(s)) {
+        if (effetto.importo >= 0) {
+          segnaTrasferimento(ctx, null, x.id, effetto.importo);
+          accredita(ctx, x, effetto.importo);
+        } else {
+          segnaTrasferimento(ctx, x.id, null, -effetto.importo);
+          pagaBanca(ctx, x, -effetto.importo, true);
+        }
+      }
+      return;
+    case 'rilancia':
+      if (!ctx.turnoFinito) s.turno.rilancio = true;
+      return;
   }
 }
 

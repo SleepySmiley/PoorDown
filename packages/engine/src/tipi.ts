@@ -4,8 +4,8 @@
  */
 
 export type IdGiocatore = string;
-/** I quattro tabelloni: vedi docs/identita/tabellone-e-carte.md e docs/identita/tabelloni-alternativi.md. */
-export type IdMappa = 'classica' | 'europa' | 'grandi_aree' | 'fortuna';
+/** I tabelloni: vedi docs/identita/tabellone-e-carte.md e docs/identita/tabelloni-alternativi.md. */
+export type IdMappa = 'classica' | 'europa' | 'grandi_aree' | 'fortuna' | 'sistema_solare';
 export type NomeMazzo = 'busta' | 'cartolina';
 
 /* ------------------------------------------------------------------ */
@@ -131,8 +131,24 @@ export type BandieraRegione =
   | 'valle-aosta'
   | 'veneto';
 
-/** Le bandiere disegnate nel browser (ui/bandiere.tsx): i paesi con il codice ISO, poi le regioni italiane. */
-export type Bandiera = 'IE' | 'CH' | 'AT' | 'GR' | 'PT' | 'NL' | 'PL' | 'ES' | 'FR' | 'DE' | BandieraRegione;
+/** I corpi celesti del Sistema solare (ui/bandiere-pianeti.tsx): al posto della bandiera, il disegno del pianeta. */
+export type BandieraPianeta =
+  | 'luna'
+  | 'mercurio'
+  | 'venere'
+  | 'marte'
+  | 'asteroidi'
+  | 'giove'
+  | 'saturno'
+  | 'urano'
+  | 'nettuno'
+  | 'plutone';
+
+/**
+ * Le bandiere disegnate nel browser (ui/bandiere.tsx): i paesi con il codice ISO, poi le regioni italiane,
+ * poi i pianeti del Sistema solare.
+ */
+export type Bandiera = 'IE' | 'CH' | 'AT' | 'GR' | 'PT' | 'NL' | 'PL' | 'ES' | 'FR' | 'DE' | BandieraRegione | BandieraPianeta;
 
 export type Effetto =
   /** Positivo: la banca paga. Negativo: si paga la banca. */
@@ -150,7 +166,22 @@ export type Effetto =
   | { tipo: 'prigione' }
   /** Carta Grazia: esci gratis di prigione. */
   | { tipo: 'grazia' }
-  | { tipo: 'riparazioni'; casa: number; albergo: number };
+  | { tipo: 'riparazioni'; casa: number; albergo: number }
+  /* Le carte folli del Sistema solare. */
+  /** Teletrasporto su una casella a caso (non quella dove si è): vale la casella d'arrivo, la Partenza no. */
+  | { tipo: 'casuale' }
+  /** Scambia il posto con un avversario a caso fuori di prigione; per chi pesca vale la casella d'arrivo. */
+  | { tipo: 'scambia_posto' }
+  /** Il giocatore con più contante dà `importo` a quello con meno. */
+  | { tipo: 'robin_hood'; importo: number }
+  /** Tutti gli avversari fuori di prigione ci finiscono dentro. Il turno di chi pesca continua. */
+  | { tipo: 'avversari_in_prigione' }
+  /** Testa o croce: si riceve `importo` dalla banca oppure lo si paga. */
+  | { tipo: 'moneta'; importo: number }
+  /** Ogni giocatore, compreso chi pesca, riceve (positivo) o paga alla banca (negativo). */
+  | { tipo: 'tutti_soldi'; importo: number }
+  /** Si tira di nuovo i dadi, come dopo un doppio (ma senza contare come doppio). */
+  | { tipo: 'rilancia' };
 
 export interface Carta {
   testo: string;
@@ -469,6 +500,12 @@ export type Evento =
   | { tipo: 'dadi'; giocatore: IdGiocatore; dadi: [number, number] }
   /** `dadi` c'è quando lo spostamento viene da un tiro. */
   | { tipo: 'movimento'; giocatore: IdGiocatore; da: number; a: number; dadi?: [number, number] }
+  /** Spostamento di una carta folle (wormhole, scambio di posto): la pedina vola, non cammina, e non passa dalla Partenza. */
+  | { tipo: 'teletrasporto'; giocatore: IdGiocatore; da: number; a: number }
+  /** Carta Robin Hood: chi ha più contante (`da`) dà `importo` a chi ne ha meno (`a`). */
+  | { tipo: 'robin_hood'; da: IdGiocatore; a: IdGiocatore; importo: number }
+  /** Carta della moneta: con testa `giocatore` riceve `importo` dalla banca, con croce lo paga. */
+  | { tipo: 'moneta'; giocatore: IdGiocatore; testa: boolean; importo: number }
   | { tipo: 'partenza'; giocatore: IdGiocatore; importo: number; arrivo: boolean }
   | { tipo: 'acquisto'; giocatore: IdGiocatore; casella: number; prezzo: number }
   | { tipo: 'affitto'; da: IdGiocatore; a: IdGiocatore; casella: number; importo: number }
