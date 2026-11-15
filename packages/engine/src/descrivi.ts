@@ -3,7 +3,7 @@
 import { giocatore } from './conti';
 import type { EventoStanza } from './protocollo';
 import { tabellone } from './tabelloni';
-import type { Casella, Evento, IdGiocatore, MotivoUscita, NomeMazzo, Pacchetto, Stato } from './tipi';
+import type { Casella, Evento, EventoCosmico, IdGiocatore, MotivoUscita, NomeMazzo, Pacchetto, Stato } from './tipi';
 
 /** 1500 → "1.500 €". In italiano il punto delle migliaia si mette anche sotto i 10.000. */
 export function euro(importo: number): string {
@@ -12,6 +12,22 @@ export function euro(importo: number): string {
 }
 
 const NOME_MAZZO: Record<NomeMazzo, string> = { busta: 'Busta', cartolina: 'Cartolina' };
+
+/** Gli eventi cosmici del Sistema solare: il nome e cosa fanno, per il registro e per il riquadro del cosmo. */
+export const EVENTI_COSMICI: Record<EventoCosmico, { nome: string; effetto: string }> = {
+  quiete: { nome: 'Quiete cosmica', effetto: 'Niente di strano, per questo giro.' },
+  allineamento: { nome: 'Allineamento planetario', effetto: 'Affitti doppi per tutto il giro.' },
+  eclissi: { nome: 'Eclissi', effetto: 'Affitti a metà per tutto il giro.' },
+  tempesta: { nome: 'Tempesta solare', effetto: 'Per tutto il giro la Partenza non paga.' },
+  meteoriti: { nome: 'Pioggia di meteoriti', effetto: 'Crolla un edificio a caso.' },
+  gravita: { nome: 'Gravità invertita', effetto: 'Per tutto il giro si cammina al contrario.' },
+  collisione: { nome: 'Collisione planetaria', effetto: 'Due proprietà a caso si scambiano di proprietario.' },
+};
+
+/** Un fattore da leggere: 0.5 → "½", 1.5 → "1,5", 2 → "2". */
+export function fattoreTesto(fattore: number): string {
+  return fattore === 0.5 ? '½' : String(fattore).replace('.', ',');
+}
 
 const MOTIVO_RIMOZIONE: Record<Exclude<MotivoUscita, 'bancarotta'>, string> = {
   tempo: 'Tempo scaduto troppe volte',
@@ -63,7 +79,37 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       return evento.testa
         ? `Esce testa: ${nome(evento.giocatore)} riceve ${euro(evento.importo)}.`
         : `Esce croce: ${nome(evento.giocatore)} paga ${euro(evento.importo)}.`;
+    case 'cosmo': {
+      const e = EVENTI_COSMICI[evento.evento];
+      const m = evento.mercato;
+      const mercato = m
+        ? ` Mercato galattico: ${tab.regioni[m.regione]?.nome ?? '?'} ${m.fattore > 1 ? 'sale' : 'crolla'}, prezzi e affitti ×${fattoreTesto(m.fattore)}.`
+        : '';
+      return `Giro ${evento.giro}: ${e.nome}. ${e.effetto}${mercato}`;
+    }
+    case 'quantico':
+      return evento.fattore === 0
+        ? `Affitto quantistico: esce ${evento.faccia}, l’affitto è gratis.`
+        : `Affitto quantistico: esce ${evento.faccia}, l’affitto vale ×${fattoreTesto(evento.fattore)}.`;
+    case 'fionda':
+      return `${nome(evento.giocatore)} prende la fionda gravitazionale e riparte di ${Math.abs(evento.passi)} caselle${evento.passi < 0 ? ' all’indietro' : ''}.`;
+    case 'buco_nero':
+      return `Il Buco nero risucchia ${euro(evento.importo)} ${a(nome(evento.giocatore))}: finiscono nel malloppo della Supernova.`;
+    case 'supernova':
+      return `${nome(evento.giocatore)} si ferma sulla Supernova e prende il malloppo: ${euro(evento.importo)}.`;
+    case 'roulette':
+      return `${nome(evento.giocatore)} gira la Roulette cosmica: «${evento.testo}»`;
+    case 'meteorite':
+      return `Un meteorite colpisce ${casella(evento.casella)} di ${nome(evento.giocatore)}: crolla ${evento.livello === 4 ? 'l’albergo' : 'una casa'}.`;
+    case 'collisione': {
+      const [x, y] = evento.caselle;
+      const [chiX, chiY] = evento.giocatori;
+      return `Collisione planetaria: ${casella(x)} passa ${a(nome(chiY))} e ${casella(y)} passa ${a(nome(chiX))}.`;
+    }
+    case 'gravita_invertita':
+      return `${nome(evento.giocatore)} inverte la gravità: fino alla fine del giro si cammina al contrario.`;
     case 'partenza':
+      if (evento.tempesta) return `${nome(evento.giocatore)} passa dalla Partenza, ma la tempesta solare si mangia il premio.`;
       return evento.arrivo
         ? `${nome(evento.giocatore)} si ferma sulla Partenza e riceve ${euro(evento.importo)}.`
         : `${nome(evento.giocatore)} passa dalla Partenza e riceve ${euro(evento.importo)}.`;
@@ -252,6 +298,11 @@ export function destinazione(c: Casella): string {
     case 'carta':
     case 'tassa':
     case 'vai_in_prigione':
+    case 'fionda':
+    case 'wormhole':
+    case 'buco_nero':
+    case 'supernova':
+    case 'roulette':
       return `alla casella ${c.nome}`;
     case 'premio':
       return `al ${c.nome}`;

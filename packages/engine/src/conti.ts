@@ -100,18 +100,43 @@ export function affitto(stato: Stato, casella: number, sommaDadi: number): numbe
   if (!proprietario) return 0;
   if (stato.impostazioni.nienteAffittoInPrigione && proprietario.prigione !== null) return 0;
 
+  return Math.round(affittoBase(stato, tab, c, p.livello, proprietario.id, sommaDadi) * fattoreCosmico(stato, casella));
+}
+
+function affittoBase(stato: Stato, tab: Tabellone, c: Proprietabile, livello: number, proprietario: IdGiocatore, sommaDadi: number): number {
   switch (c.tipo) {
     case 'citta': {
-      const base = c.affitti[p.livello] ?? 0;
-      const doppio =
-        p.livello === 0 && stato.impostazioni.affittoDoppioSetCompleto && possiedeRegione(stato, proprietario.id, c.regione);
+      const base = c.affitti[livello] ?? 0;
+      const doppio = livello === 0 && stato.impostazioni.affittoDoppioSetCompleto && possiedeRegione(stato, proprietario, c.regione);
       return doppio ? base * 2 : base;
     }
     case 'stazione':
-      return tab.affittiStazioni[contaNonIpotecate(stato, proprietario.id, 'stazione') - 1] ?? 0;
+      return tab.affittiStazioni[contaNonIpotecate(stato, proprietario, 'stazione') - 1] ?? 0;
     case 'servizio':
-      return (tab.moltiplicatoriServizi[contaNonIpotecate(stato, proprietario.id, 'servizio') - 1] ?? 0) * sommaDadi;
+      return (tab.moltiplicatoriServizi[contaNonIpotecate(stato, proprietario, 'servizio') - 1] ?? 0) * sommaDadi;
   }
+}
+
+/**
+ * Il fattore del cosmo (regole folli) sull'affitto di una casella: l'evento del giro (Allineamento ×2, Eclissi ×½)
+ * per il Mercato galattico sul pianeta quotato. 1 sui tabelloni normali. L'affitto quantistico no: è un tiro, lo fa il motore.
+ */
+export function fattoreCosmico(stato: Stato, casella: number): number {
+  const cosmo = stato.cosmo;
+  if (!cosmo) return 1;
+  let fattore = cosmo.evento === 'allineamento' ? 2 : cosmo.evento === 'eclissi' ? 0.5 : 1;
+  const c = tabellone(stato.mappa).caselle[casella];
+  if (cosmo.mercato && c?.tipo === 'citta' && c.regione === cosmo.mercato.regione) fattore *= cosmo.mercato.fattore;
+  return fattore;
+}
+
+/** Quanto costa comprare la casella adesso: con il Mercato galattico il pianeta del giro costa di più o di meno. */
+export function prezzoAcquisto(stato: Stato, casella: number): number {
+  const c = proprietabile(tabellone(stato.mappa), casella);
+  if (!c) return 0;
+  const mercato = stato.cosmo?.mercato;
+  if (!mercato || c.tipo !== 'citta' || c.regione !== mercato.regione) return c.prezzo;
+  return Math.max(5, Math.round((c.prezzo * mercato.fattore) / 5) * 5);
 }
 
 /** Case e alberghi di un giocatore (un albergo non conta anche come 4 case). */

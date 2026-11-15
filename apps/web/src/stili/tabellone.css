@@ -527,6 +527,99 @@ button.casella:hover .casella__sfondo {
   margin-bottom: auto;
 }
 
+/* ---------- Caselle folli del Sistema solare: pittogramma grande e luminoso, ognuna col suo colore ---------- */
+
+.casella--speciale {
+  --cosmico: #8fd3ff;
+}
+
+.casella--speciale .casella__nome {
+  margin-top: auto;
+  margin-bottom: calc(var(--k) * 5);
+  color: var(--cosmico);
+  font-size: calc(var(--k) * 15);
+}
+
+.casella--alto.casella--speciale .casella__nome {
+  margin-top: calc(var(--k) * 5);
+  margin-bottom: auto;
+}
+
+.casella--speciale .casella__segnale {
+  flex-direction: column;
+  gap: calc(var(--k) * 2);
+  margin-top: calc(var(--k) * 5);
+}
+
+.casella--alto.casella--speciale .casella__segnale {
+  flex-direction: column-reverse;
+  margin: 0 0 calc(var(--k) * 5);
+}
+
+.casella--speciale .casella__icona {
+  width: calc(var(--k) * 32);
+  height: calc(var(--k) * 32);
+  color: var(--cosmico);
+  filter: drop-shadow(0 0 calc(var(--k) * 5) color-mix(in srgb, var(--cosmico) 70%, transparent));
+}
+
+.casella--speciale .casella__importo {
+  color: var(--cosmico);
+}
+
+/* Un alone del suo colore dal centro della casella: si riconoscono a colpo d'occhio dalle città.
+   Usa il ::before del tratteggio dell'ipoteca, che sulle caselle folli non serve (non si comprano). */
+.casella--speciale::before {
+  inset: 1px;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--cosmico) 22%, transparent), transparent 70%);
+  opacity: 1;
+}
+
+.casella--fionda {
+  --cosmico: #5ee6c8;
+}
+
+.casella--wormhole {
+  --cosmico: #b58cff;
+}
+
+.casella--buco_nero {
+  --cosmico: #ff7a59;
+}
+
+.casella--supernova {
+  --cosmico: #ffd166;
+}
+
+.casella--roulette {
+  --cosmico: #ff6fb5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .casella--wormhole .casella__icona,
+  .casella--buco_nero .casella__icona {
+    animation: gira-lento 9s linear infinite;
+  }
+
+  .casella--supernova .casella__icona {
+    animation: pulsa-stella 2.4s ease-in-out infinite;
+  }
+}
+
+/* Le icone dei lati sono già ruotate con `rotate`: l'animazione usa `transform`, che si somma. */
+@keyframes gira-lento {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulsa-stella {
+  50% {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 calc(var(--k) * 9) color-mix(in srgb, var(--cosmico) 90%, transparent));
+  }
+}
+
 /* Rimborso: come una tassa, ma in ambra perché si incassa. */
 .casella--premio .casella__icona,
 .casella--premio .casella__importo {

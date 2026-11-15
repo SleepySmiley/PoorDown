@@ -19,12 +19,15 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   durataCarta,
   durataEvento,
+  durataRoulette,
   LIVELLO_ALBERGO,
   passiPedina,
   percorso,
   tabellone,
   TEMPI,
+  type Cosmo,
   type Evento,
+  type EventoCosmico,
   type EventoStanza,
   type IdGiocatore,
   type NomeMazzo,
@@ -105,6 +108,12 @@ export interface Scena {
   /** Una scena è in corso: i pulsanti del turno aspettano. */
   occupata: boolean;
   carta: CartaInScena | null;
+  /** Regole folli: l'annuncio del giro cosmico al centro del tabellone. */
+  cosmo: { n: number; giro: number; evento: EventoCosmico; mercato: Cosmo['mercato'] } | null;
+  /** Regole folli: la Roulette cosmica che gira. */
+  roulette: { n: number; giocatore: IdGiocatore; spicchio: number; testo: string } | null;
+  /** Regole folli: il dado dell'affitto quantistico. */
+  quantico: { n: number; faccia: number; fattore: number } | null;
   /** Le sbarre della prigione: scendono quando entra qualcuno, si alzano quando esce. `n` cresce a ogni movimento. */
   sbarre: { n: number; verso: 'giu' | 'su' } | null;
   /** Chi sta facendo bancarotta, con le caselle che perde. */
@@ -169,6 +178,10 @@ export function movimentiSoldi(e: EventoStanza, partita: Stato): MovimentoSoldi[
       return movimento(e.da, e.a, e.importo);
     case 'moneta':
       return e.testa ? movimento(null, e.giocatore, e.importo) : movimento(e.giocatore, null, e.importo);
+    case 'buco_nero':
+      return movimento(e.giocatore, null, e.importo, e.casella);
+    case 'supernova':
+      return movimento(null, e.giocatore, e.importo, e.casella);
     case 'trasferimento':
       return movimento(e.da, e.a, e.importo);
     case 'tassa':
@@ -338,6 +351,9 @@ export class Regia {
       rotola: false,
       occupata: false,
       carta: null,
+      cosmo: null,
+      roulette: null,
+      quantico: null,
       sbarre: null,
       bancarotta: null,
       gettoni: [],
@@ -455,6 +471,9 @@ export class Regia {
       rotola: false,
       occupata: false,
       carta: null,
+      cosmo: null,
+      roulette: null,
+      quantico: null,
       bancarotta: null,
       dadi: partita?.turno.dadi ?? ultimoLancio(s.registro) ?? this.scena.dadi,
     });
@@ -548,6 +567,32 @@ export class Regia {
         if (gen !== this.generazione) return;
         this.cambia({ voli: senza(this.scena.voli, e.giocatore) });
         return;
+      case 'cosmo': {
+        this.cambia({ cosmo: { n: voce.n, giro: e.giro, evento: e.evento, mercato: e.mercato }, meta: null });
+        suona('cosmo');
+        await this.attendi(TEMPI.cosmo - TEMPI.cartaEsce);
+        if (gen !== this.generazione) return;
+        this.cambia({ cosmo: null });
+        await this.attendi(TEMPI.cartaEsce);
+        return;
+      }
+      case 'roulette': {
+        this.cambia({ roulette: { n: voce.n, giocatore: e.giocatore, spicchio: e.spicchio, testo: e.testo } });
+        suona('roulette', { forza: this.forza(e.giocatore) });
+        await this.attendi(durataRoulette(e.testo) - TEMPI.cartaEsce);
+        if (gen !== this.generazione) return;
+        this.cambia({ roulette: null });
+        await this.attendi(TEMPI.cartaEsce);
+        return;
+      }
+      case 'quantico': {
+        this.cambia({ quantico: { n: voce.n, faccia: e.faccia, fattore: e.fattore } });
+        suona('quantico', { forza: this.forza(e.giocatore) });
+        await this.attendi(TEMPI.quantico);
+        if (gen !== this.generazione) return;
+        this.cambia({ quantico: null });
+        return;
+      }
       case 'teletrasporto': {
         // Sparisce in un lampo, la posizione salta mentre non si vede (CSS), poi ricompare e manda l'onda.
         const diChiGioca = partita.turno.giocatore === e.giocatore;
@@ -675,9 +720,45 @@ export class Regia {
       case 'scambio_rifiutato':
         this.mostraPerUnPo({ timbro: { n: voce.n, tipo: 'rifiutato', da: e.da, a: e.a } }, { timbro: null }, TIMBRO_MS);
         return;
+      // Regole folli: il cosmo della partita mostrata segue gli eventi, come proprietà e saldi.
+      case 'cosmo':
+        if (!inBase) this.ritoccaCosmo((c) => ({ ...c, giro: e.giro, evento: e.evento, mercato: e.mercato, verso: e.evento === 'gravita' ? -1 : 1 }));
+        return;
+      case 'buco_nero':
+        if (!inBase) this.ritoccaCosmo((c) => ({ ...c, malloppo: c.malloppo + e.importo }));
+        return;
+      case 'supernova':
+        if (!inBase) this.ritoccaCosmo((c) => ({ ...c, malloppo: tabellone(partita.mappa).follie?.malloppo ?? 0 }));
+        return;
+      case 'gravita_invertita':
+        if (!inBase) this.ritoccaCosmo((c) => ({ ...c, verso: -1 }));
+        return;
+      case 'meteorite':
+        ritocca(e.casella, (p) => ({ ...p, livello: e.livello }));
+        this.mostraPerUnPo({ lampeggia: [e.casella] }, { lampeggia: [] }, LAMPO_SCAMBIO_MS);
+        return;
+      case 'collisione': {
+        const [x, y] = e.caselle;
+        if (!inBase) {
+          this.ritoccaProprieta(
+            new Map([
+              [x, (p: Proprieta) => ({ ...p, proprietario: e.giocatori[1] })],
+              [y, (p: Proprieta) => ({ ...p, proprietario: e.giocatori[0] })],
+            ]),
+          );
+        }
+        this.mostraPerUnPo({ lampeggia: [x, y] }, { lampeggia: [] }, LAMPO_SCAMBIO_MS);
+        return;
+      }
       default:
         return;
     }
+  }
+
+  private ritoccaCosmo(cambia: (c: Cosmo) => Cosmo): void {
+    const p = this.scena.partita;
+    if (!p?.cosmo) return;
+    this.cambia({ partita: { ...p, cosmo: cambia(p.cosmo) } });
   }
 
   private mio(id: IdGiocatore | null): boolean {
@@ -720,6 +801,24 @@ export class Regia {
         return;
       case 'moneta':
         if (!e.testa && this.mio(e.giocatore)) suona('pagamento');
+        return;
+      case 'fionda':
+        suona('fionda', { forza: this.forza(e.giocatore) });
+        return;
+      case 'buco_nero':
+        suona('buconero', { forza: this.forza(e.giocatore) });
+        return;
+      case 'supernova':
+        suona('supernova', { forza: this.forza(e.giocatore) });
+        return;
+      case 'meteorite':
+        suona('meteorite', { forza: this.forza(e.giocatore) });
+        return;
+      case 'collisione':
+        suona('collisione');
+        return;
+      case 'gravita_invertita':
+        suona('gravita', { forza: this.forza(e.giocatore) });
         return;
       case 'tassa':
         if (this.mio(e.giocatore)) suona('pagamento');

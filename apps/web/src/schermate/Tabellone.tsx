@@ -352,6 +352,8 @@ interface StatoCasella {
   regione?: 'accesa' | 'spenta';
   /** Angoli: l'importo sotto il cartello (Partenza: quanto si incassa passando; Vacanza: la cassa). */
   valore?: { segno?: string; etichetta?: string; importo: number };
+  /** Al posto dell'importo fisso della casella: il malloppo della Supernova, che cresce con i buchi neri. */
+  importo?: string;
 }
 
 function CasellaTabellone({
@@ -377,6 +379,7 @@ function CasellaTabellone({
     'casella',
     `casella--${lato}`,
     `casella--${c.tipo}`,
+    c.speciale ? `casella--${c.speciale}` : '',
     c.tipo === 'angolo' ? `casella--angolo-${c.angolo}` : '',
     regione?.bandiera ? 'casella--bandiera' : '',
     p ? 'casella--posseduta' : '',
@@ -434,10 +437,10 @@ function CasellaTabellone({
     corpo = (
       <span className="casella__corpo">
         {c.gruppo !== undefined && <Stemma regione={regione} className="casella__stemma" />}
-        {(c.icona || c.importo) && (
+        {(c.icona || c.importo || stato.importo) && (
           <span className="casella__segnale">
             {c.icona && <IconaCasella nome={c.icona} className="casella__icona" />}
-            {c.importo && <span className="casella__importo">{c.importo}</span>}
+            {(stato.importo ?? c.importo) && <span className="casella__importo">{stato.importo ?? c.importo}</span>}
           </span>
         )}
         <span className={classeNome(nome)}>{nome}</span>
@@ -519,7 +522,14 @@ const SCALA_MINIMA = 0.85;
  * Centro della corsia delle pedine, in frazione della profondità della casella dal bordo interno (corsia 40–75%):
  * tra il nome e il blocco del proprietario, o tra il pittogramma e il nome per carte e tasse (il nome sta fuori).
  */
-const CORSIA: Partial<Record<CasellaVista['tipo'], number>> = { stazione: 0.61, servizio: 0.61, carta: 0.6, tassa: 0.55, premio: 0.55 };
+const CORSIA: Partial<Record<CasellaVista['tipo'], number>> = {
+  stazione: 0.61,
+  servizio: 0.61,
+  carta: 0.6,
+  tassa: 0.55,
+  premio: 0.55,
+  speciale: 0.6,
+};
 const CORSIA_CITTA = 0.58;
 /** Altezza della targa «Prigione» sotto la cella, in k. */
 const TARGA = 17;
@@ -737,6 +747,8 @@ export function Tabellone({
 
   const valoreAngolo = (c: CasellaVista): StatoCasella['valore'] => {
     if (c.tipo !== 'angolo') return undefined;
+    // Con le regole folli la Partenza paga a caso: si mostra il massimo.
+    if (c.angolo === 0 && tab.follie) return { etichetta: 'Fino a', importo: tab.follie.partenza.max };
     if (c.angolo === 0) return { segno: '+', importo: tab.partenza.passaggio };
     if (tab.caselle[c.n]?.tipo === 'vacanza' && cassa !== undefined) return { etichetta: 'Cassa', importo: cassa };
     return undefined;
@@ -795,6 +807,7 @@ export function Tabellone({
                 sfila: sfila?.includes(c.n) ? sfila.indexOf(c.n) : undefined,
                 regione: regioneAccesa === null ? undefined : c.gruppo === regioneAccesa ? 'accesa' : 'spenta',
                 valore: valoreAngolo(c),
+                importo: c.speciale === 'supernova' && partita?.cosmo ? euro(partita.cosmo.malloppo) : undefined,
               }}
               onApri={onApri}
               onRegione={setRegioneAccesa}

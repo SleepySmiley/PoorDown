@@ -5,6 +5,7 @@
  */
 
 import { tiraDadi } from './caso';
+import { premioPartenza } from './cosmo';
 import { accredita, errore, paga, pagaBanca, segnaTrasferimento, type Contesto } from './contesto';
 import {
   affitto,
@@ -14,6 +15,7 @@ import {
   edifici,
   giocatore,
   possedute,
+  prezzoAcquisto,
   proprietabile,
   regioneConEdifici,
   valoreVendita,
@@ -108,7 +110,7 @@ function verificaNelTurno(stato: Stato, g: Giocatore, azione: Azione): Errore | 
       const n = acquistoInSospeso(stato);
       const c = n === null ? null : proprietabile(tab, n);
       if (!c) return errore('niente_da_comprare', 'Non c’è niente da comprare.');
-      if (g.saldo < c.prezzo) return errore('soldi_insufficienti', 'Non hai abbastanza soldi.');
+      if (g.saldo < prezzoAcquisto(stato, n!)) return errore('soldi_insufficienti', 'Non hai abbastanza soldi.');
       return null;
     }
 
@@ -414,31 +416,49 @@ function lancia(ctx: Contesto, g: Giocatore): void {
     }
     // Esce con il doppio e si muove di quel tiro, senza tirare ancora.
     esciDiPrigione(ctx, g, 'doppio');
-    muovi(ctx, g, dadi[0] + dadi[1], dadi);
+    muoviConIDadi(ctx, g, dadi[0] + dadi[1], dadi);
   } else {
     if (doppio) t.doppi++;
     if (doppio && t.doppi >= DOPPI_PER_LA_PRIGIONE) {
       mandaInPrigione(ctx, g, 'tre_doppi');
     } else {
-      muovi(ctx, g, dadi[0] + dadi[1], dadi);
+      muoviConIDadi(ctx, g, dadi[0] + dadi[1], dadi);
       if (doppio && !ctx.turnoFinito) t.rilancio = true;
     }
   }
   if (ctx.turnoFinito) chiudiTurno(ctx);
 }
 
-/** Sposta la pedina e applica la casella d'arrivo. Avanzando oltre la Partenza si incassa il premio. */
-function muovi(ctx: Contesto, g: Giocatore, passi: number, dadi?: [number, number]): void {
+/** Lo spostamento di un tiro: con la gravità invertita (regole folli) all'indietro, e la Partenza paga anche così. */
+function muoviConIDadi(ctx: Contesto, g: Giocatore, passi: number, dadi: [number, number]): void {
+  const verso = ctx.s.cosmo?.verso ?? 1;
+  muovi(ctx, g, verso * passi, dadi, verso === -1);
+}
+
+/**
+ * Sposta la pedina e applica la casella d'arrivo. Avanzando oltre la Partenza si incassa il premio;
+ * all'indietro solo con `indietroPaga` (gravità invertita), non con «Torna indietro di 3 caselle».
+ */
+function muovi(ctx: Contesto, g: Giocatore, passi: number, dadi?: [number, number], indietroPaga = false): void {
   const n = ctx.tab.caselle.length;
   const da = g.posizione;
   const a = (((da + passi) % n) + n) % n;
   g.posizione = a;
-  ctx.eventi.push(dadi ? { tipo: 'movimento', giocatore: g.id, da, a, dadi } : { tipo: 'movimento', giocatore: g.id, da, a });
+  ctx.eventi.push({
+    tipo: 'movimento',
+    giocatore: g.id,
+    da,
+    a,
+    ...(dadi ? { dadi } : {}),
+    ...(passi < 0 ? { verso: -1 as const } : {}),
+  });
 
-  if (passi > 0 && da + passi >= n) {
+  const avanti = passi > 0 && da + passi >= n;
+  const indietro = passi < 0 && indietroPaga && da > 0 && da + passi <= 0;
+  if (avanti || indietro) {
     const arrivo = a === 0;
-    const importo = arrivo ? ctx.tab.partenza.arrivo : ctx.tab.partenza.passaggio;
-    ctx.eventi.push({ tipo: 'partenza', giocatore: g.id, importo, arrivo });
+    const { importo, tempesta } = premioPartenza(ctx, arrivo);
+    ctx.eventi.push({ tipo: 'partenza', giocatore: g.id, importo, arrivo, ...(tempesta ? { tempesta: true as const } : {}) });
     accredita(ctx, g, importo);
   }
   arriva(ctx, g);
@@ -461,8 +481,17 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       // Sulle proprie caselle, e a squadre su quelle dei compagni, non si paga.
       if (alleati(s, p.proprietario, g.id)) return;
       const dadi = s.turno.dadi;
-      const importo = affitto(s, casella, dadi ? dadi[0] + dadi[1] : 0);
+      let importo = affitto(s, casella, dadi ? dadi[0] + dadi[1] : 0);
       if (importo <= 0) return;
+      // Affitto quantistico (regole folli): un dado moltiplica l'affitto, anche per zero.
+      const quantico = tab.follie?.quantico;
+      if (quantico) {
+        const faccia = ctx.caso.intero(quantico.length) + 1;
+        const fattore = quantico[faccia - 1]!;
+        ctx.eventi.push({ tipo: 'quantico', giocatore: g.id, casella, faccia, fattore });
+        importo = Math.round(importo * fattore);
+        if (importo <= 0) return;
+      }
       ctx.eventi.push({ tipo: 'affitto', da: g.id, a: p.proprietario, casella, importo });
       paga(ctx, g, p.proprietario, importo);
       return;
@@ -492,6 +521,48 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       ctx.eventi.push({ tipo: 'vacanza', giocatore: g.id, incasso });
       accredita(ctx, g, incasso);
       ctx.turnoFinito = true;
+      return;
+    }
+    case 'fionda': {
+      // Riparte della stessa somma dei dadi, nel verso di marcia del giro (la gravità invertita vale anche qui).
+      const verso = s.cosmo?.verso ?? 1;
+      const dadi = s.turno.dadi;
+      const passi = verso * (dadi ? dadi[0] + dadi[1] : 7);
+      ctx.eventi.push({ tipo: 'fionda', giocatore: g.id, passi });
+      muovi(ctx, g, passi, undefined, verso === -1);
+      return;
+    }
+    case 'wormhole': {
+      // Mai su un altro wormhole: niente catene infinite.
+      const mete = tab.caselle.flatMap((x, i) => (x.tipo === 'wormhole' ? [] : [i]));
+      teletrasporta(ctx, g, mete[ctx.caso.intero(mete.length)]!);
+      arriva(ctx, g);
+      return;
+    }
+    case 'buco_nero': {
+      const importo = Math.floor((Math.max(0, g.saldo) * (tab.follie?.bucoNero ?? 0)) / 100);
+      if (importo <= 0 || !s.cosmo) return;
+      ctx.eventi.push({ tipo: 'buco_nero', giocatore: g.id, casella, importo });
+      pagaBanca(ctx, g, importo, false);
+      s.cosmo.malloppo += importo;
+      return;
+    }
+    case 'supernova': {
+      const importo = s.cosmo?.malloppo ?? 0;
+      if (importo <= 0 || !s.cosmo) return;
+      // La banca rimette il malloppo di partenza: la Supernova non resta mai vuota.
+      s.cosmo.malloppo = tab.follie?.malloppo ?? 0;
+      ctx.eventi.push({ tipo: 'supernova', giocatore: g.id, casella, importo });
+      accredita(ctx, g, importo);
+      return;
+    }
+    case 'roulette': {
+      const spicchi = tab.follie?.roulette ?? [];
+      if (spicchi.length === 0) return;
+      const spicchio = ctx.caso.intero(spicchi.length);
+      const uscito = spicchi[spicchio]!;
+      ctx.eventi.push({ tipo: 'roulette', giocatore: g.id, spicchio, testo: uscito.testo });
+      eseguiEffetto(ctx, g, uscito.effetto, 'cartolina');
       return;
     }
     case 'partenza':
@@ -661,6 +732,17 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
     case 'rilancia':
       if (!ctx.turnoFinito) s.turno.rilancio = true;
       return;
+    case 'meta_contante': {
+      const importo = Math.min(effetto.massimo, Math.floor(Math.max(0, g.saldo) / 2));
+      segnaTrasferimento(ctx, g.id, null, importo);
+      pagaBanca(ctx, g, importo, true);
+      return;
+    }
+    case 'inverti':
+      if (!s.cosmo) return;
+      s.cosmo.verso = -1;
+      ctx.eventi.push({ tipo: 'gravita_invertita', giocatore: g.id });
+      return;
   }
 }
 
@@ -668,7 +750,7 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
 
 function compra(ctx: Contesto, g: Giocatore): void {
   const casella = ctx.s.turno.acquisto!;
-  const prezzo = proprietabile(ctx.tab, casella)!.prezzo;
+  const prezzo = prezzoAcquisto(ctx.s, casella);
   g.saldo -= prezzo;
   ctx.s.proprieta[casella]!.proprietario = g.id;
   ctx.s.turno.acquisto = null;

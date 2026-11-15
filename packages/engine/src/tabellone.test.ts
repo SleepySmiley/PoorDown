@@ -75,6 +75,33 @@ describe('tabelloni alternativi', () => {
   });
 });
 
+describe('Sistema solare: il tabellone folle', () => {
+  const tab = TABELLONI.sistema_solare;
+  const f = tab.follie!;
+
+  it('gruppi da 1 a 5 caselle, Plutone a 10 € e Giove carissimo', () => {
+    expect(tab.caselle).toHaveLength(48);
+    expect(gruppi(tab)).toEqual([2, 1, 2, 5, 3, 2, 3, 3, 4, 1]);
+    const prezzi = (nome: string) => tab.caselle.find((c) => c.nome === nome && c.tipo === 'citta') as { prezzo: number };
+    expect(prezzi('Plutone').prezzo).toBe(10);
+    expect(prezzi('Ganimede').prezzo).toBeGreaterThan(500);
+  });
+
+  it('ha tutte le caselle folli', () => {
+    const tipi = tab.caselle.map((c) => c.tipo);
+    for (const [tipo, quante] of [['fionda', 2], ['wormhole', 2], ['roulette', 2], ['buco_nero', 1], ['supernova', 1]] as const) {
+      expect(tipi.filter((t) => t === tipo)).toHaveLength(quante);
+    }
+  });
+
+  it('regole folli coerenti: sei facce quantiche, Partenza in media 200 €, roulette da otto spicchi', () => {
+    expect(f.quantico).toHaveLength(6);
+    expect((f.partenza.min + f.partenza.max) / 2).toBe(200);
+    expect(f.roulette).toHaveLength(8);
+    for (const s of f.roulette) if (s.effetto.tipo === 'vai_a') expect(tab.caselle[s.effetto.casella]!.tipo).toBe('supernova');
+  });
+});
+
 describe.each(Object.values(TABELLONI).map((tab) => [tab.nome, tab] as const))('%s', (_, tab) => {
   const n = tab.caselle.length;
 
@@ -94,14 +121,18 @@ describe.each(Object.values(TABELLONI).map((tab) => [tab.nome, tab] as const))('
     expect(angoli).toEqual([0, n / 4, n / 2, (3 * n) / 4]);
   });
 
+  // Con le regole folli (Sistema solare) l'equilibrio è sballato apposta: prezzi che non crescono, gruppi da una casella.
+  const folle = tab.follie !== undefined;
+
   it('prezzi e affitti crescono lungo il tabellone e con i livelli', () => {
     let prezzoPrima = 0;
     for (const c of tab.caselle) {
       if (c.tipo !== 'citta') continue;
-      expect(c.prezzo).toBeGreaterThanOrEqual(prezzoPrima);
+      if (!folle) expect(c.prezzo).toBeGreaterThanOrEqual(prezzoPrima);
       prezzoPrima = c.prezzo;
       for (let l = 1; l < 6; l++) expect(c.affitti[l]).toBeGreaterThan(c.affitti[l - 1]!);
     }
+    if (folle) return;
     expect(Math.min(...tab.regioni.map((r) => r.costoCasa))).toBe(50);
     // Al massimo 200 €: su Grandi aree il Nord costa 150 € (bilanciamento della Fase 9).
     expect(Math.max(...tab.regioni.map((r) => r.costoCasa))).toBeLessThanOrEqual(200);
@@ -112,7 +143,7 @@ describe.each(Object.values(TABELLONI).map((tab) => [tab.nome, tab] as const))('
       expect(regione.sigla).toMatch(/^[A-Z]{3}$/);
       expect(regione.colore).toBeGreaterThanOrEqual(1);
       expect(regione.colore).toBeLessThanOrEqual(10);
-      expect(caselleDellaRegione(tab, r).length).toBeGreaterThanOrEqual(2);
+      expect(caselleDellaRegione(tab, r).length).toBeGreaterThanOrEqual(folle ? 1 : 2);
     }
     expect(new Set(tab.regioni.map((r) => r.colore)).size).toBe(tab.regioni.length);
     expect(new Set(tab.caselle.filter((c) => c.tipo === 'citta').map((c) => c.nome)).size).toBe(conta(tab, 'citta'));

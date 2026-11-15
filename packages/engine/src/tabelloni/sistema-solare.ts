@@ -1,85 +1,102 @@
 /*
- * Tabellone "Sistema solare": 48 caselle (12 per lato), con la struttura di Europa (stessi prezzi, stesse posizioni,
- * stessa economia) ma pianeti, lune e asteroidi al posto dei paesi. I nomi delle caselle sono posti veri:
- * crateri, vulcani, lune.
- * Quello che lo rende folle sono i mazzi: Busta e Cartolina sono solo sue, con le carte che esistono solo qui
- * (wormhole, scambio di posto, Robin Hood, buco nero, testa o croce, pioggia per tutti, tira di nuovo).
- * Affitti dalla scala del Classico (scala.ts).
+ * Tabellone "Sistema solare": 48 caselle (12 per lato) di caos, diverso apposta da tutti gli altri.
+ * - Equilibrio sballato: gruppi da 1 a 5 caselle, Plutone (declassato) costa 10 €, le lune di Giove una follia,
+ *   negli asteroidi c'è Psiche, il sasso di metallo che costa come tutti gli altri insieme.
+ * - Caselle folli: fionde gravitazionali, wormhole, Buco nero e Supernova (il malloppo), Roulette cosmica.
+ * - Regole folli (`follie`): affitto quantistico, Partenza a caso, un evento cosmico a ogni giro, Mercato galattico.
+ * - Busta e Cartolina solo sue, con le carte che esistono solo qui.
+ * I nomi delle caselle sono posti veri: crateri, vulcani, lune, asteroidi.
  */
 
-import type { Carta, Casella, Regione, Tabellone } from '../tipi';
+import type { Affitti, Carta, Casella, Follie, Regione, Tabellone } from '../tipi';
 import { viaggio } from './mazzi';
 import { affittiPerPrezzo } from './scala';
 
 const REGIONI: Regione[] = [
   { nome: 'Luna', sigla: 'LUN', colore: 1, bandiera: 'luna', costoCasa: 50, costoAlbergo: 50 },
-  { nome: 'Mercurio', sigla: 'MER', colore: 2, bandiera: 'mercurio', costoCasa: 50, costoAlbergo: 50 },
+  { nome: 'Mercurio', sigla: 'MER', colore: 2, bandiera: 'mercurio', costoCasa: 100, costoAlbergo: 100 },
   { nome: 'Venere', sigla: 'VEN', colore: 3, bandiera: 'venere', costoCasa: 100, costoAlbergo: 100 },
+  // Cinque asteroidi con le case a 50 €, Psiche compresa: chi li prende tutti fa il colpo della partita.
+  { nome: 'Fascia degli asteroidi', sigla: 'AST', colore: 5, bandiera: 'asteroidi', costoCasa: 50, costoAlbergo: 50 },
   { nome: 'Marte', sigla: 'MAR', colore: 4, bandiera: 'marte', costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Fascia degli asteroidi', sigla: 'AST', colore: 5, bandiera: 'asteroidi', costoCasa: 100, costoAlbergo: 100 },
-  { nome: 'Giove', sigla: 'GIO', colore: 6, bandiera: 'giove', costoCasa: 150, costoAlbergo: 150 },
-  { nome: 'Saturno', sigla: 'SAT', colore: 7, bandiera: 'saturno', costoCasa: 200, costoAlbergo: 200 },
   { nome: 'Urano', sigla: 'URA', colore: 8, bandiera: 'urano', costoCasa: 150, costoAlbergo: 150 },
+  { nome: 'Saturno', sigla: 'SAT', colore: 7, bandiera: 'saturno', costoCasa: 200, costoAlbergo: 200 },
   { nome: 'Nettuno', sigla: 'NET', colore: 9, bandiera: 'nettuno', costoCasa: 200, costoAlbergo: 200 },
-  { nome: 'Plutone', sigla: 'PLU', colore: 10, bandiera: 'plutone', costoCasa: 200, costoAlbergo: 200 },
+  { nome: 'Giove', sigla: 'GIO', colore: 6, bandiera: 'giove', costoCasa: 300, costoAlbergo: 300 },
+  { nome: 'Plutone', sigla: 'PLU', colore: 10, bandiera: 'plutone', costoCasa: 10, costoAlbergo: 10 },
 ];
 
-function citta(nome: string, regione: number, prezzo: number, breve?: string): Casella {
-  return { tipo: 'citta', nome, regione, prezzo, affitti: affittiPerPrezzo(prezzo), ...(breve ? { breve } : {}) };
+/** Città con gli affitti della scala del Classico, oppure con affitti scritti a mano (fuori scala: Giove, Plutone). */
+function citta(nome: string, regione: number, prezzo: number, opzioni: { breve?: string; affitti?: Affitti } = {}): Casella {
+  return {
+    tipo: 'citta',
+    nome,
+    regione,
+    prezzo,
+    affitti: opzioni.affitti ?? affittiPerPrezzo(prezzo),
+    ...(opzioni.breve ? { breve: opzioni.breve } : {}),
+  };
 }
 
 const BUSTA_CASELLA: Casella = { tipo: 'carta', nome: 'Busta', mazzo: 'busta' };
 const CARTOLINA_CASELLA: Casella = { tipo: 'carta', nome: 'Cartolina', mazzo: 'cartolina' };
+const ROULETTE: Casella = { tipo: 'roulette', nome: 'Roulette cosmica', breve: 'Roulette' };
+const WORMHOLE: Casella = { tipo: 'wormhole', nome: 'Wormhole' };
+const FIONDA: Casella = { tipo: 'fionda', nome: 'Fionda gravitazionale', breve: 'Fionda' };
+
+/** Indici delle caselle a cui portano carte e spicchi. */
+const SUPERNOVA = 41;
 
 const CASELLE: Casella[] = [
   { tipo: 'partenza', nome: 'Partenza' },
   citta('Tycho', 0, 60),
-  BUSTA_CASELLA,
+  ROULETTE,
   citta('Copernico', 0, 70),
-  { tipo: 'tassa', nome: 'Dogana galattica', breve: 'Dogana', tassa: { tipo: 'percentuale', valore: 10 } },
-  citta('Caloris', 1, 100),
+  WORMHOLE,
+  citta('Bacino Caloris', 1, 150, { breve: 'Caloris' }),
   { tipo: 'stazione', nome: 'Navetta', prezzo: 200 },
-  citta('Beethoven', 1, 100),
+  citta('Cleopatra', 2, 120),
   CARTOLINA_CASELLA,
-  citta('Rembrandt', 1, 120),
-  citta('Cleopatra', 2, 130),
-  citta('Maxwell Montes', 2, 140, 'Maxwell'),
+  citta('Maxwell Montes', 2, 140, { breve: 'Maxwell' }),
+  citta('Igea', 3, 80),
+  citta('Pallade', 3, 80),
   { tipo: 'prigione', nome: 'Prigione' },
-  citta('Jezero', 3, 150),
-  citta('Valles Marineris', 3, 150, 'Marineris'),
-  { tipo: 'servizio', nome: 'Ossigeno', prezzo: 150 },
-  citta('Olympus Mons', 3, 170, 'Olympus'),
+  citta('Vesta', 3, 90),
+  FIONDA,
+  citta('Cerere', 3, 100),
+  citta('Psiche', 3, 350),
   BUSTA_CASELLA,
   { tipo: 'stazione', nome: 'Capsula', prezzo: 200 },
-  citta('Igea', 4, 180),
-  citta('Pallade', 4, 180),
-  { tipo: 'servizio', nome: 'Gravità artificiale', breve: 'Gravità', prezzo: 150 },
-  citta('Vesta', 4, 190),
-  citta('Cerere', 4, 200),
+  citta('Jezero', 4, 160),
+  { tipo: 'servizio', nome: 'Ossigeno', prezzo: 150 },
+  citta('Valles Marineris', 4, 170, { breve: 'Marineris' }),
+  { tipo: 'buco_nero', nome: 'Buco nero' },
+  citta('Olympus Mons', 4, 200, { breve: 'Olympus' }),
   { tipo: 'vacanza', nome: 'Vacanza' },
-  citta('Callisto', 5, 220),
-  CARTOLINA_CASELLA,
-  citta('Ganimede', 5, 220),
-  citta('Io', 5, 240),
+  citta('Ariel', 5, 220),
+  ROULETTE,
+  citta('Miranda', 5, 240),
   citta('Encelado', 6, 260),
+  WORMHOLE,
   { tipo: 'stazione', nome: 'Astronave', prezzo: 200 },
-  citta('Titano', 6, 270),
-  { tipo: 'servizio', nome: 'Rete Wi-Fi galattica', breve: 'Wi-Fi', prezzo: 150 },
-  citta('Ariel', 7, 280),
-  citta('Miranda', 7, 280),
-  citta('Titania', 7, 300),
-  { tipo: 'vai_in_prigione', nome: 'Vai in prigione' },
-  citta('Proteo', 8, 310),
-  citta('Nereide', 8, 320),
-  BUSTA_CASELLA,
-  citta('Tritone', 8, 340),
+  citta('Titano', 6, 280),
+  citta('Anelli di Saturno', 6, 300, { breve: 'Anelli' }),
   CARTOLINA_CASELLA,
+  citta('Proteo', 7, 300),
+  citta('Nereide', 7, 310),
+  { tipo: 'vai_in_prigione', nome: 'Vai in prigione' },
+  citta('Tritone', 7, 340),
+  FIONDA,
+  citta('Io', 8, 450, { affitti: [50, 220, 650, 1500, 1850, 2200] }),
+  citta('Europa', 8, 480, { affitti: [55, 240, 700, 1600, 1950, 2300] }),
+  { tipo: 'supernova', nome: 'Supernova' },
   { tipo: 'stazione', nome: 'Sonda', prezzo: 200 },
-  citta('Idra', 9, 350),
-  citta('Caronte', 9, 360),
+  citta('Ganimede', 8, 520, { affitti: [65, 260, 780, 1800, 2150, 2550] }),
+  { tipo: 'servizio', nome: 'Rete Wi-Fi galattica', breve: 'Wi-Fi', prezzo: 150 },
+  citta('Callisto', 8, 500, { affitti: [60, 250, 750, 1700, 2050, 2400] }),
   BUSTA_CASELLA,
-  { tipo: 'tassa', nome: 'Autovelox della luce', breve: 'Autovelox', tassa: { tipo: 'fissa', valore: 75 } },
-  citta('Sputnik Planitia', 9, 400, 'Sputnik'),
+  // Declassato a pianeta nano: costa 10 €, e anche le sue case.
+  citta('Plutone', 9, 10, { affitti: [1, 5, 15, 40, 70, 100] }),
 ];
 
 /** Busta: soprattutto soldi, con le carte folli che fanno girare il contante tra tutti. */
@@ -118,19 +135,21 @@ const BUSTA: Carta[] = [
   },
 ];
 
-/** Cartolina: soprattutto spostamenti, con wormhole, scambi di posto e il buco nero che si mangia gli avversari. */
+/** Cartolina: soprattutto spostamenti, con wormhole, scambi di posto, gravità invertita e il buco nero sugli avversari. */
 const CARTOLINA: Carta[] = [
   viaggio('Torna sulla Terra: vai alla Partenza.', 0),
   viaggio('Gita in giornata sulla Luna. Vai a Copernico.', 3),
-  viaggio('Vai a scalare l’Olympus Mons, il vulcano più alto del Sistema solare.', 16),
-  viaggio('Vai a fare il bagno nei geyser di Encelado.', 29),
-  viaggio('Vai a Sputnik Planitia, il cuore di Plutone.', 47),
+  viaggio('Vai a scalare l’Olympus Mons, il vulcano più alto del Sistema solare.', 23),
+  viaggio('Vai a fare il bagno nei geyser di Encelado.', 28),
+  viaggio('Vai a Plutone: tanto costa 10 €.', 47),
+  viaggio('Vai alla Supernova a prenderti il malloppo.', SUPERNOVA),
   { testo: 'Autostop spaziale: vai al prossimo mezzo di trasporto.', effetto: { tipo: 'prossima', casella: 'stazione' } },
   { testo: 'Ti si scarica il telefono: vai al prossimo servizio.', effetto: { tipo: 'prossima', casella: 'servizio' } },
   { testo: 'Wormhole! Ti teletrasporti su una casella a caso.', effetto: { tipo: 'casuale' } },
   { testo: 'Starnutisci dentro il teletrasporto: finisci su una casella a caso.', effetto: { tipo: 'casuale' } },
   { testo: 'Scambio quantico: scambi il posto con un avversario a caso.', effetto: { tipo: 'scambia_posto' } },
   { testo: 'Buco nero! Tutti gli avversari vengono risucchiati in prigione.', effetto: { tipo: 'avversari_in_prigione' } },
+  { testo: 'Inverti la gravità: fino alla fine del giro tutti camminano al contrario.', effetto: { tipo: 'inverti' } },
   { testo: 'Gravità zero: tira di nuovo i dadi.', effetto: { tipo: 'rilancia' } },
   { testo: 'Retromarcia nell’iperspazio: torna indietro di 3 caselle.', effetto: { tipo: 'passi', passi: -3 } },
   { testo: 'Ti rapiscono gli alieni. Vai in prigione.', effetto: { tipo: 'prigione' } },
@@ -150,17 +169,40 @@ const CARTOLINA: Carta[] = [
   },
 ];
 
+const FOLLIE: Follie = {
+  // Da gratis a ×3: in media un affitto vale un quarto in più, ma nessuno è sicuro.
+  quantico: [0, 0.5, 1, 1, 2, 3],
+  // Da 0 a 400 € a passi di 50: in media 200 €, come sugli altri tabelloni; fermandosi sopra, 100 € in più.
+  partenza: { min: 0, max: 400, passo: 50, arrivo: 100 },
+  eventi: ['quiete', 'allineamento', 'eclissi', 'tempesta', 'meteoriti', 'gravita', 'collisione'],
+  mercato: [0.5, 2],
+  bucoNero: 20,
+  malloppo: 100,
+  // Otto spicchi, come le fette della ruota.
+  roulette: [
+    { testo: 'Jackpot cosmico! Ricevi 300 €.', effetto: { tipo: 'soldi', importo: 300 } },
+    { testo: 'Buco nel portafoglio: perdi metà del contante (al massimo 500 €).', effetto: { tipo: 'meta_contante', massimo: 500 } },
+    { testo: 'Fan club alieno: ogni giocatore ti dà 50 €.', effetto: { tipo: 'da_ognuno', importo: 50 } },
+    { testo: 'Offri da bere a tutta la galassia: paga 50 € a ogni giocatore.', effetto: { tipo: 'a_ognuno', importo: 50 } },
+    { testo: 'Wormhole! Ti teletrasporti su una casella a caso.', effetto: { tipo: 'casuale' } },
+    { testo: 'Eccesso di velocità della luce: vai in prigione.', effetto: { tipo: 'prigione' } },
+    { testo: 'Gravità invertita: fino alla fine del giro tutti camminano al contrario.', effetto: { tipo: 'inverti' } },
+    { testo: 'Dritto alla Supernova a prenderti il malloppo!', effetto: { tipo: 'vai_a', casella: SUPERNOVA } },
+  ],
+};
+
 export const SISTEMA_SOLARE: Tabellone = {
   id: 'sistema_solare',
   nome: 'Sistema solare',
   descrizione:
-    '48 caselle tra pianeti, lune e asteroidi, con carte folli: wormhole, scambi di posto, Robin Hood e buchi neri che risucchiano tutti.',
+    'Caos puro: affitti quantistici, Partenza a caso, un evento cosmico a ogni giro, wormhole, fionde, roulette e un buco nero. Prezzi sballati apposta.',
   caselle: CASELLE,
   regioni: REGIONI,
   partenza: { passaggio: 200, arrivo: 300 },
   prigione: 12,
   cauzione: 50,
   affittiStazioni: [25, 50, 100, 200],
-  moltiplicatoriServizi: [4, 10, 20],
+  moltiplicatoriServizi: [4, 10],
   mazzi: { busta: BUSTA, cartolina: CARTOLINA },
+  follie: FOLLIE,
 };

@@ -1,0 +1,296 @@
+/* =====================================================================
+   Regole folli del Sistema solare (ui/Cosmo.tsx): roulette, annuncio del giro, dado quantico, pannello del cosmo.
+   Misure in --k (l'unità del tabellone), come le altre scene sopra il tabellone.
+   ===================================================================== */
+
+/* ---------- Roulette cosmica ---------- */
+
+.roulette-cosmica {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  z-index: 19;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k) * 12);
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.roulette-cosmica__ruota {
+  position: relative;
+  width: calc(var(--k) * 250);
+  height: calc(var(--k) * 250);
+  filter: drop-shadow(0 calc(var(--k) * 10) calc(var(--k) * 24) rgb(0 0 0 / 0.55));
+}
+
+.roulette-cosmica__disco {
+  width: 100%;
+  height: 100%;
+  transition-property: transform;
+  /* Parte di scatto e rallenta a lungo, come una ruota vera. */
+  transition-timing-function: cubic-bezier(0.12, 0.62, 0.16, 1);
+}
+
+.roulette-cosmica__bordo {
+  fill: #0b1024;
+  stroke: #ffd166;
+  stroke-width: 3;
+}
+
+.roulette-cosmica__disco path {
+  stroke: #0b1024;
+  stroke-width: 1.6;
+  transition: filter 200ms;
+}
+
+.roulette-cosmica__uscito {
+  filter: brightness(1.35) drop-shadow(0 0 6px #fff);
+}
+
+.roulette-cosmica__etichetta {
+  fill: #12142a;
+  font: 700 13px / 1 var(--stretto);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: 0.02em;
+}
+
+.roulette-cosmica__mozzo {
+  fill: #0b1024;
+  stroke: #ffd166;
+  stroke-width: 2.5;
+}
+
+/* La lancetta: un triangolo ambra in alto, che punta allo spicchio uscito. */
+.roulette-cosmica__lancetta {
+  position: absolute;
+  top: calc(var(--k) * -8);
+  left: 50%;
+  z-index: 1;
+  width: calc(var(--k) * 24);
+  height: calc(var(--k) * 28);
+  translate: -50% 0;
+  background: var(--ambra);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.5));
+}
+
+.roulette-cosmica__testo {
+  max-width: calc(var(--k) * 320);
+  padding: calc(var(--k) * 10) calc(var(--k) * 16);
+  border-radius: calc(var(--k) * 10);
+  background: #0b1024;
+  color: #fff;
+  font: 600 calc(var(--k) * 19) / 1.2 var(--stretto);
+  text-align: center;
+  box-shadow:
+    inset 0 0 0 1px #ff6fb5,
+    0 0 calc(var(--k) * 18) rgb(255 111 181 / 0.35);
+}
+
+/* ---------- Annuncio del giro ---------- */
+
+.annuncio-cosmo {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 19;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k) * 6);
+  width: calc(var(--k) * 380);
+  padding: calc(var(--k) * 18) calc(var(--k) * 22) calc(var(--k) * 16);
+  translate: -50% -50%;
+  border-radius: calc(var(--k) * 16);
+  background:
+    radial-gradient(circle at 20% 15%, rgb(255 255 255 / 0.9) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 78% 30%, rgb(255 255 255 / 0.7) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 60% 85%, rgb(255 255 255 / 0.6) 0 1px, transparent 1.5px),
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--evento) 32%, transparent), transparent 70%),
+    #0b1024;
+  color: #fff;
+  text-align: center;
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--evento) 70%, transparent),
+    0 0 calc(var(--k) * 30) color-mix(in srgb, var(--evento) 35%, transparent),
+    0 calc(var(--k) * 14) calc(var(--k) * 30) rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+
+.annuncio-cosmo__giro {
+  color: var(--ambra);
+  font: 700 calc(var(--k) * 14) / 1 var(--stretto);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.annuncio-cosmo__icona {
+  width: calc(var(--k) * 44);
+  height: calc(var(--k) * 44);
+  color: var(--evento);
+  filter: drop-shadow(0 0 calc(var(--k) * 8) var(--evento));
+}
+
+.annuncio-cosmo__nome {
+  margin: 0;
+  color: var(--evento);
+  font: 700 calc(var(--k) * 34) / 1 var(--stretto);
+}
+
+.annuncio-cosmo__effetto {
+  margin: 0;
+  font: 500 calc(var(--k) * 17) / 1.25 var(--stretto);
+}
+
+.annuncio-cosmo__mercato {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--k) * 8);
+  margin: calc(var(--k) * 6) 0 0;
+  padding-top: calc(var(--k) * 10);
+  border-top: 1px solid rgb(255 255 255 / 0.14);
+  font: 500 calc(var(--k) * 15) / 1 var(--stretto);
+}
+
+.annuncio-cosmo__etichetta,
+.annuncio-cosmo__nota {
+  color: rgb(255 255 255 / 0.6);
+}
+
+/* ---------- Mercato galattico (annuncio e pannello) ---------- */
+
+.cosmo-mercato {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--k) * 5);
+}
+
+.cosmo-mercato__stemma {
+  width: calc(var(--k) * 24);
+  height: auto;
+}
+
+.cosmo-mercato__fattore {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+}
+
+.cosmo-mercato__fattore svg {
+  width: calc(var(--k) * 14);
+  height: calc(var(--k) * 14);
+}
+
+.cosmo-mercato--sale .cosmo-mercato__fattore {
+  color: #7ee081;
+}
+
+.cosmo-mercato--crolla .cosmo-mercato__fattore {
+  color: #ff7a59;
+}
+
+/* ---------- Dado quantico ---------- */
+
+.dado-quantico {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--k) * 12);
+  padding: calc(var(--k) * 10) calc(var(--k) * 16) calc(var(--k) * 10) calc(var(--k) * 10);
+  translate: -50% -50%;
+  border-radius: calc(var(--k) * 14);
+  background: #0b1024;
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 1.5px #b58cff,
+    0 0 calc(var(--k) * 22) rgb(181 140 255 / 0.4),
+    0 calc(var(--k) * 10) calc(var(--k) * 24) rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.dado-quantico--gratis {
+  box-shadow:
+    inset 0 0 0 1.5px #7ee081,
+    0 0 calc(var(--k) * 22) rgb(126 224 129 / 0.45);
+}
+
+.dado-quantico--caro {
+  box-shadow:
+    inset 0 0 0 1.5px #ff7a59,
+    0 0 calc(var(--k) * 22) rgb(255 122 89 / 0.45);
+}
+
+.dado-quantico__dado {
+  width: calc(var(--k) * 46);
+  height: calc(var(--k) * 46);
+}
+
+.dado-quantico__testo {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--k) * 3);
+  font-family: var(--stretto);
+}
+
+.dado-quantico__titolo {
+  color: rgb(255 255 255 / 0.65);
+  font-size: calc(var(--k) * 13);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dado-quantico__testo b {
+  font-size: calc(var(--k) * 28);
+  line-height: 1;
+}
+
+/* ---------- Pannello del cosmo, al centro del tabellone ---------- */
+
+.pannello-cosmo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--k) * 6) calc(var(--k) * 14);
+  padding: calc(var(--k) * 7) calc(var(--k) * 14);
+  border-radius: var(--r-tondo);
+  background: #0b1024;
+  color: #fff;
+  font: 600 calc(var(--k) * 15) / 1 var(--stretto);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--evento) 55%, transparent);
+}
+
+.pannello-cosmo > span {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--k) * 5);
+}
+
+.pannello-cosmo svg {
+  width: calc(var(--k) * 17);
+  height: calc(var(--k) * 17);
+}
+
+.pannello-cosmo__evento {
+  color: var(--evento);
+}
+
+.pannello-cosmo__giro {
+  color: rgb(255 255 255 / 0.55);
+}
+
+.pannello-cosmo__malloppo {
+  color: #ffd166;
+}
+
+.pannello-cosmo__verso {
+  color: #5ee6c8;
+}

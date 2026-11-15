@@ -92,8 +92,20 @@ export interface Angolo extends CasellaBase {
   tipo: 'partenza' | 'prigione' | 'vacanza' | 'vai_in_prigione';
 }
 
+/**
+ * Le caselle folli del Sistema solare:
+ * - `fionda`: fionda gravitazionale, si riparte subito della stessa somma dei dadi;
+ * - `wormhole`: teletrasporto su una casella a caso;
+ * - `buco_nero`: risucchia una parte del contante nel malloppo (`Cosmo.malloppo`);
+ * - `supernova`: chi ci si ferma prende tutto il malloppo;
+ * - `roulette`: gira la Roulette cosmica (`Follie.roulette`).
+ */
+export interface Speciale extends CasellaBase {
+  tipo: 'fionda' | 'wormhole' | 'buco_nero' | 'supernova' | 'roulette';
+}
+
 export type Proprietabile = Citta | Stazione | Servizio;
-export type Casella = Proprietabile | CasellaCarta | Tassa | Premio | Angolo;
+export type Casella = Proprietabile | CasellaCarta | Tassa | Premio | Angolo | Speciale;
 export type TipoCasella = Casella['tipo'];
 
 export interface Regione {
@@ -181,7 +193,45 @@ export type Effetto =
   /** Ogni giocatore, compreso chi pesca, riceve (positivo) o paga alla banca (negativo). */
   | { tipo: 'tutti_soldi'; importo: number }
   /** Si tira di nuovo i dadi, come dopo un doppio (ma senza contare come doppio). */
-  | { tipo: 'rilancia' };
+  | { tipo: 'rilancia' }
+  /** Si perde metà del contante, al massimo `massimo` (Roulette cosmica). */
+  | { tipo: 'meta_contante'; massimo: number }
+  /** Gravità invertita: fino alla fine del giro tutti tirano i dadi e camminano al contrario. */
+  | { tipo: 'inverti' };
+
+/** Gli eventi cosmici del Sistema solare: uno per giro, dal secondo giro. */
+export type EventoCosmico = 'quiete' | 'allineamento' | 'eclissi' | 'tempesta' | 'meteoriti' | 'gravita' | 'collisione';
+
+/** Le regole folli di un tabellone: oggi solo il Sistema solare. */
+export interface Follie {
+  /** Affitto quantistico: ogni affitto si moltiplica per il fattore della faccia di un dado (6 valori). */
+  quantico: readonly number[];
+  /** Partenza a caso: multipli di `passo` tra `min` e `max`; fermandosi sopra, `arrivo` in più. */
+  partenza: { min: number; max: number; passo: number; arrivo: number };
+  /** Gli eventi cosmici che si estraggono a ogni giro (ripetuti = più probabili). */
+  eventi: readonly EventoCosmico[];
+  /** Mercato galattico: i fattori possibili per prezzo e affitti del pianeta del giro. */
+  mercato: readonly number[];
+  /** Buco nero: la percentuale del contante che risucchia nel malloppo. */
+  bucoNero: number;
+  /** Il malloppo della Supernova a inizio partita e dopo ogni vincita. */
+  malloppo: number;
+  /** Gli spicchi della Roulette cosmica: se ne estrae uno a caso a ogni giro di ruota. */
+  roulette: readonly Carta[];
+}
+
+/** Lo stato del cosmo nelle partite con le regole folli. */
+export interface Cosmo {
+  /** Il giro in corso: cresce quando il turno torna al primo dell'ordine. */
+  giro: number;
+  evento: EventoCosmico;
+  /** Il pianeta (indice della regione) quotato dal Mercato galattico in questo giro, con il suo fattore. */
+  mercato: { regione: number; fattore: number } | null;
+  /** I soldi risucchiati dai buchi neri, che aspettano la Supernova. */
+  malloppo: number;
+  /** -1 con la gravità invertita: i dadi portano indietro, fino alla fine del giro. */
+  verso: 1 | -1;
+}
 
 export interface Carta {
   testo: string;
@@ -204,6 +254,8 @@ export interface Tabellone {
   /** Moltiplicatore dei dadi con 1, 2, 3 servizi. */
   moltiplicatoriServizi: readonly number[];
   mazzi: Readonly<Record<NomeMazzo, readonly Carta[]>>;
+  /** Le regole folli (Sistema solare): affitto quantistico, Partenza a caso, eventi cosmici, mercato, caselle speciali. */
+  follie?: Follie;
 }
 
 /* ------------------------------------------------------------------ */
@@ -442,6 +494,8 @@ export interface Stato {
   /** A squadre, la squadra che ha vinto; altrimenti `null`. */
   squadraVincitrice: number | null;
   statistiche: Statistiche;
+  /** Solo sui tabelloni con le regole folli: evento del giro, mercato, malloppo, verso di marcia. */
+  cosmo?: Cosmo;
 }
 
 /* ------------------------------------------------------------------ */
@@ -499,14 +553,34 @@ export type Evento =
   | { tipo: 'turno_saltato'; giocatore: IdGiocatore }
   | { tipo: 'dadi'; giocatore: IdGiocatore; dadi: [number, number] }
   /** `dadi` c'è quando lo spostamento viene da un tiro. */
-  | { tipo: 'movimento'; giocatore: IdGiocatore; da: number; a: number; dadi?: [number, number] }
+  /** `verso`: -1 quando la pedina cammina all'indietro per la gravità invertita (anche con i dadi). */
+  | { tipo: 'movimento'; giocatore: IdGiocatore; da: number; a: number; dadi?: [number, number]; verso?: -1 }
   /** Spostamento di una carta folle (wormhole, scambio di posto): la pedina vola, non cammina, e non passa dalla Partenza. */
   | { tipo: 'teletrasporto'; giocatore: IdGiocatore; da: number; a: number }
   /** Carta Robin Hood: chi ha più contante (`da`) dà `importo` a chi ne ha meno (`a`). */
   | { tipo: 'robin_hood'; da: IdGiocatore; a: IdGiocatore; importo: number }
   /** Carta della moneta: con testa `giocatore` riceve `importo` dalla banca, con croce lo paga. */
   | { tipo: 'moneta'; giocatore: IdGiocatore; testa: boolean; importo: number }
-  | { tipo: 'partenza'; giocatore: IdGiocatore; importo: number; arrivo: boolean }
+  /** Inizio di un giro sul Sistema solare: l'evento cosmico e il pianeta del Mercato galattico. */
+  | { tipo: 'cosmo'; giro: number; evento: EventoCosmico; mercato: { regione: number; fattore: number } | null }
+  /** Affitto quantistico: la faccia del dado e il fattore per cui si moltiplica l'affitto che segue. */
+  | { tipo: 'quantico'; giocatore: IdGiocatore; casella: number; faccia: number; fattore: number }
+  /** Fionda gravitazionale: la pedina riparte di `passi` caselle (segue un movimento). */
+  | { tipo: 'fionda'; giocatore: IdGiocatore; passi: number }
+  /** Il Buco nero risucchia `importo` nel malloppo. */
+  | { tipo: 'buco_nero'; giocatore: IdGiocatore; casella: number; importo: number }
+  /** La Supernova regala il malloppo. */
+  | { tipo: 'supernova'; giocatore: IdGiocatore; casella: number; importo: number }
+  /** Roulette cosmica: lo spicchio uscito (indice in `Follie.roulette`); segue il suo effetto. */
+  | { tipo: 'roulette'; giocatore: IdGiocatore; spicchio: number; testo: string }
+  /** Pioggia di meteoriti: crolla un edificio; `livello` è quello che resta (0–4). */
+  | { tipo: 'meteorite'; giocatore: IdGiocatore; casella: number; livello: number }
+  /** Collisione planetaria: le due proprietà si scambiano di proprietario (`giocatori[i]` era il proprietario di `caselle[i]`). */
+  | { tipo: 'collisione'; caselle: [number, number]; giocatori: [IdGiocatore, IdGiocatore] }
+  /** Una carta inverte la gravità fino alla fine del giro. */
+  | { tipo: 'gravita_invertita'; giocatore: IdGiocatore }
+  /** `tempesta`: la tempesta solare si è mangiata il premio (importo 0). */
+  | { tipo: 'partenza'; giocatore: IdGiocatore; importo: number; arrivo: boolean; tempesta?: true }
   | { tipo: 'acquisto'; giocatore: IdGiocatore; casella: number; prezzo: number }
   | { tipo: 'affitto'; da: IdGiocatore; a: IdGiocatore; casella: number; importo: number }
   | { tipo: 'tassa'; giocatore: IdGiocatore; casella: number; importo: number }

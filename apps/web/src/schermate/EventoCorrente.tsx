@@ -11,6 +11,8 @@ import { motion } from 'motion/react';
 import {
   aOppureAd,
   euro,
+  EVENTI_COSMICI,
+  fattoreTesto,
   preposizioneA,
   tabellone,
   type EventoStanza,
@@ -122,7 +124,99 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
             <b>{nome(e.giocatore)}</b> {e.arrivo ? 'si ferma sulla Partenza' : 'passa dalla Partenza'}
           </>
         ),
+        dettaglio: e.tempesta ? 'La tempesta solare si mangia il premio' : undefined,
+        importo: e.tempesta ? undefined : { valore: e.importo, tono: tono(io, null, e.giocatore) },
+      };
+    case 'cosmo': {
+      const m = e.mercato;
+      return {
+        icona: 'pianeta',
+        titolo: (
+          <>
+            Giro {e.giro}: <b>{EVENTI_COSMICI[e.evento].nome}</b>
+          </>
+        ),
+        dettaglio: m
+          ? `${EVENTI_COSMICI[e.evento].effetto} Mercato: ${tab.regioni[m.regione]?.nome ?? '?'} ×${fattoreTesto(m.fattore)}`
+          : EVENTI_COSMICI[e.evento].effetto,
+      };
+    }
+    case 'quantico':
+      return {
+        icona: 'dado',
+        chi: e.giocatore,
+        titolo: <>Affitto quantistico: esce {e.faccia}</>,
+        dettaglio: e.fattore === 0 ? 'Affitto gratis!' : `L’affitto vale ×${fattoreTesto(e.fattore)}`,
+      };
+    case 'fionda':
+      return {
+        icona: 'fionda',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> prende la fionda
+          </>
+        ),
+        dettaglio: `Riparte di ${Math.abs(e.passi)} caselle${e.passi < 0 ? ' all’indietro' : ''}`,
+      };
+    case 'buco_nero':
+      return {
+        icona: 'buconero',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            Il Buco nero risucchia <b>{nome(e.giocatore)}</b>
+          </>
+        ),
+        dettaglio: 'I soldi finiscono nel malloppo della Supernova',
+        importo: { valore: e.importo, tono: tono(io, e.giocatore, null) },
+      };
+    case 'supernova':
+      return {
+        icona: 'stella',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> prende il malloppo
+          </>
+        ),
+        dettaglio: 'Supernova!',
         importo: { valore: e.importo, tono: tono(io, null, e.giocatore) },
+      };
+    case 'roulette':
+      return {
+        icona: 'ruota',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> gira la Roulette cosmica
+          </>
+        ),
+        dettaglio: e.testo,
+      };
+    case 'meteorite':
+      return {
+        icona: 'meteorite',
+        chi: e.giocatore,
+        titolo: <>Un meteorite colpisce {nomeCasella(e.casella)}</>,
+        dettaglio: `Crolla ${e.livello === 4 ? 'l’albergo' : 'una casa'} di ${nome(e.giocatore)}`,
+      };
+    case 'collisione':
+      return {
+        coppia: [e.giocatori[0], e.giocatori[1]],
+        titolo: <>Collisione planetaria</>,
+        dettaglio: `${nomeCasella(e.caselle[0])} ↔ ${nomeCasella(e.caselle[1])}: si scambiano di proprietario`,
+      };
+    case 'gravita_invertita':
+      return {
+        icona: 'aggiorna',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> inverte la gravità
+          </>
+        ),
+        dettaglio: 'Fino alla fine del giro si cammina al contrario',
       };
     case 'acquisto':
     case 'asta_vinta': {

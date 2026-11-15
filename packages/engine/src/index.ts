@@ -29,8 +29,10 @@ export {
   haVinto,
   LIVELLO_ALBERGO,
   patrimonio,
+  fattoreCosmico,
   possedute,
   possiedeRegione,
+  prezzoAcquisto,
   proprietabile,
   regioneConEdifici,
   rimborsoEdificio,
@@ -41,7 +43,7 @@ export {
   VALORE_GRAZIA,
 } from './conti';
 export { acquistoInSospeso, ASTA_MS, RILANCI } from './economia';
-export { aOppureAd, descrivi, descriviVoce, destinazione, euro, preposizioneA } from './descrivi';
+export { aOppureAd, descrivi, descriviVoce, destinazione, EVENTI_COSMICI, euro, fattoreTesto, preposizioneA } from './descrivi';
 export {
   bonusPerPosto,
   GIOCATORI_MAX,
@@ -114,7 +116,7 @@ export {
   type Piazzamento,
 } from './statistiche';
 export { tabellone, TABELLONI } from './tabelloni';
-export { DADI_MS, durataCarta, durataEvento, EVENTI_CON_PAUSA, EVENTI_CON_SOLDI, passiPedina, percorso, TEMPI } from './tempi';
+export { DADI_MS, durataCarta, durataEvento, durataRoulette, EVENTI_CON_PAUSA, EVENTI_CON_SOLDI, passiPedina, percorso, TEMPI } from './tempi';
 export {
   ASSENZA_MS,
   BANCA_INIZIALE_MS,

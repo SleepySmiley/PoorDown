@@ -28,6 +28,23 @@ export const TEMPI = {
   prigione: 1150,
   /** Il teletrasporto delle carte folli: la pedina sparisce in un lampo e ricompare sulla casella d'arrivo. */
   teletrasporto: 950,
+  /* Regole folli del Sistema solare. */
+  /** Inizio di un giro: il riquadro dell'evento cosmico entra, si legge, poi si rimpicciolisce. */
+  cosmo: 2600,
+  /** Affitto quantistico: il dado quantico rotola e si ferma sul fattore. */
+  quantico: 1100,
+  /** La fionda gravitazionale si carica, poi la pedina riparte. */
+  fionda: 500,
+  /** La Roulette cosmica gira e rallenta fino allo spicchio; poi resta il tempo di leggerlo (come le carte). */
+  rouletteGira: 1700,
+  /** Un meteorite cade su una casa. */
+  meteorite: 1100,
+  /** Due proprietà si scontrano e si scambiano il colore del proprietario. */
+  collisione: 1300,
+  /** Una carta inverte la gravità: il tabellone fa un mezzo giro e torna. */
+  gravita: 900,
+  /** La Supernova esplode e regala il malloppo. */
+  supernova: 1000,
   /** La carta pescata esce dalla casella e arriva al centro girandosi. */
   cartaEntra: 400,
   /** Il tempo di leggerla: tanto per carattere, tra un minimo e un massimo. */
@@ -62,6 +79,7 @@ export const EVENTI_CON_SOLDI: ReadonlySet<Evento['tipo']> = new Set<Evento['tip
   'premio',
   'robin_hood',
   'moneta',
+  'buco_nero',
 ]);
 
 /** Il rotolamento dei dadi, dal primo lancio alla pausa con i dadi fermi. */
@@ -71,9 +89,14 @@ export const DADI_MS = TEMPI.facceDado.reduce((t, ms) => t + ms, 0) + TEMPI.dadi
  * Quante caselle percorre la pedina e in che verso. Le carte "Torna indietro di 3 caselle"
  * sono l'unico spostamento all'indietro.
  */
-export function percorso(e: { da: number; a: number; dadi?: [number, number] }, caselle: number): { passi: number; verso: 1 | -1 } {
+export function percorso(
+  e: { da: number; a: number; dadi?: [number, number]; verso?: -1 },
+  caselle: number,
+): { passi: number; verso: 1 | -1 } {
   const avanti = (e.a - e.da + caselle) % caselle;
   const indietro = (e.da - e.a + caselle) % caselle;
+  // Con la gravità invertita (regole folli) anche i dadi e la fionda portano indietro: lo dice l'evento.
+  if (e.verso === -1) return { passi: indietro, verso: -1 };
   return !e.dadi && indietro < avanti && indietro <= 3 ? { passi: indietro, verso: -1 } : { passi: avanti, verso: 1 };
 }
 
@@ -90,10 +113,19 @@ export function passiPedina(passi: number): number[] {
   return tempi.map((ms, i) => (lento(i) ? ms : svelto));
 }
 
+/** Il tempo per leggere il testo di una carta (o di uno spicchio della Roulette): tanto per carattere, tra un minimo e un massimo. */
+function lettura(testo: string): number {
+  return Math.min(TEMPI.cartaMax, Math.max(TEMPI.cartaMin, testo.length * TEMPI.cartaPerCarattere));
+}
+
 /** Quanto resta in vista la carta pescata, dall'uscita dalla casella al ritorno nella scheda dell'evento. */
 export function durataCarta(testo: string): number {
-  const lettura = Math.min(TEMPI.cartaMax, Math.max(TEMPI.cartaMin, testo.length * TEMPI.cartaPerCarattere));
-  return TEMPI.cartaEntra + lettura + TEMPI.cartaEsce;
+  return TEMPI.cartaEntra + lettura(testo) + TEMPI.cartaEsce;
+}
+
+/** Quanto dura la Roulette cosmica: la ruota che gira, il tempo di leggere lo spicchio, l'uscita. */
+export function durataRoulette(testo: string): number {
+  return TEMPI.rouletteGira + lettura(testo) + TEMPI.cartaEsce;
 }
 
 /** Quanto dura sullo schermo la scena di un evento (0 se non ne ha una che ferma il gioco). */
@@ -107,6 +139,22 @@ export function durataEvento(e: Evento, caselle: number): number {
       return TEMPI.prigione;
     case 'teletrasporto':
       return TEMPI.teletrasporto;
+    case 'cosmo':
+      return TEMPI.cosmo;
+    case 'quantico':
+      return TEMPI.quantico;
+    case 'fionda':
+      return TEMPI.fionda;
+    case 'roulette':
+      return durataRoulette(e.testo);
+    case 'meteorite':
+      return TEMPI.meteorite;
+    case 'collisione':
+      return TEMPI.collisione;
+    case 'gravita_invertita':
+      return TEMPI.gravita;
+    case 'supernova':
+      return TEMPI.supernova;
     case 'carta':
       return durataCarta(e.testo);
     case 'partenza':

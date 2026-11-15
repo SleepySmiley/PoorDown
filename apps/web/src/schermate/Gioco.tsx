@@ -9,6 +9,7 @@ import {
   haVinto,
   LIVELLO_ALBERGO,
   possedute,
+  prezzoAcquisto,
   proprietabile,
   rimborsoEdificio,
   tabellone,
@@ -35,6 +36,7 @@ import { destinoDeiBeni } from '../ui/beni';
 import { caselleVista } from '../ui/caselle';
 import { CartaPescata } from '../ui/Carta';
 import { Dado, Palette, Pedina, Stemma } from '../ui/comuni';
+import { AnnuncioCosmo, DadoQuantico, PannelloCosmo, RouletteCosmica } from '../ui/Cosmo';
 import { VoliGettoni } from '../ui/Gettone';
 import { iniziale, variabili } from '../ui/utili';
 import { geometria, stilePopover } from '../ui/geometria';
@@ -199,7 +201,7 @@ function AzioniTurno({
       )}
       {libera && (
         <Pulsante variante="ambra" icona="piu" blocco={blocco({ tipo: 'compra' })} onClick={() => onMossa({ tipo: 'compra' })}>
-          Compra per {euro(acquisto.prezzo)}
+          Compra per {euro(prezzoAcquisto(partita, t.acquisto!))}
         </Pulsante>
       )}
       {daDecidere ? null : t.rilancio ? (
@@ -442,6 +444,8 @@ export function Gioco({
           onMossa={mossa}
         />
       )}
+      {/* Regole folli: evento del giro, Mercato galattico, malloppo della Supernova, verso di marcia. */}
+      {inCorso && partita.cosmo && <PannelloCosmo tab={tab} cosmo={partita.cosmo} />}
       <div className="centro-gioco__lancio">
         {doppio && (
           <span className="centro-gioco__doppio" key={`doppio-${scena.lanci}`}>
@@ -761,6 +765,40 @@ export function Gioco({
                         )
                       }
                     />
+                  )}
+                </AnimatePresence>
+                {/* Regole folli: l'annuncio del giro, la Roulette cosmica, il dado dell'affitto quantistico. */}
+                <AnimatePresence>
+                  {inCorso && scena.cosmo && <motion.div key={`velo-cosmo-${scena.cosmo.n}`} className="carta-velo" {...VELO} />}
+                  {inCorso && scena.cosmo && (
+                    <AnnuncioCosmo key={`cosmo-${scena.cosmo.n}`} tab={tab} giro={scena.cosmo.giro} evento={scena.cosmo.evento} mercato={scena.cosmo.mercato} />
+                  )}
+                </AnimatePresence>
+                <AnimatePresence>
+                  {inCorso && scena.roulette && <motion.div key={`velo-roulette-${scena.roulette.n}`} className="carta-velo" {...VELO} />}
+                  {inCorso && scena.roulette && tab.follie && (
+                    <RouletteCosmica
+                      key={`roulette-${scena.roulette.n}`}
+                      spicchi={tab.follie.roulette}
+                      spicchio={scena.roulette.spicchio}
+                      testo={scena.roulette.testo}
+                      didascalia={(() => {
+                        const chi = partita.giocatori.find((g) => g.id === scena.roulette?.giocatore);
+                        return (
+                          chi && (
+                            <>
+                              <Pedina colore={chi.colore} className="pedina--mini" />
+                              {chi.id === io ? 'Giri la Roulette cosmica' : `${chi.nome} gira la Roulette cosmica`}
+                            </>
+                          )
+                        );
+                      })()}
+                    />
+                  )}
+                </AnimatePresence>
+                <AnimatePresence>
+                  {inCorso && scena.quantico && (
+                    <DadoQuantico key={`quantico-${scena.quantico.n}`} faccia={scena.quantico.faccia} fattore={scena.quantico.fattore} />
                   )}
                 </AnimatePresence>
                 {/* Tocca a me: il bordo del tabellone si accende d'ambra per un attimo. */}

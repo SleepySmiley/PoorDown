@@ -1,5 +1,6 @@
 import { mescola } from './caso';
 import { proprietabile } from './conti';
+import { cosmoIniziale } from './cosmo';
 import { bonusPerPosto, GIOCATORI_MAX, GIOCATORI_MIN, NOMI_SQUADRE_PREDEFINITI, SQUADRE_MAX } from './impostazioni';
 import { segnaPatrimonio, statisticheIniziali } from './statistiche';
 import { tabellone } from './tabelloni';
@@ -121,6 +122,8 @@ export function creaPartita(
     squadraVincitrice: null,
     statistiche: statisticheIniziali(impostazioni.mappa, adesso),
   };
+  const cosmo = cosmoIniziale(tab);
+  if (cosmo) stato.cosmo = cosmo;
   segnaPatrimonio(stato);
 
   const eventi: Evento[] = [{ tipo: 'inizio', ordineCasuale: impostazioni.ordineCasuale, bonus }];

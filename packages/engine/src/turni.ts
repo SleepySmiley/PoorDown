@@ -4,6 +4,7 @@
  */
 
 import { accredita, rossoVersoBanca, type Contesto } from './contesto';
+import { giroCosmico } from './cosmo';
 import {
   attivi,
   caselleDellaRegione,
@@ -82,8 +83,14 @@ export function passaTurno(ctx: Contesto): void {
   const n = s.giocatori.length;
   let i = s.giocatori.findIndex((g) => g.id === s.turno.giocatore);
   // Ogni salto spegne una vacanza, quindi entro due giri qualcuno gioca.
+  // Tornando al primo dell'ordine comincia un giro nuovo: con le regole folli, un evento cosmico.
+  let nuovoGiro = false;
   for (let passi = 0; passi < 2 * n + 1; passi++) {
     i = (i + 1) % n;
+    if (i === 0 && !nuovoGiro) {
+      nuovoGiro = true;
+      giroCosmico(ctx);
+    }
     const g = s.giocatori[i]!;
     if (g.eliminato) continue;
     if (g.vacanza) {

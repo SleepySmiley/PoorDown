@@ -10,6 +10,7 @@ import {
   destinazione,
   euro,
   preposizioneA,
+  prezzoAcquisto,
   proprietabile,
   tabellone,
   TENTATIVI_PRIGIONE,
@@ -48,14 +49,16 @@ export type Momento =
   | { tipo: 'arrivo'; casella: number; affitto: boolean }
   | { tipo: 'carta'; mazzo: NomeMazzo }
   | { tipo: 'prigione' }
-  | { tipo: 'teletrasporto' };
+  | { tipo: 'teletrasporto' }
+  | { tipo: 'roulette' };
 
 /** Il momento della scena di chi gioca, dal più vistoso: carta, volo in prigione, teletrasporto, dadi, viaggio, arrivo. */
 export function momentoScena(
-  scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'> & Partial<Pick<Scena, 'teletrasporti'>>,
+  scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'> & Partial<Pick<Scena, 'teletrasporti' | 'roulette'>>,
   giocatore: IdGiocatore,
 ): Momento | null {
   if (scena.carta?.giocatore === giocatore) return { tipo: 'carta', mazzo: scena.carta.mazzo };
+  if (scena.roulette?.giocatore === giocatore) return { tipo: 'roulette' };
   if (scena.voli[giocatore]) return { tipo: 'prigione' };
   if (scena.teletrasporti?.[giocatore]) return { tipo: 'teletrasporto' };
   if (scena.rotola) return { tipo: 'dadi' };
@@ -76,6 +79,8 @@ function fraseMomento(partita: Stato, mio: boolean, momento: Momento, fase: Stat
       return mio ? 'Vai in prigione' : 'va in prigione';
     case 'teletrasporto':
       return mio ? 'Ti teletrasporti…' : 'si teletrasporta…';
+    case 'roulette':
+      return mio ? 'Giri la Roulette cosmica…' : 'gira la Roulette cosmica…';
     case 'dadi':
       return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
     case 'viaggio': {
@@ -154,11 +159,13 @@ export function fraseTurno({
   }
   const libera = acquistoInSospeso(partita);
   const casella = libera === null ? null : proprietabile(tabellone(partita.mappa), libera);
-  if (casella) {
-    if (!mio) return `sta decidendo se comprare ${casella.nome} (${euro(casella.prezzo)})`;
+  if (casella && libera !== null) {
+    // Con il Mercato galattico (regole folli) il prezzo del giro può non essere quello scritto sulla casella.
+    const prezzo = euro(prezzoAcquisto(partita, libera));
+    if (!mio) return `sta decidendo se comprare ${casella.nome} (${prezzo})`;
     return partita.impostazioni.aste
       ? `Sei su ${casella.nome}: comprala o mettila all’asta`
-      : `Sei su ${casella.nome}: puoi comprarla per ${euro(casella.prezzo)}`;
+      : `Sei su ${casella.nome}: puoi comprarla per ${prezzo}`;
   }
   if (t.rilancio) {
     // Il tiro in più può venire anche da una carta («Gravità zero»): «Doppio!» solo se i dadi lo erano.
@@ -188,6 +195,15 @@ const IMPORTANTI = new Set<string>([
   'teletrasporto',
   'robin_hood',
   'moneta',
+  'cosmo',
+  'quantico',
+  'fionda',
+  'buco_nero',
+  'supernova',
+  'roulette',
+  'meteorite',
+  'collisione',
+  'gravita_invertita',
   'prigione_fallita',
   'uscita_prigione',
   'vacanza',

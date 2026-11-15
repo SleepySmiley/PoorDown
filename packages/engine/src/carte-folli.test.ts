@@ -6,7 +6,7 @@ import type { Caso, Effetto, NomeMazzo, Stato } from './tipi';
 
 /*
  * Le carte folli del Sistema solare. Le caselle usate: Cartolina a 8, Busta a 17, Prigione a 12,
- * Igea (città libera) a 19, Astronave (stazione libera) a 30.
+ * Jezero (città libera) a 19, Astronave (stazione libera) a 30.
  */
 
 const SOLARE = { mappa: 'sistema_solare' } as const;
@@ -50,7 +50,7 @@ describe('carte folli del Sistema solare', () => {
 
   it('wormhole: salta su una casella a caso, senza Partenza, e la casella vale', () => {
     const s = pronta('cartolina', carta('cartolina', 'casuale'));
-    // Dalla Cartolina (8): 8 + 1 + 10 = 19, Igea, città libera.
+    // Dalla Cartolina (8): 8 + 1 + 10 = 19, Jezero, città libera.
     const { stato, eventi } = esegui(s, lancia, caso(...DUE_E_TRE, 10));
     expect(g(stato, 'a').posizione).toBe(19);
     expect(eventi).toContainEqual({ tipo: 'teletrasporto', giocatore: 'a', da: 8, a: 19 });

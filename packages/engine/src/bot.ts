@@ -19,6 +19,7 @@ import {
   giocatore,
   possedute,
   possiedeRegione,
+  prezzoAcquisto,
   proprietabile,
   rimborsoEdificio,
   valoreIpoteca,
@@ -323,9 +324,10 @@ function mossaDelTurno(s: Stato, g: Giocatore, opzioni: OpzioniBot): Azione {
   // Proprietà libera su cui si è fermato: la compra se resta con abbastanza contante, altrimenti asta.
   const compra = di('compra')[0];
   if (compra && t.acquisto !== null) {
-    const c = proprietabile(tab, t.acquisto)!;
-    const completa = valoreCasella(s, g.id, t.acquisto) >= c.prezzo * 2;
-    if (g.saldo - c.prezzo >= (completa ? 0 : scorta)) return compra;
+    // Con il Mercato galattico il prezzo del giro può essere diverso da quello scritto sulla casella.
+    const prezzo = prezzoAcquisto(s, t.acquisto);
+    const completa = valoreCasella(s, g.id, t.acquisto) >= prezzo * 2;
+    if (g.saldo - prezzo >= (completa ? 0 : scorta)) return compra;
   }
   const asta = di('asta')[0];
   if (asta) return asta;

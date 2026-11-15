@@ -208,6 +208,15 @@ Scelta del 2026-11-12: un'estensione che accende il server di sempre e mostra il
 - [x] Editore `PoorDown` creato sul Marketplace; licenza MIT
 - [ ] Pubblicazione: caricare `poordown.vsix` dalla pagina dell'editore (vedi README)
 
+### Fase 12 — Sistema solare, il tabellone folle · L
+Scelta del 2026-11-15: un tabellone diverso apposta dal Monopoly classico, pieno di caso e con l'equilibrio sballato ([docs/identita/tabelloni-alternativi.md](docs/identita/tabelloni-alternativi.md#sistema-solare)). Le regole folli valgono solo lì: gli altri tabelloni restano com'erano.
+- [x] 48 caselle tra pianeti, lune e asteroidi veri; gruppi da 1 a 5 caselle, Plutone a 10 €, le lune di Giove da 450 a 520 €, Psiche (l'asteroide di metallo) a 350 € tra asteroidi da 80
+- [x] Caselle folli: fionde gravitazionali, wormhole, Buco nero (risucchia il 20% del contante) e Supernova (regala il malloppo), Roulette cosmica a otto spicchi
+- [x] Regole folli: affitto quantistico (un dado lo moltiplica da ×0 a ×3), Partenza a caso (0–400 €), un evento cosmico a ogni giro (Allineamento, Eclissi, Tempesta solare, Pioggia di meteoriti, Gravità invertita, Collisione planetaria) e il Mercato galattico su un pianeta a caso
+- [x] Busta e Cartolina solo sue, con carte che esistono solo qui: wormhole, scambio di posto, Robin Hood, buco nero sugli avversari, testa o croce, soldi per tutti, tira di nuovo, gravità invertita
+- [x] Nel browser: i pianeti disegnati al posto delle bandiere, il teletrasporto della pedina, la ruota della Roulette, l'annuncio del giro, il dado quantico, il riquadro del cosmo al centro del tabellone, suoni nuovi
+- [x] Misurato con 300 partite di bot: finiscono tutte, durano meno di Europa (183 turni contro 232), chi completa Giove vince il 71% delle volte
+
 ---
 
 ## 4. Punti non verificati su richup e come li trattiamo
@@ -278,7 +287,7 @@ Scelta del 2026-11-12: un'estensione che accende il server di sempre e mostra il
 2. **Stile grafico:** "Partenze", il cartello di stazione (mockup in `apps/web/src/mockup/`).
 3. **Mazzi e testi:** Busta e Cartolina, tono sobrio.
 4. **Prezzi e affitti:** scala nostra, nella stessa tabella del tabellone.
-5. **Tabelloni alternativi:** Europa (città europee), Grandi aree (macroaree italiane), Colpo di fortuna (località turistiche italiane) ([docs/identita/tabelloni-alternativi.md](docs/identita/tabelloni-alternativi.md)).
+5. **Tabelloni alternativi:** Europa (città europee), Grandi aree (macroaree italiane), Colpo di fortuna (località turistiche italiane), Sistema solare (il tabellone folle, con regole sue) ([docs/identita/tabelloni-alternativi.md](docs/identita/tabelloni-alternativi.md)).
 6. **Squadre:** le sceglie ognuno; l’host le rinomina, sposta i giocatori e le mescola.
 7. **Dispositivi:** solo PC e portatili (1440×900 e 1920×1080); niente layout per telefono né accessibilità.
 8. **Impaginazione:** libera. Non deve più ricalcare richup: conta che il gioco sia chiaro a colpo d'occhio, bello e animato.

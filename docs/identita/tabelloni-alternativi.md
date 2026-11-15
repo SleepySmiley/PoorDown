@@ -267,3 +267,39 @@ Ogni gruppo ha la bandiera della sua regione (Puglia, Piemonte, Liguria, Veneto,
 18. Hai perso una scommessa. Paga 50 € a ogni giocatore.
 19. Ristrutturazione. Paga 25 € per ogni casa e 100 € per ogni albergo.
 20. Carta Grazia. Esci gratis di prigione. Puoi tenerla o scambiarla.
+
+## Sistema solare
+
+Il tabellone folle (Fase 12): diverso apposta dal Monopoly classico, pieno di caso e con l'equilibrio sballato. È l'unico con le **regole folli** (`follie` nel tabellone, `cosmo` nello stato della partita); gli altri tabelloni non cambiano. Dati in `packages/engine/src/tabelloni/sistema-solare.ts`, regole in `packages/engine/src/cosmo.ts` e `regole.ts`.
+
+**Caselle (48):** 26 città in 10 gruppi da 1 a 5, 4 mezzi spaziali (Navetta, Capsula, Astronave, Sonda), 2 servizi (Ossigeno, Rete Wi-Fi galattica), 2 Busta, 2 Cartolina, niente tasse, e 8 caselle folli.
+
+| Gruppo | Città e prezzi | Casa e albergo |
+|---|---|---|
+| Luna | Tycho 60, Copernico 70 | 50 |
+| Mercurio | Bacino Caloris 150 (da solo) | 100 |
+| Venere | Cleopatra 120, Maxwell Montes 140 | 100 |
+| Fascia degli asteroidi | Igea 80, Pallade 80, Vesta 90, Cerere 100, **Psiche 350** | 50 |
+| Marte | Jezero 160, Valles Marineris 170, Olympus Mons 200 | 100 |
+| Urano | Ariel 220, Miranda 240 | 150 |
+| Saturno | Encelado 260, Titano 280, Anelli di Saturno 300 | 200 |
+| Nettuno | Proteo 300, Nereide 310, Tritone 340 | 200 |
+| Giove | Io 450, Europa 480, Callisto 500, Ganimede 520 (affitti fuori scala, albergo fino a 2550 €) | 300 |
+| Plutone | Plutone 10 (da solo, affitti da 1 a 100 €) | 10 |
+
+**Caselle folli:**
+- **Fionda gravitazionale** (×2): si riparte subito della stessa somma dei dadi.
+- **Wormhole** (×2): teletrasporto su una casella a caso (mai sull'altro wormhole); la casella d'arrivo vale, la Partenza no.
+- **Buco nero**: risucchia il 20% del contante nel malloppo.
+- **Supernova**: chi ci si ferma prende il malloppo; la banca lo riparte da 100 €.
+- **Roulette cosmica** (×2): uno spicchio a caso su otto (+300 €, metà del contante fino a 500 €, fan club, offri tu, wormhole, prigione, gravità invertita, dritto alla Supernova).
+
+**Regole folli:**
+- **Affitto quantistico:** ogni affitto si moltiplica per un dado: ×0, ×½, ×1, ×1, ×2, ×3.
+- **Partenza a caso:** da 0 a 400 € a passi di 50 (fermandosi sopra, 100 € in più).
+- **Eventi cosmici:** dal secondo giro, uno a ogni giro, estratto tra Quiete, Allineamento (affitti ×2), Eclissi (affitti ×½), Tempesta solare (la Partenza non paga), Pioggia di meteoriti (crolla un edificio sulla città più costruita di una regione a caso), Gravità invertita (dadi e fionde portano indietro; passando la Partenza si incassa lo stesso), Collisione planetaria (due proprietà di giocatori diversi si scambiano, solo in regioni senza case).
+- **Mercato galattico:** a ogni giro un pianeta a caso vale ×2 o ×½, nel prezzo d'acquisto e negli affitti.
+
+**Carte:** Busta e Cartolina solo sue, con gli effetti nuovi del motore (wormhole, scambio di posto con un avversario, Robin Hood, buco nero che manda in prigione gli avversari, testa o croce, soldi per tutti, tira di nuovo, gravità invertita).
+
+**Bilanciamento** (300 partite di 4 bot, aste accese): finiscono tutte; 183 turni in media contro i 232 di Europa; la prima regione completa arriva al turno 9 (i gruppi da una casella); chi completa Giove (in un quarto delle partite) vince il 71% delle volte; Plutone rende quasi tre volte quello che costa.

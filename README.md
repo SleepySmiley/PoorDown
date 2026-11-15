@@ -60,7 +60,7 @@ Le regole facoltative (aste, ipoteche, costruzione uniforme e le altre) si scelg
 
 - **Bot:** con l’impostazione **Bot** i posti liberi si riempiono di giocatori automatici (icona del robot), che comprano, costruiscono, offrono alle aste e rispondono agli scambi. Se arriva un amico e la stanza è piena, prende il posto di un bot.
 - **Squadre:** con l’impostazione **Squadre** ognuno preme **Entra** sulla squadra che vuole; l’host può rinominarle (matita), spostare i giocatori (i numeri accanto al nome) o **Mescolare le squadre**. I compagni non si pagano l’affitto, costruiscono sulle regioni della squadra, ereditano i beni di chi fa bancarotta e vincono insieme. In chat, **Squadra** scrive solo ai compagni.
-- **Tabelloni:** in **Tabellone** → **Cambia tabellone** si sceglie tra Classico, Europa (48 caselle), Grandi aree e Colpo di fortuna.
+- **Tabelloni:** in **Tabellone** → **Cambia tabellone** si sceglie tra Classico, Europa (48 caselle), Grandi aree, Colpo di fortuna e Sistema solare (il tabellone folle: affitti quantistici, eventi cosmici, wormhole, roulette).
 
 A fine partita la colonna destra mostra la classifica e **Vedi tutte le statistiche** apre durata, turni, scambi e il grafico del patrimonio. **Un'altra partita** (la avvia l'host) riporta tutti in lobby nella stessa stanza, con gli stessi colori e le stesse impostazioni.
 

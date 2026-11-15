@@ -177,6 +177,72 @@ export const CATALOGO = {
     nota(u, r + 0.24, { f: NOTE.E6, durata: 0.7, volume: 0.075 * k, eco: 0.5 });
   },
 
+  /* ---------------- Regole folli del Sistema solare ---------------- */
+
+  /** Inizio di un giro cosmico: un accordo che si apre come un'eco nello spazio. */
+  cosmo: (u, t, k) => {
+    [NOTE.A4, NOTE.E5, NOTE.A5, NOTE.Cd6].forEach((f, i) => nota(u, t + i * 0.09, { f, durata: 1.8, volume: 0.06 * k, eco: 0.7 }));
+    fruscio(u, t, { f: 600, a: 5000, q: 0.8, attacco: 0.4, durata: 0.8, volume: 0.05 * k });
+  },
+
+  /** La Roulette cosmica: scatti sempre più radi mentre rallenta, poi un rintocco sullo spicchio. */
+  roulette: (u, t, k) => {
+    const durata = TEMPI.rouletteGira / 1000;
+    let s = 0;
+    for (let i = 0; s < durata; i++) {
+      tono(u, t + s, { f: varia(1900, 0.04), a: 1200, glide: 0.02, durata: 0.03, volume: 0.07 * k, attacco: 0.001 });
+      // L'intervallo cresce: da 30 ms a più di 250 ms verso la fine.
+      s += 0.03 + 0.24 * (s / durata) ** 2;
+    }
+    nota(u, t + durata, { f: NOTE.E6, durata: 0.9, volume: 0.09 * k, eco: 0.5 });
+  },
+
+  /** Il dado quantico: tre blip che salgono e si fermano. */
+  quantico: (u, t, k) => {
+    [0, 0.08, 0.16].forEach((d, i) => tono(u, t + d, { f: 600 + i * 300, a: 900 + i * 300, glide: 0.05, tipo: 'square', durata: 0.06, volume: 0.035 * k }));
+    nota(u, t + 0.32, { f: NOTE.B5, durata: 0.5, volume: 0.06 * k, eco: 0.4 });
+  },
+
+  /** La fionda gravitazionale: si carica e scatta. */
+  fionda: (u, t, k) => {
+    tono(u, t, { f: 180, a: 520, glide: 0.3, tipo: 'triangle', durata: 0.32, volume: 0.09 * k });
+    tono(u, t + 0.32, { f: 900, a: 200, glide: 0.12, durata: 0.16, volume: 0.1 * k, attacco: 0.002 });
+  },
+
+  /** Il Buco nero: un vortice che scende nel grave. */
+  buconero: (u, t, k) => {
+    tono(u, t, { f: 420, a: 45, glide: 0.8, tipo: 'sawtooth', durata: 0.85, volume: 0.05 * k });
+    fruscio(u, t, { f: 2400, a: 200, q: 1.5, attacco: 0.1, durata: 0.8, volume: 0.06 * k });
+  },
+
+  /** La Supernova: un'esplosione morbida e una pioggia di note. */
+  supernova: (u, t, k) => {
+    fruscio(u, t, { f: 300, filtro: 'lowpass', q: 0.7, attacco: 0.01, durata: 0.6, volume: 0.22 * k });
+    tono(u, t, { f: 110, a: 55, glide: 0.4, durata: 0.5, volume: 0.14 * k });
+    [NOTE.E6, NOTE.G6, NOTE.A6, NOTE.B6].forEach((f, i) => nota(u, t + 0.15 + i * 0.07, { f, durata: 0.9, volume: 0.05 * k, eco: 0.6 }));
+  },
+
+  /** Un meteorite: un fischio che cade e un tonfo. */
+  meteorite: (u, t, k) => {
+    tono(u, t, { f: 2600, a: 300, glide: 0.6, durata: 0.6, volume: 0.05 * k });
+    tonfo(u, t + 0.62, 0.3 * k);
+    fruscio(u, t + 0.62, { f: 800, filtro: 'lowpass', durata: 0.4, volume: 0.15 * k });
+  },
+
+  /** Collisione planetaria: due colpi che si incrociano. */
+  collisione: (u, t, k) => {
+    fruscio(u, t, { f: 400, a: 2600, q: 1, attacco: 0.3, durata: 0.35, volume: 0.05 * k, pan: -0.5 });
+    fruscio(u, t, { f: 400, a: 2600, q: 1, attacco: 0.3, durata: 0.35, volume: 0.05 * k, pan: 0.5 });
+    tonfo(u, t + 0.4, 0.28 * k);
+    metallo(u, t + 0.4, { f: 240, parziali: [[1, 1, 1], [2.7, 0.5, 0.6], [5.1, 0.25, 0.4]], durata: 0.6, volume: 0.08 * k, eco: 0.3 });
+  },
+
+  /** Gravità invertita: un glissando che sale e torna giù al contrario. */
+  gravita: (u, t, k) => {
+    tono(u, t, { f: 300, a: 1200, glide: 0.35, tipo: 'triangle', durata: 0.38, volume: 0.07 * k });
+    tono(u, t + 0.38, { f: 1200, a: 300, glide: 0.35, tipo: 'triangle', durata: 0.4, volume: 0.07 * k });
+  },
+
   /** Fuori di prigione: le sbarre risalgono strisciando e due note leggere. */
   liberato: (u, t, k) => {
     fruscio(u, t, { f: 800, a: 3200, q: 4, attacco: 0.05, durata: 0.28, volume: 0.04 * k });
@@ -335,6 +401,15 @@ export const DESCRIZIONI: Record<NomeSuono, string> = {
   carta: 'Carta pescata',
   prigione: 'In prigione',
   teletrasporto: 'Teletrasporto (carte del Sistema solare)',
+  cosmo: 'Inizio di un giro cosmico',
+  roulette: 'Roulette cosmica',
+  quantico: 'Affitto quantistico',
+  fionda: 'Fionda gravitazionale',
+  buconero: 'Buco nero',
+  supernova: 'Supernova',
+  meteorite: 'Pioggia di meteoriti',
+  collisione: 'Collisione planetaria',
+  gravita: 'Gravità invertita',
   liberato: 'Fuori di prigione',
   tuoTurno: 'Tocca a te',
   partenza: 'Inizio della partita',
