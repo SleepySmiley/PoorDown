@@ -15,6 +15,10 @@ Le regole sono nel gioco: il punto di domanda in alto, **Come si gioca**.
 
 Chi ha PoorDown in VS Code può entrare anche da lì: **PoorDown: Entra in una partita con un link**, poi incolla il link ricevuto.
 
+## I tabelloni
+
+L'host sceglie il tabellone in lobby: **Classico** (città italiane), **Europa**, **Grandi aree**, **Colpo di fortuna** e **Sistema solare**, il tabellone folle, con caselle e regole che esistono solo lì: wormhole, Buco nero, Roulette cosmica, affitto quantistico e un evento cosmico a ogni giro.
+
 ## Mentre giochi
 
 - Nella barra di stato in basso compare **PoorDown**: un clic apre le azioni (riaprire il gioco, copiare l'indirizzo, spegnere). Passandoci sopra si vedono gli indirizzi per gli amici.

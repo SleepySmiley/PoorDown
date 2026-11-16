@@ -2,7 +2,7 @@
   "name": "poordown",
   "displayName": "PoorDown",
   "description": "Gioco da tavolo multiplayer da giocare con gli amici: accendi la partita e gioca dentro VS Code.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "PoorDown",
   "license": "MIT",
   "private": true,

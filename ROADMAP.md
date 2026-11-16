@@ -206,7 +206,7 @@ Scelta del 2026-11-12: un'estensione che accende il server di sempre e mostra il
 - [x] I link della rete di casa (`http://192.168…`) si aprono nel riquadro come quelli online
 - [ ] Gioco online dentro l'estensione non provato (su questo PC manca `cloudflared`): il tunnel è lo stesso di `npm run online`
 - [x] Editore `PoorDown` creato sul Marketplace; licenza MIT
-- [ ] Pubblicazione: caricare `poordown.vsix` dalla pagina dell'editore (vedi README)
+- [x] Pubblicata sul Marketplace come `PoorDown.poordown`: 0.1.0 e 0.1.1 il 2026-11-12
 
 ### Fase 12 — Sistema solare, il tabellone folle · L
 Scelta del 2026-11-15: un tabellone diverso apposta dal Monopoly classico, pieno di caso e con l'equilibrio sballato ([docs/identita/tabelloni-alternativi.md](docs/identita/tabelloni-alternativi.md#sistema-solare)). Le regole folli valgono solo lì: gli altri tabelloni restano com'erano.
@@ -216,6 +216,8 @@ Scelta del 2026-11-15: un tabellone diverso apposta dal Monopoly classico, pieno
 - [x] Busta e Cartolina solo sue, con carte che esistono solo qui: wormhole, scambio di posto, Robin Hood, buco nero sugli avversari, testa o croce, soldi per tutti, tira di nuovo, gravità invertita
 - [x] Nel browser: i pianeti disegnati al posto delle bandiere, il teletrasporto della pedina, la ruota della Roulette, l'annuncio del giro, il dado quantico, il riquadro del cosmo al centro del tabellone, suoni nuovi
 - [x] Misurato con 300 partite di bot: finiscono tutte, durano meno di Europa (183 turni contro 232), chi completa Giove vince il 71% delle volte
+- [x] Estensione 0.2.0 con il Sistema solare: novità nel CHANGELOG e i tabelloni nella pagina del Marketplace. Il server del `.vsix`, acceso a parte, ha giocato una partita intera sul Sistema solare con due giocatori collegati via socket: tutte le caselle e regole folli viste, nessun errore
+- [x] `poordown.vsix` 0.2.0 caricato sul Marketplace il 2026-11-16
 
 ---
 
