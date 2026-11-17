@@ -3,7 +3,7 @@
 import { giocatore } from './conti';
 import type { EventoStanza } from './protocollo';
 import { tabellone } from './tabelloni';
-import type { Casella, Evento, EventoCosmico, IdGiocatore, MotivoUscita, NomeMazzo, Pacchetto, Stato } from './tipi';
+import type { Casella, Evento, EventoCosmico, FacciaCosmica, IdGiocatore, MotivoUscita, NomeMazzo, Pacchetto, Stato } from './tipi';
 
 /** 1500 → "1.500 €". In italiano il punto delle migliaia si mette anche sotto i 10.000. */
 export function euro(importo: number): string {
@@ -22,6 +22,16 @@ export const EVENTI_COSMICI: Record<EventoCosmico, { nome: string; effetto: stri
   meteoriti: { nome: 'Pioggia di meteoriti', effetto: 'Crolla un edificio a caso.' },
   gravita: { nome: 'Gravità invertita', effetto: 'Per tutto il giro si cammina al contrario.' },
   collisione: { nome: 'Collisione planetaria', effetto: 'Due proprietà a caso si scambiano di proprietario.' },
+};
+
+/** Le facce del dado cosmico del Sistema solare: il nome e cosa fanno, per il registro e per il riquadro del dado. */
+export const FACCE_COSMICHE: Record<FacciaCosmica, { nome: string; effetto: string }> = {
+  razzo: { nome: 'Razzo', effetto: 'Dopo la mossa vola alla prossima proprietà libera.' },
+  saldi: { nome: 'Saldi', effetto: 'La proprietà libera dove si ferma costa la metà.' },
+  bandiera: { nome: 'Bandiera', effetto: 'La proprietà libera più economica diventa sua, gratis.' },
+  scudo: { nome: 'Scudo', effetto: 'In questo tiro non paga affitti.' },
+  faro: { nome: 'Faro', effetto: 'Fino al suo prossimo turno le sue proprietà rendono il doppio.' },
+  iperspazio: { nome: 'Iperspazio', effetto: 'La mossa dei dadi vale doppio.' },
 };
 
 /** Un fattore da leggere: 0.5 → "½", 1.5 → "1,5", 2 → "2". */
@@ -91,6 +101,16 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       return evento.fattore === 0
         ? `Affitto quantistico: esce ${evento.faccia}, l’affitto è gratis.`
         : `Affitto quantistico: esce ${evento.faccia}, l’affitto vale ×${fattoreTesto(evento.fattore)}.`;
+    case 'dado_cosmico': {
+      const f = FACCE_COSMICHE[evento.faccia];
+      return `Dado cosmico di ${nome(evento.giocatore)}: ${f.nome}. ${f.effetto}`;
+    }
+    case 'razzo':
+      return `Il razzo porta ${nome(evento.giocatore)} ${destinazione(tab.caselle[evento.a]!)}.`;
+    case 'bandiera':
+      return `${nome(evento.giocatore)} pianta la bandiera su ${casella(evento.casella)}: è sua, gratis.`;
+    case 'scudo':
+      return `Lo scudo protegge ${nome(evento.giocatore)}: niente affitto di ${euro(evento.importo)} per ${casella(evento.casella)}.`;
     case 'fionda':
       return `${nome(evento.giocatore)} prende la fionda gravitazionale e riparte di ${Math.abs(evento.passi)} caselle${evento.passi < 0 ? ' all’indietro' : ''}.`;
     case 'buco_nero':

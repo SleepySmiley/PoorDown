@@ -202,6 +202,17 @@ export type Effetto =
 /** Gli eventi cosmici del Sistema solare: uno per giro, dal secondo giro. */
 export type EventoCosmico = 'quiete' | 'allineamento' | 'eclissi' | 'tempesta' | 'meteoriti' | 'gravita' | 'collisione';
 
+/**
+ * Le facce del dado cosmico del Sistema solare, tirato a ogni lancio insieme ai due dadi:
+ * - `razzo`: dopo la mossa la pedina vola alla prossima proprietà libera nel verso di marcia;
+ * - `saldi`: la proprietà libera dove si ferma costa la metà;
+ * - `bandiera`: la proprietà libera più economica diventa sua, gratis;
+ * - `scudo`: in questo tiro non paga affitti;
+ * - `faro`: fino al suo prossimo turno le sue proprietà rendono il doppio;
+ * - `iperspazio`: la mossa dei dadi vale doppio.
+ */
+export type FacciaCosmica = 'razzo' | 'saldi' | 'bandiera' | 'scudo' | 'faro' | 'iperspazio';
+
 /** Le regole folli di un tabellone: oggi solo il Sistema solare. */
 export interface Follie {
   /** Affitto quantistico: ogni affitto si moltiplica per il fattore della faccia di un dado (6 valori). */
@@ -230,6 +241,11 @@ export interface Follie {
    * con meno contante; chi ce l'ha già non incassa niente e va tutto a lui.
    */
   tetto: number;
+  /**
+   * Il dado cosmico: le sue facce, tutte diverse (6, come un dado), ognuna con il suo peso.
+   * Il dado è truccato: una faccia esce `peso` volte su quante sono tutti i pesi insieme.
+   */
+  dadoCosmico: readonly { faccia: FacciaCosmica; peso: number }[];
   /** Gli spicchi della Roulette cosmica: se ne estrae uno a caso a ogni giro di ruota. */
   roulette: readonly Carta[];
 }
@@ -248,6 +264,10 @@ export interface Cosmo {
   malloppo: number;
   /** -1 con la gravità invertita: i dadi portano indietro, fino alla fine del giro. */
   verso: 1 | -1;
+  /** La faccia del dado cosmico nel tiro in corso di chi gioca; `null` prima del suo primo tiro. */
+  dado: FacciaCosmica | null;
+  /** Faro: chi lo ha acceso, le cui proprietà rendono il doppio fino al suo prossimo turno. */
+  faro: IdGiocatore | null;
 }
 
 export interface Carta {
@@ -568,10 +588,20 @@ export type Evento =
   | { tipo: 'ultimi_turni'; turni: number }
   | { tipo: 'turno'; giocatore: IdGiocatore; numero: number }
   | { tipo: 'turno_saltato'; giocatore: IdGiocatore }
-  | { tipo: 'dadi'; giocatore: IdGiocatore; dadi: [number, number] }
+  /** `cosmico`: con le regole folli, la faccia del dado cosmico tirato insieme ai due dadi. */
+  | { tipo: 'dadi'; giocatore: IdGiocatore; dadi: [number, number]; cosmico?: FacciaCosmica }
   /** `dadi` c'è quando lo spostamento viene da un tiro. */
   /** `verso`: -1 quando la pedina cammina all'indietro per la gravità invertita (anche con i dadi). */
-  | { tipo: 'movimento'; giocatore: IdGiocatore; da: number; a: number; dadi?: [number, number]; verso?: -1 }
+  /** `razzo`: il volo del razzo (dado cosmico) dopo la mossa dei dadi, fino alla prossima proprietà libera. */
+  | { tipo: 'movimento'; giocatore: IdGiocatore; da: number; a: number; dadi?: [number, number]; verso?: -1; razzo?: true }
+  /** Il dado cosmico (regole folli): la faccia uscita; i suoi effetti seguono (razzo, bandiera, scudo) o stanno nel cosmo. */
+  | { tipo: 'dado_cosmico'; giocatore: IdGiocatore; faccia: FacciaCosmica }
+  /** Razzo: dopo la mossa dei dadi la pedina vola da `da` alla prossima proprietà libera `a` (segue il movimento). */
+  | { tipo: 'razzo'; giocatore: IdGiocatore; da: number; a: number }
+  /** Bandiera: la proprietà libera più economica diventa di `giocatore`, gratis. */
+  | { tipo: 'bandiera'; giocatore: IdGiocatore; casella: number }
+  /** Scudo: `giocatore` non paga l'affitto di `importo` su `casella`. */
+  | { tipo: 'scudo'; giocatore: IdGiocatore; casella: number; importo: number }
   /** Spostamento di una carta folle (wormhole, scambio di posto): la pedina vola, non cammina, e non passa dalla Partenza. */
   | { tipo: 'teletrasporto'; giocatore: IdGiocatore; da: number; a: number }
   /** Carta Robin Hood: chi ha più contante (`da`) dà `importo` a chi ne ha meno (`a`). */

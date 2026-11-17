@@ -8,7 +8,7 @@ import { applica } from './regole';
 import { tabellone } from './tabelloni';
 import { BANCA_MAX_MS } from './tempo';
 import { finitaPerDurata } from './turni';
-import type { Azione, Caso, Evento, IdGiocatore, Impostazioni, NomeMazzo, Stato } from './tipi';
+import type { Azione, Caso, Evento, FacciaCosmica, IdGiocatore, Impostazioni, NomeMazzo, Stato } from './tipi';
 
 export const NOMI = ['Anna', 'Bruno', 'Carla', 'Dario', 'Elena', 'Fabio', 'Gina', 'Ugo'];
 /** Id dei giocatori di prova: 'a', 'b', 'c'… */
@@ -48,6 +48,19 @@ export function partitaASquadre(squadre: number[], impostazioni: Partial<Imposta
   );
   if (!esito.ok) throw new Error(esito.messaggio);
   return stessiSoldi(esito.stato);
+}
+
+/**
+ * Il numero a caso che fa uscire questa faccia del dado cosmico del Sistema solare (il dado è truccato: le facce
+ * hanno pesi diversi). Va passato al caso subito dopo i due dadi.
+ */
+export function tiroCosmico(faccia: FacciaCosmica): number {
+  let inizio = 0;
+  for (const f of tabellone('sistema_solare').follie!.dadoCosmico) {
+    if (f.faccia === faccia) return inizio;
+    inizio += f.peso;
+  }
+  throw new Error(`Il dado cosmico non ha la faccia ${faccia}.`);
 }
 
 /** Caso che restituisce i tiri indicati, in ordine. Finiti i tiri, il test fallisce. */

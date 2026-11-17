@@ -35,6 +35,12 @@ export const TEMPI = {
   quantico: 1100,
   /** La fionda gravitazionale si carica, poi la pedina riparte. */
   fionda: 500,
+  /** Il dado cosmico, appena fermi i dadi: il riquadro con la faccia uscita e cosa fa. */
+  dadoCosmico: 1000,
+  /** Il razzo si accende, poi la pedina vola alla proprietà libera. */
+  razzo: 500,
+  /** La bandiera si pianta sulla proprietà regalata, che lampeggia nel colore del nuovo proprietario. */
+  bandiera: 700,
   /** La Roulette cosmica gira e rallenta fino allo spicchio; poi resta il tempo di leggerlo (come le carte). */
   rouletteGira: 1700,
   /** Un meteorite cade su una casa. */
@@ -66,7 +72,7 @@ export const TEMPI = {
 } as const;
 
 /** Gli eventi che fermano la scena per `TEMPI.pausa`, giusto il tempo di leggerli. */
-export const EVENTI_CON_PAUSA: ReadonlySet<Evento['tipo']> = new Set<Evento['tipo']>(['prigione_fallita', 'vacanza']);
+export const EVENTI_CON_PAUSA: ReadonlySet<Evento['tipo']> = new Set<Evento['tipo']>(['prigione_fallita', 'vacanza', 'scudo']);
 
 /**
  * Gli eventi con soldi che passano di mano: fermano la scena per `TEMPI.pausaSoldi`, mentre il gettone vola.
@@ -92,13 +98,15 @@ export const DADI_MS = TEMPI.facceDado.reduce((t, ms) => t + ms, 0) + TEMPI.dadi
  * sono l'unico spostamento all'indietro.
  */
 export function percorso(
-  e: { da: number; a: number; dadi?: [number, number]; verso?: -1 },
+  e: { da: number; a: number; dadi?: [number, number]; verso?: -1; razzo?: true },
   caselle: number,
 ): { passi: number; verso: 1 | -1 } {
   const avanti = (e.a - e.da + caselle) % caselle;
   const indietro = (e.da - e.a + caselle) % caselle;
   // Con la gravità invertita (regole folli) anche i dadi e la fionda portano indietro: lo dice l'evento.
   if (e.verso === -1) return { passi: indietro, verso: -1 };
+  // Il volo del razzo va sempre avanti, anche lungo.
+  if (e.razzo) return { passi: avanti, verso: 1 };
   return !e.dadi && indietro < avanti && indietro <= 3 ? { passi: indietro, verso: -1 } : { passi: avanti, verso: 1 };
 }
 
@@ -147,6 +155,12 @@ export function durataEvento(e: Evento, caselle: number): number {
       return TEMPI.quantico;
     case 'fionda':
       return TEMPI.fionda;
+    case 'dado_cosmico':
+      return TEMPI.dadoCosmico;
+    case 'razzo':
+      return TEMPI.razzo;
+    case 'bandiera':
+      return TEMPI.bandiera;
     case 'roulette':
       return durataRoulette(e.testo);
     case 'meteorite':

@@ -186,6 +186,16 @@ const FOLLIE: Follie = {
   supernova: [0.5, 1, 1, 2, 2, 2],
   // Con la Supernova nessuno supera 4.000 € di contante: il resto va all'avversario più povero.
   tetto: 4000,
+  // Il dado cosmico, tirato a ogni lancio con i due dadi: sei facce tutte diverse, ma truccato.
+  // Il Razzo esce una volta su tre (5 su 15), le altre facce 2 volte su 15 ciascuna.
+  dadoCosmico: [
+    { faccia: 'razzo', peso: 5 },
+    { faccia: 'saldi', peso: 2 },
+    { faccia: 'bandiera', peso: 2 },
+    { faccia: 'scudo', peso: 2 },
+    { faccia: 'faro', peso: 2 },
+    { faccia: 'iperspazio', peso: 2 },
+  ],
   // Otto spicchi, come le fette della ruota.
   roulette: [
     { testo: 'Jackpot cosmico! Ricevi 300 €.', effetto: { tipo: 'soldi', importo: 300 } },

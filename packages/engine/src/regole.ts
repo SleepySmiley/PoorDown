@@ -5,7 +5,7 @@
  */
 
 import { tiraDadi } from './caso';
-import { caricaStella, premioPartenza } from './cosmo';
+import { caricaStella, effettoDadoCosmico, premioPartenza, prossimaLibera, tiraDadoCosmico } from './cosmo';
 import { accredita, errore, paga, pagaBanca, segnaTrasferimento, type Contesto } from './contesto';
 import {
   affitto,
@@ -405,7 +405,10 @@ function lancia(ctx: Contesto, g: Giocatore): void {
   t.rilancio = false;
   t.fase = 'dopo_lancio';
   if (doppio) ctx.s.statistiche.doppi++;
-  ctx.eventi.push({ tipo: 'dadi', giocatore: g.id, dadi });
+  // Con le regole folli, il dado cosmico rotola insieme ai due dadi.
+  const cosmico = tiraDadoCosmico(ctx);
+  ctx.eventi.push({ tipo: 'dadi', giocatore: g.id, dadi, ...(cosmico ? { cosmico } : {}) });
+  if (cosmico) effettoDadoCosmico(ctx, g, cosmico);
 
   if (inPrigione) {
     if (!doppio) {
@@ -429,17 +432,46 @@ function lancia(ctx: Contesto, g: Giocatore): void {
   if (ctx.turnoFinito) chiudiTurno(ctx);
 }
 
-/** Lo spostamento di un tiro: con la gravità invertita (regole folli) all'indietro, e la Partenza paga anche così. */
+/**
+ * Lo spostamento di un tiro: con la gravità invertita (regole folli) all'indietro, e la Partenza paga anche così.
+ * Il dado cosmico può raddoppiarlo (Iperspazio) o allungarlo con il volo del Razzo fino alla prossima proprietà libera:
+ * il razzo parte prima che la casella dei dadi faccia effetto.
+ */
 function muoviConIDadi(ctx: Contesto, g: Giocatore, passi: number, dadi: [number, number]): void {
   const verso = ctx.s.cosmo?.verso ?? 1;
-  muovi(ctx, g, verso * passi, dadi, verso === -1);
+  const dado = ctx.s.cosmo?.dado ?? null;
+  const lunghezza = dado === 'iperspazio' ? 2 * passi : passi;
+  if (dado !== 'razzo') {
+    muovi(ctx, g, verso * lunghezza, dadi, verso === -1);
+    return;
+  }
+  muovi(ctx, g, verso * passi, dadi, verso === -1, { fermati: false });
+  const meta = prossimaLibera(ctx, g.posizione, verso);
+  if (meta === null || meta === g.posizione) {
+    arriva(ctx, g);
+    return;
+  }
+  const n = ctx.tab.caselle.length;
+  // Il razzo che parte dalla Supernova ci passa sopra senza fermarsi: polvere di stelle.
+  if (ctx.tab.caselle[g.posizione]!.tipo === 'supernova') caricaStella(ctx, 'polvere', ctx.tab.follie?.polvere ?? 0, g.id);
+  ctx.eventi.push({ tipo: 'razzo', giocatore: g.id, da: g.posizione, a: meta });
+  const volo = verso === 1 ? (meta - g.posizione + n) % n : -((g.posizione - meta + n) % n);
+  muovi(ctx, g, volo, undefined, verso === -1, { razzo: true });
 }
 
 /**
  * Sposta la pedina e applica la casella d'arrivo. Avanzando oltre la Partenza si incassa il premio;
  * all'indietro solo con `indietroPaga` (gravità invertita), non con «Torna indietro di 3 caselle».
+ * `fermati: false`: la casella d'arrivo non fa effetto (riparte subito, con il razzo); `razzo`: è il volo del razzo.
  */
-function muovi(ctx: Contesto, g: Giocatore, passi: number, dadi?: [number, number], indietroPaga = false): void {
+function muovi(
+  ctx: Contesto,
+  g: Giocatore,
+  passi: number,
+  dadi?: [number, number],
+  indietroPaga = false,
+  { fermati = true, razzo = false }: { fermati?: boolean; razzo?: boolean } = {},
+): void {
   const n = ctx.tab.caselle.length;
   const da = g.posizione;
   const a = (((da + passi) % n) + n) % n;
@@ -451,6 +483,7 @@ function muovi(ctx: Contesto, g: Giocatore, passi: number, dadi?: [number, numbe
     a,
     ...(dadi ? { dadi } : {}),
     ...(passi < 0 ? { verso: -1 as const } : {}),
+    ...(razzo ? { razzo: true as const } : {}),
   });
 
   const avanti = passi > 0 && da + passi >= n;
@@ -463,7 +496,7 @@ function muovi(ctx: Contesto, g: Giocatore, passi: number, dadi?: [number, numbe
     caricaStella(ctx, 'tempesta', allaStella, g.id);
   }
   polvereDiStelle(ctx, g, da, passi);
-  arriva(ctx, g);
+  if (fermati) arriva(ctx, g);
 }
 
 /**
@@ -513,6 +546,11 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       const dadi = s.turno.dadi;
       let importo = affitto(s, casella, dadi ? dadi[0] + dadi[1] : 0);
       if (importo <= 0) return;
+      // Scudo (dado cosmico): chi gioca non paga affitti in questo tiro.
+      if (s.cosmo?.dado === 'scudo' && g.id === s.turno.giocatore) {
+        ctx.eventi.push({ tipo: 'scudo', giocatore: g.id, casella, importo });
+        return;
+      }
       // Affitto quantistico (regole folli): un dado moltiplica l'affitto, anche per zero.
       const quantico = tab.follie?.quantico;
       if (quantico) {

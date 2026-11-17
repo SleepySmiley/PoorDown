@@ -127,16 +127,22 @@ export function fattoreCosmico(stato: Stato, casella: number): number {
   let fattore = cosmo.evento === 'allineamento' ? 2 : cosmo.evento === 'eclissi' ? 0.5 : 1;
   const c = tabellone(stato.mappa).caselle[casella];
   if (cosmo.mercato && c?.tipo === 'citta' && c.regione === cosmo.mercato.regione) fattore *= cosmo.mercato.fattore;
+  // Faro (dado cosmico): le proprietà di chi l'ha acceso rendono il doppio fino al suo prossimo turno.
+  if (cosmo.faro && stato.proprieta[casella]?.proprietario === cosmo.faro) fattore *= 2;
   return fattore;
 }
 
-/** Quanto costa comprare la casella adesso: con il Mercato galattico il pianeta del giro costa di più o di meno. */
+/**
+ * Quanto costa comprare la casella adesso: con il Mercato galattico il pianeta del giro costa di più o di meno;
+ * con i Saldi del dado cosmico la proprietà libera dove si è fermato chi gioca costa la metà.
+ */
 export function prezzoAcquisto(stato: Stato, casella: number): number {
   const c = proprietabile(tabellone(stato.mappa), casella);
   if (!c) return 0;
   const mercato = stato.cosmo?.mercato;
-  if (!mercato || c.tipo !== 'citta' || c.regione !== mercato.regione) return c.prezzo;
-  return Math.max(5, Math.round((c.prezzo * mercato.fattore) / 5) * 5);
+  const prezzo = !mercato || c.tipo !== 'citta' || c.regione !== mercato.regione ? c.prezzo : Math.max(5, Math.round((c.prezzo * mercato.fattore) / 5) * 5);
+  const saldi = stato.cosmo?.dado === 'saldi' && stato.turno.acquisto === casella;
+  return saldi ? Math.max(5, Math.round(prezzo / 2 / 5) * 5) : prezzo;
 }
 
 /** Case e alberghi di un giocatore (un albergo non conta anche come 4 case). */

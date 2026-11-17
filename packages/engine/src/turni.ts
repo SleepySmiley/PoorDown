@@ -53,6 +53,11 @@ export function iniziaTurno(s: Stato, eventi: Evento[], g: Giocatore, adesso: nu
     tempo: tempoIniziale(s, g, adesso),
     votazione: { voti: [], scadenza: null },
   };
+  // Regole folli: il dado cosmico vale per il tiro di chi lo tira; il suo Faro si spegne quando torna a giocare.
+  if (s.cosmo) {
+    s.cosmo.dado = null;
+    if (s.cosmo.faro === g.id) s.cosmo.faro = null;
+  }
   eventi.push({ tipo: 'turno', giocatore: g.id, numero: s.turno.numero });
   const ultimo = ultimoTurno(s);
   const avviso = TURNI_DI_AVVISO_A_TESTA * s.giocatori.length;

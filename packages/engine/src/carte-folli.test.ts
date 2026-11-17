@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { verifica } from './regole';
-import { esegui, g, partitaASquadre, partitaDiProva, primaCarta, problemi } from './prove';
+import { esegui, g, partitaASquadre, partitaDiProva, primaCarta, problemi, tiroCosmico } from './prove';
 import { SISTEMA_SOLARE } from './tabelloni/sistema-solare';
 import type { Caso, Effetto, NomeMazzo, Stato } from './tipi';
 
@@ -37,8 +37,10 @@ function pronta(mazzo: NomeMazzo, indice: number, s: Stato = partitaDiProva(3, S
 }
 
 const lancia = { tipo: 'lancia', giocatore: 'a' } as const;
-/** I dadi 2 e 3 (valori 1 e 2 del caso). */
-const DUE_E_TRE = [1, 2];
+/** Il dado cosmico rotola dopo i due dadi: Saldi, la faccia che cambia solo il prezzo d'acquisto. */
+const SALDI = tiroCosmico('saldi');
+/** I dadi 2 e 3 (valori 1 e 2 del caso), poi il dado cosmico. */
+const DUE_E_TRE = [1, 2, SALDI];
 
 describe('carte folli del Sistema solare', () => {
   it('ci sono tutte, e solo sul Sistema solare', () => {
@@ -153,7 +155,7 @@ describe('carte folli del Sistema solare', () => {
     const { stato } = esegui(pronta('cartolina', carta('cartolina', 'rilancia')), lancia, caso(...DUE_E_TRE));
     expect(stato.turno.rilancio).toBe(true);
     expect(verifica(stato, { tipo: 'fine_turno', giocatore: 'a' })?.codice).toBe('devi_rilanciare');
-    const dopo = esegui(stato, lancia, caso(0, 1));
+    const dopo = esegui(stato, lancia, caso(0, 1, SALDI));
     expect(g(dopo.stato, 'a').posizione).toBe(11);
     expect(dopo.stato.turno.rilancio).toBe(false);
   });

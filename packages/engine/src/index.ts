@@ -43,7 +43,7 @@ export {
   VALORE_GRAZIA,
 } from './conti';
 export { acquistoInSospeso, ASTA_MS, RILANCI } from './economia';
-export { aOppureAd, descrivi, descriviVoce, destinazione, EVENTI_COSMICI, euro, fattoreTesto, preposizioneA } from './descrivi';
+export { aOppureAd, descrivi, descriviVoce, destinazione, EVENTI_COSMICI, euro, FACCE_COSMICHE, fattoreTesto, preposizioneA } from './descrivi';
 export {
   bonusPerPosto,
   GIOCATORI_MAX,

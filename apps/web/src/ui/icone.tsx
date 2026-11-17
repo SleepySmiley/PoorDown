@@ -260,6 +260,14 @@ const TRACCIATI = {
   scintilla: (
     <path d="M11 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7zM18.5 15.5c.3 1.9 1 2.7 2.9 2.9-1.9.3-2.6 1-2.9 2.9-.3-1.9-1-2.6-2.9-2.9 1.9-.2 2.6-1 2.9-2.9z" />
   ),
+  // Il dado cosmico: lo scudo (niente affitti) e il faro (affitti doppi).
+  scudo: <path d="M12 3.2 5 5.8v5.6c0 4.3 2.9 7.7 7 9.4 4.1-1.7 7-5.1 7-9.4V5.8zM9 12l2.2 2.2L15.5 10" />,
+  faro: (
+    <>
+      <path d="M9.5 21 10.6 9h2.8l1.1 12zM8 21h8M10.6 9V6.5h2.8V9M12 6.5V4.5" />
+      <path d="M15.8 6 20 4.5M15.8 8.5 20 10M8.2 6 4 4.5M8.2 8.5 4 10" />
+    </>
+  ),
 } as const;
 
 export type NomeIcona = keyof typeof TRACCIATI;

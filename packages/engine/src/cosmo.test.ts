@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { affitto, prezzoAcquisto } from './conti';
-import { assegna, esegui, g, partitaASquadre, partitaDiProva, primaCarta, problemi } from './prove';
+import { assegna, esegui, g, partitaASquadre, partitaDiProva, primaCarta, problemi, tiroCosmico } from './prove';
 import { SISTEMA_SOLARE } from './tabelloni/sistema-solare';
 import type { Caso, Stato } from './tipi';
 
@@ -31,17 +31,19 @@ function conAIn(posizione: number, s = solare()): Stato {
 }
 
 const lancia = { tipo: 'lancia', giocatore: 'a' } as const;
+/** Il dado cosmico rotola dopo i due dadi: Saldi, la faccia che cambia solo il prezzo d'acquisto. */
+const SALDI = tiroCosmico('saldi');
 
 describe('regole folli', () => {
   it('la partita nasce con il cosmo: primo giro tranquillo, malloppo iniziale', () => {
-    expect(solare().cosmo).toEqual({ giro: 1, evento: 'quiete', mercato: null, malloppo: 100, verso: 1 });
+    expect(solare().cosmo).toEqual({ giro: 1, evento: 'quiete', mercato: null, malloppo: 100, verso: 1, dado: null, faro: null });
     expect(partitaDiProva(2).cosmo).toBeUndefined();
   });
 
   it('affitto quantistico: un dado moltiplica l’affitto', () => {
     const s = assegna(conAIn(0), 'b', 3);
     // Copernico (70 €) senza case: 4 €. Faccia 5 → ×2.
-    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 4));
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, SALDI, 4));
     expect(eventi).toContainEqual({ tipo: 'quantico', giocatore: 'a', casella: 3, faccia: 5, fattore: 2 });
     expect(eventi).toContainEqual({ tipo: 'affitto', da: 'a', a: 'b', casella: 3, importo: 8 });
     expect(g(stato, 'b').saldo).toBe(1508);
@@ -49,17 +51,17 @@ describe('regole folli', () => {
 
   it('affitto quantistico ×0: gratis', () => {
     const s = assegna(conAIn(0), 'b', 3);
-    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 0));
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, SALDI, 0));
     expect(eventi.some((e) => e.tipo === 'affitto')).toBe(false);
     expect(g(stato, 'a').saldo).toBe(1500);
   });
 
   it('Partenza a caso: da 0 a 400 € a passi di 50', () => {
     // Da 46 con 1 e 2: passa la Partenza e arriva su Tycho. Il tiro della Partenza: 4 → 200 €.
-    const { stato, eventi } = esegui(conAIn(46), lancia, caso(0, 1, 4));
+    const { stato, eventi } = esegui(conAIn(46), lancia, caso(0, 1, SALDI, 4));
     expect(eventi).toContainEqual({ tipo: 'partenza', giocatore: 'a', importo: 200, arrivo: false });
     expect(g(stato, 'a').saldo).toBe(1700);
-    const zero = esegui(conAIn(46), lancia, caso(0, 1, 0));
+    const zero = esegui(conAIn(46), lancia, caso(0, 1, SALDI, 0));
     expect(g(zero.stato, 'a').saldo).toBe(1500);
   });
 
@@ -70,13 +72,13 @@ describe('regole folli', () => {
       return s;
     };
     // Il tiro della Partenza: 4 → 200 €, che vanno alla stella.
-    const { stato, eventi } = esegui(conTempesta(), lancia, caso(0, 1, 4));
+    const { stato, eventi } = esegui(conTempesta(), lancia, caso(0, 1, SALDI, 4));
     expect(eventi).toContainEqual({ tipo: 'partenza', giocatore: 'a', importo: 0, arrivo: false, tempesta: true });
     expect(eventi).toContainEqual({ tipo: 'malloppo', motivo: 'tempesta', importo: 200, giocatore: 'a' });
     expect(g(stato, 'a').saldo).toBe(1500);
     expect(stato.cosmo!.malloppo).toBe(300);
     // Con il premio a zero non arriva niente.
-    const zero = esegui(conTempesta(), lancia, caso(0, 1, 0));
+    const zero = esegui(conTempesta(), lancia, caso(0, 1, SALDI, 0));
     expect(zero.eventi.some((e) => e.tipo === 'malloppo')).toBe(false);
     expect(zero.stato.cosmo!.malloppo).toBe(100);
   });
@@ -84,12 +86,12 @@ describe('regole folli', () => {
   it('gravità invertita: i dadi portano indietro, e passando la Partenza si incassa lo stesso', () => {
     const s = conAIn(10);
     s.cosmo!.verso = -1;
-    const avanti = esegui(s, lancia, caso(0, 1));
+    const avanti = esegui(s, lancia, caso(0, 1, SALDI));
     expect(avanti.eventi).toContainEqual({ tipo: 'movimento', giocatore: 'a', da: 10, a: 7, dadi: [1, 2], verso: -1 });
     const t = conAIn(4);
     t.cosmo!.verso = -1;
     // Da 4 con 2 e 3: indietro di 5, fino a Plutone (47), passando dalla Partenza: 300 €.
-    const { stato, eventi } = esegui(t, lancia, caso(1, 2, 6));
+    const { stato, eventi } = esegui(t, lancia, caso(1, 2, SALDI, 6));
     expect(g(stato, 'a')).toMatchObject({ posizione: 47, saldo: 1800 });
     expect(eventi).toContainEqual({ tipo: 'partenza', giocatore: 'a', importo: 300, arrivo: false });
   });
@@ -102,7 +104,7 @@ describe('regole folli', () => {
 describe('caselle folli', () => {
   it('fionda gravitazionale: riparte della stessa somma dei dadi', () => {
     // Da 9 con 2 e 3: Fionda (14), poi altri 5 fino a Jezero (19).
-    const { stato, eventi } = esegui(conAIn(9), lancia, caso(1, 2));
+    const { stato, eventi } = esegui(conAIn(9), lancia, caso(1, 2, SALDI));
     expect(eventi).toContainEqual({ tipo: 'fionda', giocatore: 'a', passi: 5 });
     expect(eventi).toContainEqual({ tipo: 'movimento', giocatore: 'a', da: 14, a: 19 });
     expect(stato.turno.acquisto).toBe(19);
@@ -110,21 +112,21 @@ describe('caselle folli', () => {
 
   it('wormhole: su una casella a caso, mai su un altro wormhole', () => {
     // Da 1 con 1 e 2: Wormhole (4). Le mete saltano i due wormhole: la meta 15 è Psiche (16).
-    const { stato, eventi } = esegui(conAIn(1), lancia, caso(0, 1, 15));
+    const { stato, eventi } = esegui(conAIn(1), lancia, caso(0, 1, SALDI, 15));
     expect(eventi).toContainEqual({ tipo: 'teletrasporto', giocatore: 'a', da: 4, a: 16 });
     expect(stato.turno.acquisto).toBe(16);
   });
 
   it('Buco nero e Supernova: il 20% del contante nel malloppo, poi chi arriva sulla Supernova se lo prende', () => {
     // Da 19 con 1 e 2: Buco nero (22).
-    const buco = esegui(conAIn(19), lancia, caso(0, 1));
+    const buco = esegui(conAIn(19), lancia, caso(0, 1, SALDI));
     expect(g(buco.stato, 'a').saldo).toBe(1200);
     expect(buco.stato.cosmo!.malloppo).toBe(400);
     expect(buco.eventi).toContainEqual({ tipo: 'buco_nero', giocatore: 'a', casella: 22, importo: 300 });
     // Da 38 con 1 e 2: Supernova (41). Il suo dado: faccia 2 → ×1.
     const s = conAIn(38);
     s.cosmo!.malloppo = 400;
-    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 1));
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, SALDI, 1));
     expect(g(stato, 'a').saldo).toBe(1900);
     expect(stato.cosmo!.malloppo).toBe(100);
     expect(eventi).toContainEqual({
@@ -149,16 +151,16 @@ describe('caselle folli', () => {
     };
     // Faccia 6 → ×2: 400 € diventano 800 €, e la stella riparte da 100 €. Il ×3 non c'è.
     expect(Math.max(...SISTEMA_SOLARE.follie!.supernova)).toBe(2);
-    const doppio = esegui(conMalloppo(400), lancia, caso(0, 1, 5));
+    const doppio = esegui(conMalloppo(400), lancia, caso(0, 1, SALDI, 5));
     expect(g(doppio.stato, 'a').saldo).toBe(2300);
     expect(doppio.stato.cosmo!.malloppo).toBe(100);
     expect(doppio.eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', faccia: 6, fattore: 2, importo: 800, resta: 100 }));
     // Faccia 1 → ×½: metà a chi si ferma, l'altra metà aspetta il prossimo.
-    const meta = esegui(conMalloppo(400), lancia, caso(0, 1, 0));
+    const meta = esegui(conMalloppo(400), lancia, caso(0, 1, SALDI, 0));
     expect(g(meta.stato, 'a').saldo).toBe(1700);
     expect(meta.stato.cosmo!.malloppo).toBe(200);
     // Con un malloppo piccolo la stella non scende sotto i 100 € di partenza.
-    const poco = esegui(conMalloppo(150), lancia, caso(0, 1, 0));
+    const poco = esegui(conMalloppo(150), lancia, caso(0, 1, SALDI, 0));
     expect(g(poco.stato, 'a').saldo).toBe(1575);
     expect(poco.stato.cosmo!.malloppo).toBe(100);
     expect(problemi(poco.stato)).toEqual([]);
@@ -170,7 +172,7 @@ describe('caselle folli', () => {
     g(s, 'a').saldo = 3500;
     g(s, 'c').saldo = 900;
     // Faccia 6 → ×2: 800 €. a arriva a 4.000 € con 500 €, gli altri 300 € vanno a c (b ha 1.500 €).
-    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 5));
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, SALDI, 5));
     expect(eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', importo: 500, alPovero: { giocatore: 'c', importo: 300 } }));
     expect(g(stato, 'a').saldo).toBe(4000);
     expect(g(stato, 'b').saldo).toBe(1500);
@@ -181,7 +183,7 @@ describe('caselle folli', () => {
     t.cosmo!.malloppo = 400;
     g(t, 'a').saldo = 4200;
     g(t, 'c').saldo = 900;
-    const tutto = esegui(t, lancia, caso(0, 1, 1));
+    const tutto = esegui(t, lancia, caso(0, 1, SALDI, 1));
     expect(tutto.eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', importo: 0, alPovero: { giocatore: 'c', importo: 400 } }));
     expect(g(tutto.stato, 'a').saldo).toBe(4200);
     expect(g(tutto.stato, 'c').saldo).toBe(1300);
@@ -195,7 +197,7 @@ describe('caselle folli', () => {
     g(s, 'a').saldo = 3900;
     g(s, 'b').saldo = 500;
     g(s, 'd').saldo = 1000;
-    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 1));
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, SALDI, 1));
     expect(eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', importo: 100, alPovero: { giocatore: 'd', importo: 300 } }));
     expect(g(stato, 'b').saldo).toBe(500);
     expect(g(stato, 'd').saldo).toBe(1300);
@@ -203,29 +205,29 @@ describe('caselle folli', () => {
 
   it('polvere di stelle: passando sopra la Supernova il malloppo cresce, senza togliere niente a chi passa', () => {
     // Da 39 con 1 e 2: passa sopra la Supernova (41) e arriva sulla Sonda (42).
-    const { stato, eventi } = esegui(conAIn(39), lancia, caso(0, 1));
+    const { stato, eventi } = esegui(conAIn(39), lancia, caso(0, 1, SALDI));
     expect(eventi).toContainEqual({ tipo: 'malloppo', motivo: 'polvere', importo: 25, giocatore: 'a' });
     expect(stato.cosmo!.malloppo).toBe(125);
     expect(g(stato, 'a').saldo).toBe(1500);
     // All'indietro (gravità invertita) vale lo stesso; fermandosi sopra no: lì si prende il malloppo.
     const s = conAIn(43);
     s.cosmo!.verso = -1;
-    const indietro = esegui(s, lancia, caso(0, 1));
+    const indietro = esegui(s, lancia, caso(0, 1, SALDI));
     expect(indietro.stato.cosmo!.malloppo).toBe(125);
-    const sopra = esegui(conAIn(38), lancia, caso(0, 1, 1));
+    const sopra = esegui(conAIn(38), lancia, caso(0, 1, SALDI, 1));
     expect(sopra.eventi.some((e) => e.tipo === 'malloppo')).toBe(false);
   });
 
   it('Roulette cosmica: lo spicchio uscito fa il suo effetto', () => {
     // Da 23 con 1 e 2: Roulette (26). Spicchio 0: Jackpot da 300 €.
-    const jackpot = esegui(conAIn(23), lancia, caso(0, 1, 0));
+    const jackpot = esegui(conAIn(23), lancia, caso(0, 1, SALDI, 0));
     expect(jackpot.eventi).toContainEqual(expect.objectContaining({ tipo: 'roulette', giocatore: 'a', spicchio: 0 }));
     expect(g(jackpot.stato, 'a').saldo).toBe(1800);
     // Spicchio 1: metà del contante, al massimo 500 €.
-    const buco = esegui(conAIn(23), lancia, caso(0, 1, 1));
+    const buco = esegui(conAIn(23), lancia, caso(0, 1, SALDI, 1));
     expect(g(buco.stato, 'a').saldo).toBe(1000);
     // Spicchio 7: dritto alla Supernova, e il suo dado dice ×1.
-    const nova = esegui(conAIn(23), lancia, caso(0, 1, 7, 1));
+    const nova = esegui(conAIn(23), lancia, caso(0, 1, SALDI, 7, 1));
     expect(g(nova.stato, 'a').posizione).toBe(41);
     expect(g(nova.stato, 'a').saldo).toBe(1600);
   });
@@ -233,7 +235,7 @@ describe('caselle folli', () => {
   it('la carta della gravità invertita vale fino alla fine del giro', () => {
     const indice = SISTEMA_SOLARE.mazzi.cartolina.findIndex((c) => c.effetto.tipo === 'inverti');
     const s = primaCarta(conAIn(3), 'cartolina', indice);
-    const { stato, eventi } = esegui(s, lancia, caso(1, 2));
+    const { stato, eventi } = esegui(s, lancia, caso(1, 2, SALDI));
     expect(stato.cosmo!.verso).toBe(-1);
     expect(eventi).toContainEqual({ tipo: 'gravita_invertita', giocatore: 'a' });
   });
@@ -296,5 +298,94 @@ describe('eventi cosmici a ogni giro', () => {
     expect(stato.cosmo!.verso).toBe(-1);
     const dopo = esegui(fineGiro(stato), fine, caso(0, 0, 0));
     expect(dopo.stato.cosmo).toMatchObject({ giro: 3, evento: 'quiete', verso: 1 });
+  });
+});
+
+describe('dado cosmico', () => {
+  /** L'indice della faccia sul dado cosmico, da passare al caso dopo i due dadi. */
+  const faccia = tiroCosmico;
+
+  it('ha sei facce tutte diverse, il Razzo esce una volta su tre, e c’è solo sul Sistema solare', () => {
+    const facce = SISTEMA_SOLARE.follie!.dadoCosmico;
+    expect(facce).toHaveLength(6);
+    expect(new Set(facce.map((f) => f.faccia)).size).toBe(6);
+    const totale = facce.reduce((t, f) => t + f.peso, 0);
+    expect(facce.find((f) => f.faccia === 'razzo')!.peso / totale).toBeCloseTo(1 / 3);
+    // Sul Classico si tirano solo i due dadi: il caso dei test chiede soltanto due numeri.
+    const classico = esegui(partitaDiProva(2), lancia, caso(0, 1));
+    expect(classico.eventi).toContainEqual({ tipo: 'dadi', giocatore: 'a', dadi: [1, 2] });
+  });
+
+  it('Razzo: dopo la mossa vola alla prossima proprietà libera, prima che la casella dei dadi faccia effetto', () => {
+    // Da 1 con 1 e 2: Wormhole (4), ma il razzo parte e porta a Bacino Caloris (5), libera.
+    const { stato, eventi } = esegui(conAIn(1), lancia, caso(0, 1, faccia('razzo')));
+    expect(eventi).toContainEqual({ tipo: 'dadi', giocatore: 'a', dadi: [1, 2], cosmico: 'razzo' });
+    expect(eventi).toContainEqual({ tipo: 'razzo', giocatore: 'a', da: 4, a: 5 });
+    expect(eventi).toContainEqual({ tipo: 'movimento', giocatore: 'a', da: 4, a: 5, razzo: true });
+    expect(eventi.some((e) => e.tipo === 'teletrasporto')).toBe(false);
+    expect(stato.turno.acquisto).toBe(5);
+    // Da 33 con 1 e 2: «Vai in prigione» (36), ma il razzo la salta e porta a Tritone (37).
+    const salvo = esegui(conAIn(33), lancia, caso(0, 1, faccia('razzo')));
+    expect(g(salvo.stato, 'a')).toMatchObject({ posizione: 37, prigione: null });
+    // Già su una proprietà libera: resta lì.
+    const fermo = esegui(conAIn(0), lancia, caso(0, 1, faccia('razzo')));
+    expect(fermo.eventi.some((e) => e.tipo === 'razzo')).toBe(false);
+    expect(fermo.stato.turno.acquisto).toBe(3);
+  });
+
+  it('Saldi: la proprietà libera dove si ferma costa la metà', () => {
+    // Da 0 con 1 e 2: Copernico (3), 70 € → 35 €.
+    const { stato } = esegui(conAIn(0), lancia, caso(0, 1, faccia('saldi')));
+    expect(prezzoAcquisto(stato, 3)).toBe(35);
+    const comprata = esegui(stato, { tipo: 'compra', giocatore: 'a' });
+    expect(g(comprata.stato, 'a').saldo).toBe(1465);
+    expect(comprata.eventi).toContainEqual(expect.objectContaining({ tipo: 'acquisto', casella: 3, prezzo: 35 }));
+    // Al turno dopo i prezzi tornano quelli scritti.
+    expect(prezzoAcquisto(solare(), 3)).toBe(70);
+  });
+
+  it('Bandiera: la proprietà libera più economica diventa sua, gratis', () => {
+    // Tutto libero: la più economica è Plutone (47), 10 €.
+    const { stato, eventi } = esegui(conAIn(0), lancia, caso(0, 1, faccia('bandiera')));
+    expect(eventi).toContainEqual({ tipo: 'bandiera', giocatore: 'a', casella: 47 });
+    expect(stato.proprieta[47]!.proprietario).toBe('a');
+    expect(g(stato, 'a').saldo).toBe(1500);
+    expect(problemi(stato)).toEqual([]);
+  });
+
+  it('Scudo: in questo tiro non paga affitti', () => {
+    const s = assegna(conAIn(0), 'b', 3);
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, faccia('scudo')));
+    expect(eventi).toContainEqual({ tipo: 'scudo', giocatore: 'a', casella: 3, importo: 4 });
+    expect(eventi.some((e) => e.tipo === 'affitto' || e.tipo === 'quantico')).toBe(false);
+    expect(g(stato, 'a').saldo).toBe(1500);
+    expect(g(stato, 'b').saldo).toBe(1500);
+  });
+
+  it('Faro: le sue proprietà rendono il doppio fino al suo prossimo turno', () => {
+    const s = assegna(conAIn(10), 'a', 3);
+    // Copernico senza case: 4 €, con il faro 8 €.
+    const acceso = esegui(s, lancia, caso(0, 1, faccia('faro')));
+    expect(acceso.stato.cosmo!.faro).toBe('a');
+    expect(affitto(acceso.stato, 3, 0)).toBe(8);
+    // Finito il turno di a, tocca a b: il faro resta acceso.
+    const dopoA = esegui(acceso.stato, { tipo: 'fine_turno', giocatore: 'a' });
+    expect(dopoA.stato.turno.giocatore).toBe('b');
+    expect(dopoA.stato.cosmo!.faro).toBe('a');
+    // b finisce il turno: comincia il giro 2 (quiete, Mercato su Mercurio) e torna a: il faro si spegne.
+    const t = dopoA.stato;
+    t.turno.fase = 'dopo_lancio';
+    t.turno.dadi = [1, 2];
+    const spento = esegui(t, { tipo: 'fine_turno', giocatore: 'b' }, caso(0, 1, 0));
+    expect(spento.stato.turno.giocatore).toBe('a');
+    expect(spento.stato.cosmo).toMatchObject({ faro: null, dado: null });
+    expect(affitto(spento.stato, 3, 0)).toBe(4);
+  });
+
+  it('Iperspazio: la mossa dei dadi vale doppio', () => {
+    // Da 0 con 1 e 2: 6 caselle invece di 3, fino alla Navetta (6).
+    const { stato, eventi } = esegui(conAIn(0), lancia, caso(0, 1, faccia('iperspazio')));
+    expect(eventi).toContainEqual({ tipo: 'movimento', giocatore: 'a', da: 0, a: 6, dadi: [1, 2] });
+    expect(stato.turno.acquisto).toBe(6);
   });
 });

@@ -36,7 +36,7 @@ import { destinoDeiBeni } from '../ui/beni';
 import { caselleVista } from '../ui/caselle';
 import { CartaPescata } from '../ui/Carta';
 import { Dado, Palette, Pedina, Stemma } from '../ui/comuni';
-import { AnnuncioCosmo, DadoQuantico, DadoSupernova, PannelloCosmo, RouletteCosmica } from '../ui/Cosmo';
+import { AnnuncioCosmo, DadoCosmico, DadoQuantico, DadoSupernova, PannelloCosmo, RiquadroDadoCosmico, RouletteCosmica } from '../ui/Cosmo';
 import { VoliGettoni } from '../ui/Gettone';
 import { iniziale, variabili } from '../ui/utili';
 import { geometria, stilePopover } from '../ui/geometria';
@@ -445,7 +445,13 @@ export function Gioco({
         />
       )}
       {/* Regole folli: evento del giro, Mercato galattico, malloppo della Supernova, verso di marcia. */}
-      {inCorso && partita.cosmo && <PannelloCosmo tab={tab} cosmo={partita.cosmo} />}
+      {inCorso && partita.cosmo && (
+        <PannelloCosmo
+          tab={tab}
+          cosmo={partita.cosmo}
+          faro={partita.cosmo.faro ? partita.giocatori.find((g) => g.id === partita.cosmo?.faro)?.nome : undefined}
+        />
+      )}
       <div className="centro-gioco__lancio">
         {doppio && (
           <span className="centro-gioco__doppio" key={`doppio-${scena.lanci}`}>
@@ -455,6 +461,8 @@ export function Gioco({
         <div className={classiDadi} key={scena.lanci} style={variabili({ '--rotola': `${ROTOLA_MS}ms` })}>
           <Dado valore={scena.dadi[0]} doppio={doppio} />
           <Dado valore={scena.dadi[1]} doppio={doppio} />
+          {/* Regole folli: il terzo dado, quello cosmico, rotola con gli altri due. */}
+          {partita.cosmo && <DadoCosmico faccia={scena.cosmico} />}
         </div>
         {/* Il totale a palette, appena i dadi si fermano. */}
         {fermi && (
@@ -800,6 +808,9 @@ export function Gioco({
                   {inCorso && scena.quantico && (
                     <DadoQuantico key={`quantico-${scena.quantico.n}`} faccia={scena.quantico.faccia} fattore={scena.quantico.fattore} />
                   )}
+                </AnimatePresence>
+                <AnimatePresence>
+                  {inCorso && scena.dadoCosmico && <RiquadroDadoCosmico key={`cosmico-${scena.dadoCosmico.n}`} faccia={scena.dadoCosmico.faccia} />}
                 </AnimatePresence>
                 <AnimatePresence>
                   {inCorso && scena.supernova && (

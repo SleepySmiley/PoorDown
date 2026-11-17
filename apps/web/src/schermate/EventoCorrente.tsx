@@ -12,6 +12,7 @@ import {
   aOppureAd,
   euro,
   EVENTI_COSMICI,
+  FACCE_COSMICHE,
   fattoreTesto,
   preposizioneA,
   tabellone,
@@ -21,6 +22,7 @@ import {
   type Stato,
 } from '@poordown/engine';
 import { Pedina, Stemma, type RigaRegistro } from '../ui/comuni';
+import { ICONA_FACCIA } from '../ui/facce-cosmiche';
 import { RiquadroTabellone } from '../ui/Finestra';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { SCORRE } from '../ui/movimento';
@@ -147,6 +149,54 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
         chi: e.giocatore,
         titolo: <>Affitto quantistico: esce {e.faccia}</>,
         dettaglio: e.fattore === 0 ? 'Affitto gratis!' : `L’affitto vale ×${fattoreTesto(e.fattore)}`,
+      };
+    case 'dado_cosmico': {
+      const f = FACCE_COSMICHE[e.faccia];
+      return {
+        icona: ICONA_FACCIA[e.faccia],
+        chi: e.giocatore,
+        titolo: (
+          <>
+            Dado cosmico: <b>{f.nome}</b>
+          </>
+        ),
+        dettaglio: f.effetto,
+      };
+    }
+    case 'razzo':
+      return {
+        icona: 'razzo',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            Il razzo porta <b>{nome(e.giocatore)}</b> a {nomeCasella(e.a)}
+          </>
+        ),
+        dettaglio: 'La prossima proprietà libera',
+      };
+    case 'bandiera':
+      return {
+        regione: regione(e.casella),
+        icona: 'bandiera',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> pianta la bandiera su {nomeCasella(e.casella)}
+          </>
+        ),
+        dettaglio: 'Dado cosmico: è sua, gratis',
+      };
+    case 'scudo':
+      return {
+        icona: 'scudo',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            Lo scudo protegge <b>{nome(e.giocatore)}</b>
+          </>
+        ),
+        dettaglio: `Niente affitto per ${nomeCasella(e.casella)}`,
+        importo: { valore: e.importo, tono: e.giocatore === io ? 'incassa' : 'neutro' },
       };
     case 'fionda':
       return {

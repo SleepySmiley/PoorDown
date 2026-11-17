@@ -5,14 +5,69 @@
  * Un giro comincia quando il turno torna al primo giocatore dell'ordine; il primo giro è tranquillo.
  */
 
-import { compagni, proprietabile, regioneConEdifici } from './conti';
+import { compagni, prezzoAcquisto, proprietabile, regioneConEdifici } from './conti';
 import type { Contesto } from './contesto';
-import type { Cosmo, EventoCosmico, IdGiocatore, Stato, Tabellone } from './tipi';
+import type { Cosmo, EventoCosmico, FacciaCosmica, Giocatore, IdGiocatore, Stato, Tabellone } from './tipi';
 
 /** Il cosmo di una partita nuova, oppure `undefined` se il tabellone non ha le regole folli. */
 export function cosmoIniziale(tab: Tabellone): Cosmo | undefined {
   if (!tab.follie) return undefined;
-  return { giro: 1, evento: 'quiete', mercato: null, malloppo: tab.follie.malloppo, verso: 1 };
+  return { giro: 1, evento: 'quiete', mercato: null, malloppo: tab.follie.malloppo, verso: 1, dado: null, faro: null };
+}
+
+/**
+ * Il dado cosmico: si tira a ogni lancio, insieme ai due dadi, e la faccia vale per quel tiro (`Cosmo.dado`).
+ * È truccato: ogni faccia esce secondo il suo peso. `null` sui tabelloni senza regole folli.
+ */
+export function tiraDadoCosmico(ctx: Contesto): FacciaCosmica | null {
+  const facce = ctx.tab.follie?.dadoCosmico;
+  const cosmo = ctx.s.cosmo;
+  if (!facce?.length || !cosmo) return null;
+  let resto = ctx.caso.intero(facce.reduce((t, f) => t + f.peso, 0));
+  for (const { faccia, peso } of facce) {
+    if (resto < peso) {
+      cosmo.dado = faccia;
+      return faccia;
+    }
+    resto -= peso;
+  }
+  return null;
+}
+
+/**
+ * Gli effetti del dado cosmico prima della mossa: Bandiera (una proprietà gratis) e Faro (affitti doppi fino al prossimo
+ * turno di chi l'ha acceso). Razzo e Iperspazio cambiano la mossa (regole.ts), Saldi e Scudo i conti (conti.ts, regole.ts).
+ */
+export function effettoDadoCosmico(ctx: Contesto, g: Giocatore, faccia: FacciaCosmica): void {
+  const { s } = ctx;
+  ctx.eventi.push({ tipo: 'dado_cosmico', giocatore: g.id, faccia });
+  if (faccia === 'faro' && s.cosmo) s.cosmo.faro = g.id;
+  if (faccia === 'bandiera') {
+    const casella = piuEconomicaLibera(ctx);
+    if (casella === null) return;
+    s.proprieta[casella]!.proprietario = g.id;
+    ctx.eventi.push({ tipo: 'bandiera', giocatore: g.id, casella });
+  }
+}
+
+/** La proprietà libera che costa meno adesso (a pari prezzo la prima del tabellone), `null` se sono tutte vendute. */
+function piuEconomicaLibera(ctx: Contesto): number | null {
+  let migliore: number | null = null;
+  ctx.tab.caselle.forEach((_, i) => {
+    if (!proprietabile(ctx.tab, i) || ctx.s.proprieta[i]?.proprietario !== null) return;
+    if (migliore === null || prezzoAcquisto(ctx.s, i) < prezzoAcquisto(ctx.s, migliore)) migliore = i;
+  });
+  return migliore;
+}
+
+/** La prossima proprietà libera da `da` nel verso di marcia, compresa quella dove si è; `null` se sono tutte vendute. */
+export function prossimaLibera(ctx: Contesto, da: number, verso: 1 | -1): number | null {
+  const n = ctx.tab.caselle.length;
+  for (let i = 0; i < n; i++) {
+    const casella = (((da + verso * i) % n) + n) % n;
+    if (proprietabile(ctx.tab, casella) && ctx.s.proprieta[casella]?.proprietario === null) return casella;
+  }
+  return null;
 }
 
 /** Un numero a caso tra `min` e `max` a passi di `passo`. */

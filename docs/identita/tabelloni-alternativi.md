@@ -299,9 +299,34 @@ Il tabellone folle (Fase 12): diverso apposta dal Monopoly classico, pieno di ca
 - **Partenza a caso:** da 0 a 400 € a passi di 50 (fermandosi sopra, 100 € in più).
 - **Eventi cosmici:** dal secondo giro, uno a ogni giro, estratto tra Quiete, Allineamento (affitti ×2), Eclissi (affitti ×½), Tempesta solare (la Partenza non paga: il premio va nel malloppo della Supernova), Pioggia di meteoriti (crolla un edificio sulla città più costruita di una regione a caso), Gravità invertita (dadi e fionde portano indietro; passando la Partenza si incassa lo stesso), Collisione planetaria (due proprietà di giocatori diversi si scambiano, solo in regioni senza case).
 - **Mercato galattico:** a ogni giro un pianeta a caso vale ×2 o ×½, nel prezzo d'acquisto e negli affitti.
+- **Dado cosmico:** a ogni lancio, insieme ai due dadi, si tira un terzo dado con sei facce tutte diverse. **Razzo**: dopo la mossa la pedina vola alla prossima proprietà libera nel verso di marcia, prima che la casella dei dadi faccia effetto (così salta anche «Vai in prigione»). **Saldi**: la proprietà libera dove si ferma costa la metà. **Bandiera**: la proprietà libera più economica del tabellone diventa sua, gratis. **Scudo**: in quel tiro non paga affitti. **Faro**: fino al suo prossimo turno le sue proprietà rendono il doppio. **Iperspazio**: la mossa dei dadi vale doppio. Il dado è truccato: il Razzo esce una volta su tre (peso 5 su 15), le altre facce 2 volte su 15 ciascuna. Si tira anche in prigione, dove contano solo Bandiera e Faro. Serve a vendere prima il tabellone: da solo il Sistema solare, con 48 caselle e 32 proprietà, ne vende una per arrivo al massimo.
 
 **Carte:** Busta e Cartolina solo sue, con gli effetti nuovi del motore (wormhole, scambio di posto con un avversario, Robin Hood, buco nero che manda in prigione gli avversari, testa o croce, soldi per tutti, tira di nuovo, gravità invertita).
 
 **Bilanciamento** (300 partite di 4 bot, aste accese): finiscono tutte; 183 turni in media contro i 232 di Europa; la prima regione completa arriva al turno 9 (i gruppi da una casella); chi completa Giove (in un quarto delle partite) vince il 71% delle volte; Plutone rende quasi tre volte quello che costa.
 
 **Supernova più ricca** (2026-11-17, altre 300 partite di 4 bot, regole vecchie contro nuove): la Supernova si prende circa 8 volte a partita. Prima pagava 226 € a metà dei colpi (media 415 €, 1.009 € al 90%). La prima versione, con il dado fino a ×3 e senza tetto, pagava 1.018 € a metà dei colpi ma arrivava a 27.972 € a fine partita (buchi neri su contanti grossi, poi ×3), e chi prendeva di più dalla Supernova vinceva il 63% delle volte. Tolto il ×3 e messo il tetto di 4.000 €: la Supernova paga 1.000 € a metà dei colpi (media 1.704 €); il tetto scatta in 4 colpi su 10 e porta al più povero circa 6.000 € a partita; chi prende di più dalla Supernova vince il 43% delle volte (48% prima, 25% a caso). Le partite finiscono tutte e durano di più: 276 turni contro 251. I numeri della Supernova (100 €, 50 € a giro, 25 € a passaggio, le facce del dado, il tetto) stanno in `follie` del tabellone.
+
+**Dado cosmico** (2026-11-17, 200 partite di bot per ogni numero di giocatori, aste spente come di serie). La parte del tabellone venduta a fine giro 3/6/9:
+
+| | 4 giocatori | 2 giocatori |
+|---|---|---|
+| Senza dado cosmico | 28 / 45 / 57% | 15 / 26 / 34% |
+| Dado con le facce alla pari (Razzo 1 su 6) | 37 / 62 / 78% | 20 / 34 / 45% |
+| Dado truccato (Razzo 1 su 3), quello in gioco | 39 / 65 / 83% | 20 / 36 / 46% |
+| Il Classico, per confronto | 32 / 53 / 68% | 17 / 31 / 42% |
+
+**Confronto con il Classico** (2026-11-17, stesse impostazioni di serie per tutti, bot che ogni tanto propongono scambi; 300 partite in quattro, 200 in due):
+
+| 4 giocatori | Classico | Sistema solare senza dado | Sistema solare di oggi |
+|---|---|---|---|
+| Durata media | 71 giri | 74 giri | 72 giri |
+| Venduto a fine giro 6 / 9 | 53% / 66% | 44% / 55% | 62% / 78% |
+| Prima regione completa (di almeno 2 caselle) | giro 10 | giro 8 | giro 5 |
+| Prima bancarotta | giro 38 | giro 25 | giro 25 |
+| Affitto medio | 150 € | 314 € | 447 € |
+| Chi è primo per patrimonio al giro 10 vince | 41% | 39% | 41% |
+
+In due: durata 73 giri nel Classico, 63 oggi; venduto a fine giro 6 30% contro 35%; prima regione completa al giro 16 contro 6; affitto medio 124 € contro 495 €; chi è primo al giro 10 vince il 55% contro il 57%. In sintesi: la partita dura come una classica, ma si vende prima, si costruisce prima e ogni affitto pesa circa tre volte tanto; la fortuna non conta più che nel Classico.
+
+Con il Razzo più frequente gli arrivi su proprietà libere salgono da 0,65 a 0,75 per turno in quattro (0,71 con il dado alla pari). Le partite intere (300 di 4 bot) finiscono tutte ma durano di più, 308 turni contro 276 senza dado (315 con il dado alla pari), e il tetto della Supernova scatta in metà dei colpi.

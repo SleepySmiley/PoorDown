@@ -29,6 +29,7 @@ import {
   type Evento,
   type EventoCosmico,
   type EventoStanza,
+  type FacciaCosmica,
   type IdGiocatore,
   type NomeMazzo,
   type Proprieta,
@@ -120,6 +121,10 @@ export interface Scena {
   quantico: { n: number; faccia: number; fattore: number } | null;
   /** Regole folli: il dado della Supernova, che moltiplica il malloppo. */
   supernova: { n: number; faccia: number; fattore: number } | null;
+  /** Regole folli: la faccia mostrata dal terzo dado, il dado cosmico (`null` sugli altri tabelloni o prima del primo tiro). */
+  cosmico: FacciaCosmica | null;
+  /** Regole folli: il riquadro con la faccia del dado cosmico appena uscita. */
+  dadoCosmico: { n: number; faccia: FacciaCosmica } | null;
   /** Le sbarre della prigione: scendono quando entra qualcuno, si alzano quando esce. `n` cresce a ogni movimento. */
   sbarre: { n: number; verso: 'giu' | 'su' } | null;
   /** Chi sta facendo bancarotta, con le caselle che perde. */
@@ -294,6 +299,15 @@ function ultimoNumero(registro: readonly VoceRegistro[]): number {
   return registro.at(-1)?.n ?? 0;
 }
 
+/** L'ultima faccia del dado cosmico nel registro (regole folli): il terzo dado la mostra finché non si tira di nuovo. */
+function ultimaFacciaCosmica(registro: readonly VoceRegistro[]): FacciaCosmica | null {
+  for (let i = registro.length - 1; i >= 0; i--) {
+    const e = registro[i]!.evento;
+    if (e.tipo === 'dadi' && e.cosmico) return e.cosmico;
+  }
+  return null;
+}
+
 /** L'ultimo lancio nel registro: i dadi da mostrare quando il turno nuovo non ha ancora tirato. */
 function ultimoLancio(registro: readonly VoceRegistro[]): [number, number] | undefined {
   for (let i = registro.length - 1; i >= 0; i--) {
@@ -373,6 +387,8 @@ export class Regia {
       roulette: null,
       quantico: null,
       supernova: null,
+      cosmico: partita?.cosmo ? ultimaFacciaCosmica(s.registro) : null,
+      dadoCosmico: null,
       sbarre: null,
       bancarotta: null,
       gettoni: [],
@@ -494,6 +510,8 @@ export class Regia {
       roulette: null,
       quantico: null,
       supernova: null,
+      cosmico: partita?.cosmo ? ultimaFacciaCosmica(s.registro) : null,
+      dadoCosmico: null,
       bancarotta: null,
       dadi: partita?.turno.dadi ?? ultimoLancio(s.registro) ?? this.scena.dadi,
     });
@@ -529,16 +547,24 @@ export class Regia {
       case 'dadi': {
         this.cambia({ rotola: true, lanci: this.scena.lanci + 1, meta: null, arrivo: null });
         suona('dadi', { forza: this.forza(e.giocatore) });
+        // Con le regole folli rotola anche il dado cosmico, tra le facce del suo tabellone.
+        const facceCosmiche = e.cosmico ? (tab.follie?.dadoCosmico ?? []).map((f) => f.faccia) : [];
         for (const ms of TEMPI.facceDado) {
           if (gen !== this.generazione) return;
-          this.cambia({ dadi: [faccia(), faccia()] });
+          const cosmica = facceCosmiche[Math.floor(Math.random() * facceCosmiche.length)];
+          this.cambia({ dadi: [faccia(), faccia()], ...(cosmica ? { cosmico: cosmica } : {}) });
           await this.attendi(ms);
         }
         // Scena interrotta: i dadi giusti li ha già messi `allinea`.
         if (gen !== this.generazione) return;
         // Appena i dadi si fermano si accende la casella dove andrà la pedina.
         const mossa = this.prossimoMovimento(e.giocatore);
-        this.cambia({ dadi: e.dadi, rotola: false, meta: mossa ? { giocatore: e.giocatore, casella: mossa.a } : null });
+        this.cambia({
+          dadi: e.dadi,
+          ...(e.cosmico ? { cosmico: e.cosmico } : {}),
+          rotola: false,
+          meta: mossa ? { giocatore: e.giocatore, casella: mossa.a } : null,
+        });
         if (e.dadi[0] === e.dadi[1]) suona('doppio', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.dadiFermi);
         return;
@@ -611,6 +637,14 @@ export class Regia {
         await this.attendi(TEMPI.quantico);
         if (gen !== this.generazione) return;
         this.cambia({ quantico: null });
+        return;
+      }
+      case 'dado_cosmico': {
+        this.cambia({ dadoCosmico: { n: voce.n, faccia: e.faccia } });
+        suona('quantico', { forza: this.forza(e.giocatore) });
+        await this.attendi(TEMPI.dadoCosmico);
+        if (gen !== this.generazione) return;
+        this.cambia({ dadoCosmico: null });
         return;
       }
       case 'supernova': {
@@ -777,6 +811,13 @@ export class Regia {
       case 'malloppo':
         if (!inBase) this.ritoccaCosmo((c) => ({ ...c, malloppo: c.malloppo + e.importo }));
         return;
+      case 'dado_cosmico':
+        if (!inBase) this.ritoccaCosmo((c) => ({ ...c, dado: e.faccia, ...(e.faccia === 'faro' ? { faro: e.giocatore } : {}) }));
+        return;
+      case 'bandiera':
+        ritocca(e.casella, () => ({ proprietario: e.giocatore, livello: 0, ipotecata: false }));
+        this.mostraPerUnPo({ lampeggia: [e.casella] }, { lampeggia: [] }, LAMPO_SCAMBIO_MS);
+        return;
       case 'supernova':
         // Il malloppo scende quando la stella esplode (una cifra fissa: anche dopo un allineamento resta giusta).
         if (!inBase) this.dopo(attesa, () => this.ritoccaCosmo((c) => ({ ...c, malloppo: e.resta })));
@@ -859,7 +900,16 @@ export class Regia {
       case 'buco_nero':
         suona('buconero', { forza: this.forza(e.giocatore) });
         return;
-      // La Supernova suona nella sua scena, con il dado (`anima`).
+      // La Supernova suona nella sua scena, con il dado (`anima`); il dado cosmico pure.
+      case 'razzo':
+        suona('fionda', { forza: this.forza(e.giocatore) });
+        return;
+      case 'bandiera':
+        suona('timbro', { forza: this.forza(e.giocatore) });
+        return;
+      case 'scudo':
+        suona('liberato', { forza: this.forza(e.giocatore) });
+        return;
       case 'meteorite':
         suona('meteorite', { forza: this.forza(e.giocatore) });
         return;

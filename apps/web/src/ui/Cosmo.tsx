@@ -4,14 +4,17 @@ import { motion } from 'motion/react';
 import {
   euro,
   EVENTI_COSMICI,
+  FACCE_COSMICHE,
   fattoreTesto,
   TEMPI,
   type Carta,
   type Cosmo,
   type EventoCosmico,
+  type FacciaCosmica,
   type Tabellone,
 } from '@poordown/engine';
 import { Dado, Stemma } from './comuni';
+import { ICONA_FACCIA } from './facce-cosmiche';
 import { Icona, type NomeIcona } from './icone';
 import { CURVA } from './movimento';
 import { variabili } from './utili';
@@ -22,6 +25,7 @@ import { variabili } from './utili';
  * - AnnuncioCosmo: all'inizio di ogni giro, l'evento cosmico e il pianeta del Mercato galattico;
  * - DadoQuantico: il dado che moltiplica l'affitto;
  * - DadoSupernova: il dado che moltiplica il malloppo della Supernova;
+ * - DadoCosmico e RiquadroDadoCosmico: il terzo dado, tirato con i due dadi, e la sua faccia spiegata;
  * - PannelloCosmo: lo stato del cosmo sempre in vista al centro del tabellone.
  * I tempi sono quelli della regia (TEMPI.rouletteGira, TEMPI.cosmo, TEMPI.quantico).
  */
@@ -226,8 +230,38 @@ export function DadoSupernova({ faccia, fattore }: { faccia: number; fattore: nu
   );
 }
 
-/** Lo stato del cosmo, sempre in vista al centro del tabellone: evento del giro, mercato, malloppo, verso di marcia. */
-export function PannelloCosmo({ tab, cosmo }: { tab: Tabellone; cosmo: Cosmo }): ReactNode {
+/** Il terzo dado, accanto ai due dadi: blu notte, con il pittogramma della faccia al posto dei punti. */
+export function DadoCosmico({ faccia, className }: { faccia: FacciaCosmica | null; className?: string }): ReactNode {
+  const nome = faccia ? FACCE_COSMICHE[faccia].nome : 'da tirare';
+  return (
+    <div className={['dado-cosmico', className ?? ''].filter(Boolean).join(' ')} role="img" aria-label={`Dado cosmico: ${nome}`}>
+      {faccia && <Icona nome={ICONA_FACCIA[faccia]} />}
+    </div>
+  );
+}
+
+/** Appena fermi i dadi: la faccia del dado cosmico, come si chiama e cosa fa. */
+export function RiquadroDadoCosmico({ faccia }: { faccia: FacciaCosmica }): ReactNode {
+  const { nome, effetto } = FACCE_COSMICHE[faccia];
+  return (
+    <motion.div
+      className="dado-quantico dado-quantico--cosmico"
+      initial={{ scale: 0.5, opacity: 0, rotate: -120 }}
+      animate={{ scale: 1, opacity: 1, rotate: 0, transition: { duration: 0.45, ease: CURVA.arrivo } }}
+      exit={{ scale: 0.6, opacity: 0, transition: { duration: 0.18, ease: CURVA.partenza } }}
+    >
+      <DadoCosmico faccia={faccia} className="dado-quantico__dado" />
+      <span className="dado-quantico__testo">
+        <span className="dado-quantico__titolo">Dado cosmico</span>
+        <b>{nome}</b>
+        <span className="dado-quantico__nota">{effetto}</span>
+      </span>
+    </motion.div>
+  );
+}
+
+/** Lo stato del cosmo, sempre in vista al centro del tabellone: evento del giro, mercato, malloppo, faro, verso di marcia. */
+export function PannelloCosmo({ tab, cosmo, faro }: { tab: Tabellone; cosmo: Cosmo; faro?: string }): ReactNode {
   const { nome, effetto } = EVENTI_COSMICI[cosmo.evento];
   const aspetto = ASPETTO_EVENTO[cosmo.evento];
   return (
@@ -243,6 +277,12 @@ export function PannelloCosmo({ tab, cosmo }: { tab: Tabellone; cosmo: Cosmo }):
         <Icona nome="stella" />
         {euro(cosmo.malloppo)}
       </span>
+      {faro && (
+        <span className="pannello-cosmo__faro" title={`Faro: le proprietà di ${faro} rendono il doppio fino al suo prossimo turno`}>
+          <Icona nome="faro" />
+          {faro}
+        </span>
+      )}
       {cosmo.verso === -1 && (
         <span className="pannello-cosmo__verso">
           <Icona nome="aggiorna" />
