@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { affitto, prezzoAcquisto } from './conti';
-import { assegna, esegui, g, partitaDiProva, primaCarta, problemi } from './prove';
+import { assegna, esegui, g, partitaASquadre, partitaDiProva, primaCarta, problemi } from './prove';
 import { SISTEMA_SOLARE } from './tabelloni/sistema-solare';
 import type { Caso, Stato } from './tipi';
 
@@ -63,12 +63,22 @@ describe('regole folli', () => {
     expect(g(zero.stato, 'a').saldo).toBe(1500);
   });
 
-  it('Tempesta solare: la Partenza non paga', () => {
-    const s = conAIn(46);
-    s.cosmo!.evento = 'tempesta';
-    const { stato, eventi } = esegui(s, lancia, caso(0, 1));
+  it('Tempesta solare: la Partenza non paga, e il premio finisce nel malloppo della Supernova', () => {
+    const conTempesta = () => {
+      const s = conAIn(46);
+      s.cosmo!.evento = 'tempesta';
+      return s;
+    };
+    // Il tiro della Partenza: 4 → 200 €, che vanno alla stella.
+    const { stato, eventi } = esegui(conTempesta(), lancia, caso(0, 1, 4));
     expect(eventi).toContainEqual({ tipo: 'partenza', giocatore: 'a', importo: 0, arrivo: false, tempesta: true });
+    expect(eventi).toContainEqual({ tipo: 'malloppo', motivo: 'tempesta', importo: 200, giocatore: 'a' });
     expect(g(stato, 'a').saldo).toBe(1500);
+    expect(stato.cosmo!.malloppo).toBe(300);
+    // Con il premio a zero non arriva niente.
+    const zero = esegui(conTempesta(), lancia, caso(0, 1, 0));
+    expect(zero.eventi.some((e) => e.tipo === 'malloppo')).toBe(false);
+    expect(zero.stato.cosmo!.malloppo).toBe(100);
   });
 
   it('gravità invertita: i dadi portano indietro, e passando la Partenza si incassa lo stesso', () => {
@@ -111,14 +121,99 @@ describe('caselle folli', () => {
     expect(g(buco.stato, 'a').saldo).toBe(1200);
     expect(buco.stato.cosmo!.malloppo).toBe(400);
     expect(buco.eventi).toContainEqual({ tipo: 'buco_nero', giocatore: 'a', casella: 22, importo: 300 });
-    // Da 38 con 1 e 2: Supernova (41).
+    // Da 38 con 1 e 2: Supernova (41). Il suo dado: faccia 2 → ×1.
     const s = conAIn(38);
     s.cosmo!.malloppo = 400;
-    const { stato, eventi } = esegui(s, lancia, caso(0, 1));
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 1));
     expect(g(stato, 'a').saldo).toBe(1900);
     expect(stato.cosmo!.malloppo).toBe(100);
-    expect(eventi).toContainEqual({ tipo: 'supernova', giocatore: 'a', casella: 41, importo: 400 });
+    expect(eventi).toContainEqual({
+      tipo: 'supernova',
+      giocatore: 'a',
+      casella: 41,
+      malloppo: 400,
+      faccia: 2,
+      fattore: 1,
+      importo: 400,
+      resta: 100,
+      alPovero: null,
+    });
     expect(problemi(stato)).toEqual([]);
+  });
+
+  it('il dado della Supernova: ×2 lo paga la banca, ×½ lascia l’altra metà nella stella', () => {
+    const conMalloppo = (malloppo: number) => {
+      const s = conAIn(38);
+      s.cosmo!.malloppo = malloppo;
+      return s;
+    };
+    // Faccia 6 → ×2: 400 € diventano 800 €, e la stella riparte da 100 €. Il ×3 non c'è.
+    expect(Math.max(...SISTEMA_SOLARE.follie!.supernova)).toBe(2);
+    const doppio = esegui(conMalloppo(400), lancia, caso(0, 1, 5));
+    expect(g(doppio.stato, 'a').saldo).toBe(2300);
+    expect(doppio.stato.cosmo!.malloppo).toBe(100);
+    expect(doppio.eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', faccia: 6, fattore: 2, importo: 800, resta: 100 }));
+    // Faccia 1 → ×½: metà a chi si ferma, l'altra metà aspetta il prossimo.
+    const meta = esegui(conMalloppo(400), lancia, caso(0, 1, 0));
+    expect(g(meta.stato, 'a').saldo).toBe(1700);
+    expect(meta.stato.cosmo!.malloppo).toBe(200);
+    // Con un malloppo piccolo la stella non scende sotto i 100 € di partenza.
+    const poco = esegui(conMalloppo(150), lancia, caso(0, 1, 0));
+    expect(g(poco.stato, 'a').saldo).toBe(1575);
+    expect(poco.stato.cosmo!.malloppo).toBe(100);
+    expect(problemi(poco.stato)).toEqual([]);
+  });
+
+  it('tetto della Supernova: oltre 4.000 € di contante il resto va all’avversario più povero', () => {
+    const s = conAIn(38, solare(3));
+    s.cosmo!.malloppo = 400;
+    g(s, 'a').saldo = 3500;
+    g(s, 'c').saldo = 900;
+    // Faccia 6 → ×2: 800 €. a arriva a 4.000 € con 500 €, gli altri 300 € vanno a c (b ha 1.500 €).
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 5));
+    expect(eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', importo: 500, alPovero: { giocatore: 'c', importo: 300 } }));
+    expect(g(stato, 'a').saldo).toBe(4000);
+    expect(g(stato, 'b').saldo).toBe(1500);
+    expect(g(stato, 'c').saldo).toBe(1200);
+    expect(problemi(stato)).toEqual([]);
+    // Chi ha già 4.000 € o più non incassa niente: va tutto al più povero.
+    const t = conAIn(38, solare(3));
+    t.cosmo!.malloppo = 400;
+    g(t, 'a').saldo = 4200;
+    g(t, 'c').saldo = 900;
+    const tutto = esegui(t, lancia, caso(0, 1, 1));
+    expect(tutto.eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', importo: 0, alPovero: { giocatore: 'c', importo: 400 } }));
+    expect(g(tutto.stato, 'a').saldo).toBe(4200);
+    expect(g(tutto.stato, 'c').saldo).toBe(1300);
+  });
+
+  it('tetto della Supernova a squadre: il resto va all’avversario più povero, non al compagno', () => {
+    // a e b insieme, c e d insieme. b è il più povero di tutti, ma è il compagno di a.
+    const s = partitaASquadre([0, 0, 1, 1], { mappa: 'sistema_solare' });
+    g(s, 'a').posizione = 38;
+    s.cosmo!.malloppo = 400;
+    g(s, 'a').saldo = 3900;
+    g(s, 'b').saldo = 500;
+    g(s, 'd').saldo = 1000;
+    const { stato, eventi } = esegui(s, lancia, caso(0, 1, 1));
+    expect(eventi).toContainEqual(expect.objectContaining({ tipo: 'supernova', importo: 100, alPovero: { giocatore: 'd', importo: 300 } }));
+    expect(g(stato, 'b').saldo).toBe(500);
+    expect(g(stato, 'd').saldo).toBe(1300);
+  });
+
+  it('polvere di stelle: passando sopra la Supernova il malloppo cresce, senza togliere niente a chi passa', () => {
+    // Da 39 con 1 e 2: passa sopra la Supernova (41) e arriva sulla Sonda (42).
+    const { stato, eventi } = esegui(conAIn(39), lancia, caso(0, 1));
+    expect(eventi).toContainEqual({ tipo: 'malloppo', motivo: 'polvere', importo: 25, giocatore: 'a' });
+    expect(stato.cosmo!.malloppo).toBe(125);
+    expect(g(stato, 'a').saldo).toBe(1500);
+    // All'indietro (gravità invertita) vale lo stesso; fermandosi sopra no: lì si prende il malloppo.
+    const s = conAIn(43);
+    s.cosmo!.verso = -1;
+    const indietro = esegui(s, lancia, caso(0, 1));
+    expect(indietro.stato.cosmo!.malloppo).toBe(125);
+    const sopra = esegui(conAIn(38), lancia, caso(0, 1, 1));
+    expect(sopra.eventi.some((e) => e.tipo === 'malloppo')).toBe(false);
   });
 
   it('Roulette cosmica: lo spicchio uscito fa il suo effetto', () => {
@@ -129,8 +224,8 @@ describe('caselle folli', () => {
     // Spicchio 1: metà del contante, al massimo 500 €.
     const buco = esegui(conAIn(23), lancia, caso(0, 1, 1));
     expect(g(buco.stato, 'a').saldo).toBe(1000);
-    // Spicchio 7: dritto alla Supernova.
-    const nova = esegui(conAIn(23), lancia, caso(0, 1, 7));
+    // Spicchio 7: dritto alla Supernova, e il suo dado dice ×1.
+    const nova = esegui(conAIn(23), lancia, caso(0, 1, 7, 1));
     expect(g(nova.stato, 'a').posizione).toBe(41);
     expect(g(nova.stato, 'a').saldo).toBe(1600);
   });
@@ -164,6 +259,12 @@ describe('eventi cosmici a ogni giro', () => {
     expect(affitto(stato, 39, 0)).toBe(200);
     expect(prezzoAcquisto(stato, 40)).toBe(960);
     expect(stato.turno.giocatore).toBe('a');
+  });
+
+  it('a ogni giro nuovo la Supernova cresce di 50 €', () => {
+    const { stato, eventi } = esegui(fineGiro(), fine, caso(0, 0, 0));
+    expect(eventi).toContainEqual({ tipo: 'malloppo', motivo: 'giro', importo: 50, giocatore: null });
+    expect(stato.cosmo!.malloppo).toBe(150);
   });
 
   it('Pioggia di meteoriti: crolla una casa sulla città più costruita', () => {

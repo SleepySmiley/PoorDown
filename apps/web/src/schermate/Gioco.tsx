@@ -36,7 +36,7 @@ import { destinoDeiBeni } from '../ui/beni';
 import { caselleVista } from '../ui/caselle';
 import { CartaPescata } from '../ui/Carta';
 import { Dado, Palette, Pedina, Stemma } from '../ui/comuni';
-import { AnnuncioCosmo, DadoQuantico, PannelloCosmo, RouletteCosmica } from '../ui/Cosmo';
+import { AnnuncioCosmo, DadoQuantico, DadoSupernova, PannelloCosmo, RouletteCosmica } from '../ui/Cosmo';
 import { VoliGettoni } from '../ui/Gettone';
 import { iniziale, variabili } from '../ui/utili';
 import { geometria, stilePopover } from '../ui/geometria';
@@ -799,6 +799,11 @@ export function Gioco({
                 <AnimatePresence>
                   {inCorso && scena.quantico && (
                     <DadoQuantico key={`quantico-${scena.quantico.n}`} faccia={scena.quantico.faccia} fattore={scena.quantico.fattore} />
+                  )}
+                </AnimatePresence>
+                <AnimatePresence>
+                  {inCorso && scena.supernova && (
+                    <DadoSupernova key={`supernova-${scena.supernova.n}`} faccia={scena.supernova.faccia} fattore={scena.supernova.fattore} />
                   )}
                 </AnimatePresence>
                 {/* Tocca a me: il bordo del tabellone si accende d'ambra per un attimo. */}

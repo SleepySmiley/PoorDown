@@ -97,7 +97,7 @@ export interface Angolo extends CasellaBase {
  * - `fionda`: fionda gravitazionale, si riparte subito della stessa somma dei dadi;
  * - `wormhole`: teletrasporto su una casella a caso;
  * - `buco_nero`: risucchia una parte del contante nel malloppo (`Cosmo.malloppo`);
- * - `supernova`: chi ci si ferma prende tutto il malloppo;
+ * - `supernova`: chi ci si ferma tira il dado della Supernova e prende il malloppo moltiplicato (`Follie.supernova`);
  * - `roulette`: gira la Roulette cosmica (`Follie.roulette`).
  */
 export interface Speciale extends CasellaBase {
@@ -214,8 +214,22 @@ export interface Follie {
   mercato: readonly number[];
   /** Buco nero: la percentuale del contante che risucchia nel malloppo. */
   bucoNero: number;
-  /** Il malloppo della Supernova a inizio partita e dopo ogni vincita. */
+  /** Il malloppo della Supernova a inizio partita e dopo ogni vincita: sotto questa cifra non scende mai. */
   malloppo: number;
+  /** La Supernova cresce da sola: quanto mette la banca nel malloppo a ogni giro nuovo. */
+  crescitaGiro: number;
+  /** Polvere di stelle: quanto mette la banca nel malloppo ogni volta che una pedina passa sopra la Supernova senza fermarsi. */
+  polvere: number;
+  /**
+   * Il dado della Supernova (6 facce): chi ci si ferma prende il malloppo moltiplicato per la faccia uscita.
+   * Sopra ×1 la differenza la mette la banca; sotto ×1 il resto rimane nella stella per il prossimo.
+   */
+  supernova: readonly number[];
+  /**
+   * Tetto della Supernova: con la sua vincita nessuno va oltre questo contante. Il resto va all'avversario
+   * con meno contante; chi ce l'ha già non incassa niente e va tutto a lui.
+   */
+  tetto: number;
   /** Gli spicchi della Roulette cosmica: se ne estrae uno a caso a ogni giro di ruota. */
   roulette: readonly Carta[];
 }
@@ -227,7 +241,10 @@ export interface Cosmo {
   evento: EventoCosmico;
   /** Il pianeta (indice della regione) quotato dal Mercato galattico in questo giro, con il suo fattore. */
   mercato: { regione: number; fattore: number } | null;
-  /** I soldi risucchiati dai buchi neri, che aspettano la Supernova. */
+  /**
+   * Il malloppo che aspetta la Supernova: i soldi risucchiati dai buchi neri, più quelli che la banca aggiunge
+   * a ogni giro, con la polvere di stelle e con i premi della Partenza mangiati dalla tempesta solare.
+   */
   malloppo: number;
   /** -1 con la gravità invertita: i dadi portano indietro, fino alla fine del giro. */
   verso: 1 | -1;
@@ -569,8 +586,28 @@ export type Evento =
   | { tipo: 'fionda'; giocatore: IdGiocatore; passi: number }
   /** Il Buco nero risucchia `importo` nel malloppo. */
   | { tipo: 'buco_nero'; giocatore: IdGiocatore; casella: number; importo: number }
-  /** La Supernova regala il malloppo. */
-  | { tipo: 'supernova'; giocatore: IdGiocatore; casella: number; importo: number }
+  /**
+   * La Supernova esplode: il dado (`faccia`, `fattore`) moltiplica il `malloppo`, `giocatore` incassa `importo`
+   * e nella stella resta `resta` (il malloppo di partenza, o di più se il dado ha dato meno di ×1).
+   * `alPovero`: la parte oltre il tetto di contante (`Follie.tetto`), che va all'avversario con meno contante.
+   */
+  | {
+      tipo: 'supernova';
+      giocatore: IdGiocatore;
+      casella: number;
+      malloppo: number;
+      faccia: number;
+      fattore: number;
+      importo: number;
+      resta: number;
+      alPovero: { giocatore: IdGiocatore; importo: number } | null;
+    }
+  /**
+   * Il malloppo della Supernova cresce di `importo`, messo dalla banca: a ogni giro nuovo (`giro`), quando `giocatore`
+   * passa sopra la Supernova (`polvere`) o quando la tempesta solare gli mangia il premio della Partenza (`tempesta`).
+   * `giocatore` è `null` per il giro.
+   */
+  | { tipo: 'malloppo'; motivo: 'giro' | 'polvere' | 'tempesta'; importo: number; giocatore: IdGiocatore | null }
   /** Roulette cosmica: lo spicchio uscito (indice in `Follie.roulette`); segue il suo effetto. */
   | { tipo: 'roulette'; giocatore: IdGiocatore; spicchio: number; testo: string }
   /** Pioggia di meteoriti: crolla un edificio; `livello` è quello che resta (0–4). */
@@ -579,7 +616,7 @@ export type Evento =
   | { tipo: 'collisione'; caselle: [number, number]; giocatori: [IdGiocatore, IdGiocatore] }
   /** Una carta inverte la gravità fino alla fine del giro. */
   | { tipo: 'gravita_invertita'; giocatore: IdGiocatore }
-  /** `tempesta`: la tempesta solare si è mangiata il premio (importo 0). */
+  /** `tempesta`: la tempesta solare si è mangiata il premio (importo 0), che va nel malloppo della Supernova. */
   | { tipo: 'partenza'; giocatore: IdGiocatore; importo: number; arrivo: boolean; tempesta?: true }
   | { tipo: 'acquisto'; giocatore: IdGiocatore; casella: number; prezzo: number }
   | { tipo: 'affitto'; da: IdGiocatore; a: IdGiocatore; casella: number; importo: number }

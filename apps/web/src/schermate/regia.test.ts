@@ -11,6 +11,7 @@ import {
   TEMPI,
   vistaPartita,
   type Evento,
+  type IdMappa,
   type Stato,
   type VistaStanza,
   type VoceRegistro,
@@ -273,14 +274,16 @@ describe('Regia della partita', () => {
 
 /** Partite intere tra bot, una mossa alla volta, con lo stato prima e dopo e gli eventi di ogni mossa. */
 function* partiteTraBot(): Generator<{ prima: Stato; dopo: Stato; eventi: Evento[] }> {
-  const prove: { squadre: boolean; seme: number }[] = [
+  const prove: { squadre: boolean; seme: number; mappa?: IdMappa }[] = [
     { squadre: false, seme: 1 },
     { squadre: false, seme: 2 },
     { squadre: false, seme: 3 },
     { squadre: true, seme: 4 },
     { squadre: true, seme: 5 },
+    // Le regole folli: buco nero, Supernova e il malloppo che cresce.
+    { squadre: false, seme: 6, mappa: 'sistema_solare' },
   ];
-  for (const { squadre, seme } of prove) {
+  for (const { squadre, seme, mappa } of prove) {
     const caso = casoDaSeme(seme);
     const giocatori = ['a', 'b', 'c', 'd'].map((id, i) => ({ id, nome: `Bot ${id}`, colore: i + 1, ...(squadre ? { squadra: i % 2 } : {}) }));
     const creata = creaPartita(
@@ -293,6 +296,7 @@ function* partiteTraBot(): Generator<{ prima: Stato; dopo: Stato; eventi: Evento
         affittoDoppioSetCompleto: true,
         squadre,
         timerTurno: false,
+        ...(mappa ? { mappa } : {}),
       },
       caso,
     );
@@ -342,7 +346,7 @@ describe('soldi che passano di mano', () => {
     }
     expect(mosse).toBeGreaterThan(500);
     // Le partite di prova passano davvero dai casi interessanti.
-    for (const tipo of ['affitto', 'acquisto', 'partenza', 'trasferimento', 'debito', 'rimborso', 'scambio_accettato', 'ipoteca']) {
+    for (const tipo of ['affitto', 'acquisto', 'partenza', 'trasferimento', 'debito', 'rimborso', 'scambio_accettato', 'ipoteca', 'malloppo']) {
       expect(visti).toContain(tipo);
     }
   });

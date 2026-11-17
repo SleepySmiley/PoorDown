@@ -43,8 +43,10 @@ export const TEMPI = {
   collisione: 1300,
   /** Una carta inverte la gravità: il tabellone fa un mezzo giro e torna. */
   gravita: 900,
-  /** La Supernova esplode e regala il malloppo. */
-  supernova: 1000,
+  /** La Supernova: il suo dado entra e si ferma sul moltiplicatore, poi la stella esplode e regala il malloppo. */
+  supernova: 1700,
+  /** Quando, dentro la scena della Supernova, il dado è fermo: esplode e parte il gettone del malloppo. */
+  supernovaEsplode: 550,
   /** La carta pescata esce dalla casella e arriva al centro girandosi. */
   cartaEntra: 400,
   /** Il tempo di leggerla: tanto per carattere, tra un minimo e un massimo. */

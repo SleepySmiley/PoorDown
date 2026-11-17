@@ -1,6 +1,7 @@
 /*
  * I gettoni che volano da chi paga a chi incassa: dal saldo nella riga del giocatore al saldo dell'altro,
- * oppure da e verso la banca (la casella che c'entra, o il centro del tabellone). Li decide la regia
+ * oppure da e verso la banca (la casella che c'entra, o il centro del tabellone); i soldi che la banca mette
+ * nel malloppo della Supernova volano dal centro (o dalla Partenza) alla stella. Li decide la regia
  * (Scena.gettoni): qui si disegnano soltanto, in un livello sopra tutta la pagina che non blocca i clic.
  * Il volo è un arco: da una riga all'altra piega verso il tabellone, negli altri casi sale.
  */
@@ -20,6 +21,8 @@ export interface VoloSoldi {
   importo: number;
   /** La casella dalla parte della banca (acquisto, tassa, Partenza…). */
   casella?: number;
+  /** Dalla banca alla banca (i soldi che vanno nel malloppo della Supernova): la casella da cui parte, o il centro. */
+  origine?: number;
 }
 
 interface Punto {
@@ -68,7 +71,7 @@ function bezier(a: number, c: number, b: number, t: number): number {
 function VoloGettone({ g }: { g: VoloSoldi }): ReactNode {
   // Le posizioni si leggono una volta, quando il gettone parte.
   const [tratto] = useState(() => {
-    const a = capo(g.da, g.casella);
+    const a = g.da === null && g.a === null ? capo(null, g.origine) : capo(g.da, g.casella);
     const b = capo(g.a, g.casella);
     return a && b ? { a, b, c: controllo(a, b) } : null;
   });

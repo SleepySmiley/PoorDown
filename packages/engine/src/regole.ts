@@ -5,7 +5,7 @@
  */
 
 import { tiraDadi } from './caso';
-import { premioPartenza } from './cosmo';
+import { caricaStella, premioPartenza } from './cosmo';
 import { accredita, errore, paga, pagaBanca, segnaTrasferimento, type Contesto } from './contesto';
 import {
   affitto,
@@ -457,11 +457,41 @@ function muovi(ctx: Contesto, g: Giocatore, passi: number, dadi?: [number, numbe
   const indietro = passi < 0 && indietroPaga && da > 0 && da + passi <= 0;
   if (avanti || indietro) {
     const arrivo = a === 0;
-    const { importo, tempesta } = premioPartenza(ctx, arrivo);
+    const { importo, tempesta, allaStella } = premioPartenza(ctx, arrivo);
     ctx.eventi.push({ tipo: 'partenza', giocatore: g.id, importo, arrivo, ...(tempesta ? { tempesta: true as const } : {}) });
     accredita(ctx, g, importo);
+    caricaStella(ctx, 'tempesta', allaStella, g.id);
   }
+  polvereDiStelle(ctx, g, da, passi);
   arriva(ctx, g);
+}
+
+/**
+ * L'avversario con meno contante (a pari contante il primo nell'ordine dei turni): riceve quello che la Supernova
+ * darebbe oltre il tetto. Niente compagni di squadra, se no il tetto non servirebbe. `undefined` se non c'è nessuno.
+ */
+function piuPovero(s: Stato, g: Giocatore): Giocatore | undefined {
+  let povero: Giocatore | undefined;
+  for (const x of attivi(s)) {
+    if (x.id === g.id || compagni(s, g.id, x.id)) continue;
+    if (!povero || x.saldo < povero.saldo) povero = x;
+  }
+  return povero;
+}
+
+/**
+ * Polvere di stelle (regole folli): chi passa sopra la Supernova senza fermarsi, in avanti o all'indietro,
+ * fa crescere il malloppo. I soldi li mette la banca.
+ */
+function polvereDiStelle(ctx: Contesto, g: Giocatore, da: number, passi: number): void {
+  const polvere = ctx.tab.follie?.polvere ?? 0;
+  if (polvere <= 0) return;
+  const n = ctx.tab.caselle.length;
+  const verso = Math.sign(passi);
+  for (let i = 1; i < Math.abs(passi); i++) {
+    const casella = (((da + verso * i) % n) + n) % n;
+    if (ctx.tab.caselle[casella]!.tipo === 'supernova') caricaStella(ctx, 'polvere', polvere, g.id);
+  }
 }
 
 function arriva(ctx: Contesto, g: Giocatore): void {
@@ -548,12 +578,24 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       return;
     }
     case 'supernova': {
-      const importo = s.cosmo?.malloppo ?? 0;
-      if (importo <= 0 || !s.cosmo) return;
-      // La banca rimette il malloppo di partenza: la Supernova non resta mai vuota.
-      s.cosmo.malloppo = tab.follie?.malloppo ?? 0;
-      ctx.eventi.push({ tipo: 'supernova', giocatore: g.id, casella, importo });
+      const cosmo = s.cosmo;
+      const f = tab.follie;
+      if (!cosmo || !f || cosmo.malloppo <= 0) return;
+      // Il dado della Supernova moltiplica il malloppo: sopra ×1 la differenza la mette la banca.
+      const faccia = ctx.caso.intero(f.supernova.length) + 1;
+      const fattore = f.supernova[faccia - 1]!;
+      const malloppo = cosmo.malloppo;
+      const vincita = Math.floor(malloppo * fattore);
+      // Sotto ×1 il resto rimane nella stella; e la banca la riporta al malloppo di partenza: non resta mai vuota.
+      const resta = Math.max(f.malloppo, malloppo - vincita);
+      cosmo.malloppo = resta;
+      // Il tetto: chi vince arriva al massimo a `f.tetto` di contante, il resto va all'avversario più povero.
+      const importo = Math.min(vincita, Math.max(0, f.tetto - g.saldo));
+      const povero = importo < vincita ? piuPovero(s, g) : undefined;
+      const alPovero = povero ? { giocatore: povero.id, importo: vincita - importo } : null;
+      ctx.eventi.push({ tipo: 'supernova', giocatore: g.id, casella, malloppo, faccia, fattore, importo, resta, alPovero });
       accredita(ctx, g, importo);
+      if (povero && alPovero) accredita(ctx, povero, alPovero.importo);
       return;
     }
     case 'roulette': {

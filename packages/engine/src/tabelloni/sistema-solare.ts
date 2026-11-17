@@ -2,7 +2,7 @@
  * Tabellone "Sistema solare": 48 caselle (12 per lato) di caos, diverso apposta da tutti gli altri.
  * - Equilibrio sballato: gruppi da 1 a 5 caselle, Plutone (declassato) costa 10 €, le lune di Giove una follia,
  *   negli asteroidi c'è Psiche, il sasso di metallo che costa come tutti gli altri insieme.
- * - Caselle folli: fionde gravitazionali, wormhole, Buco nero e Supernova (il malloppo), Roulette cosmica.
+ * - Caselle folli: fionde gravitazionali, wormhole, Buco nero e Supernova (il malloppo, con il suo dado), Roulette cosmica.
  * - Regole folli (`follie`): affitto quantistico, Partenza a caso, un evento cosmico a ogni giro, Mercato galattico.
  * - Busta e Cartolina solo sue, con le carte che esistono solo qui.
  * I nomi delle caselle sono posti veri: crateri, vulcani, lune, asteroidi.
@@ -177,7 +177,15 @@ const FOLLIE: Follie = {
   eventi: ['quiete', 'allineamento', 'eclissi', 'tempesta', 'meteoriti', 'gravita', 'collisione'],
   mercato: [0.5, 2],
   bucoNero: 20,
+  // La Supernova parte da 100 € e cresce anche senza buchi neri: 50 € a ogni giro, 25 € a ogni pedina che ci passa sopra.
   malloppo: 100,
+  crescitaGiro: 50,
+  polvere: 25,
+  // Il suo dado: da ×½ (metà del malloppo, il resto aspetta il prossimo) a ×2. In media ×1,4.
+  // Niente ×3: a fine partita, con i buchi neri sui contanti grossi, regalava colpi da quasi 30.000 €.
+  supernova: [0.5, 1, 1, 2, 2, 2],
+  // Con la Supernova nessuno supera 4.000 € di contante: il resto va all'avversario più povero.
+  tetto: 4000,
   // Otto spicchi, come le fette della ruota.
   roulette: [
     { testo: 'Jackpot cosmico! Ricevi 300 €.', effetto: { tipo: 'soldi', importo: 300 } },

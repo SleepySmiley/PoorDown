@@ -21,6 +21,7 @@ import { variabili } from './utili';
  * - RouletteCosmica: la ruota gira e rallenta fino allo spicchio uscito, poi si legge cosa fa;
  * - AnnuncioCosmo: all'inizio di ogni giro, l'evento cosmico e il pianeta del Mercato galattico;
  * - DadoQuantico: il dado che moltiplica l'affitto;
+ * - DadoSupernova: il dado che moltiplica il malloppo della Supernova;
  * - PannelloCosmo: lo stato del cosmo sempre in vista al centro del tabellone.
  * I tempi sono quelli della regia (TEMPI.rouletteGira, TEMPI.cosmo, TEMPI.quantico).
  */
@@ -201,6 +202,25 @@ export function DadoQuantico({ faccia, fattore }: { faccia: number; fattore: num
       <span className="dado-quantico__testo">
         <span className="dado-quantico__titolo">Affitto quantistico</span>
         <b>{fattore === 0 ? 'Gratis!' : `×${fattoreTesto(fattore)}`}</b>
+      </span>
+    </motion.div>
+  );
+}
+
+/** Il dado della Supernova: moltiplica il malloppo (con ×½ metà resta nella stella). */
+export function DadoSupernova({ faccia, fattore }: { faccia: number; fattore: number }): ReactNode {
+  return (
+    <motion.div
+      className={fattore < 1 ? 'dado-quantico dado-quantico--supernova dado-quantico--magro' : 'dado-quantico dado-quantico--supernova'}
+      initial={{ scale: 0.5, opacity: 0, rotate: -120 }}
+      animate={{ scale: 1, opacity: 1, rotate: 0, transition: { duration: 0.45, ease: CURVA.arrivo } }}
+      exit={{ scale: 1.4, opacity: 0, transition: { duration: 0.25, ease: CURVA.partenza } }}
+    >
+      <Dado valore={faccia} className="dado-quantico__dado" />
+      <span className="dado-quantico__testo">
+        <span className="dado-quantico__titolo">Supernova</span>
+        <b>×{fattoreTesto(fattore)}</b>
+        {fattore < 1 && <span className="dado-quantico__nota">Metà resta nella stella</span>}
       </span>
     </motion.div>
   );

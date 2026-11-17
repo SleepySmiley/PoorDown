@@ -218,6 +218,8 @@ Scelta del 2026-11-15: un tabellone diverso apposta dal Monopoly classico, pieno
 - [x] Misurato con 300 partite di bot: finiscono tutte, durano meno di Europa (183 turni contro 232), chi completa Giove vince il 71% delle volte
 - [x] Estensione 0.2.0 con il Sistema solare: novità nel CHANGELOG e i tabelloni nella pagina del Marketplace. Il server del `.vsix`, acceso a parte, ha giocato una partita intera sul Sistema solare con due giocatori collegati via socket: tutte le caselle e regole folli viste, nessun errore
 - [x] `poordown.vsix` 0.2.0 caricato sul Marketplace il 2026-11-16
+- [x] Supernova più ricca (2026-11-17): il malloppo cresce di 50 € a ogni giro, di 25 € a ogni pedina che ci passa sopra (polvere di stelle) e con il premio della Partenza mangiato dalla Tempesta solare, sempre con soldi della banca; chi ci si ferma tira il dado della Supernova (da ×½ a ×2) e non va oltre 4.000 € di contante: il resto va all'avversario più povero. Nel browser il dado della Supernova e i gettoni che volano verso la stella e verso il più povero. 300 partite di bot: finiscono tutte (276 turni contro 251), la Supernova paga a metà dei colpi 1.000 € invece di 226 €, il tetto scatta in 4 colpi su 10
+- [ ] Estensione: la Supernova più ricca va in una versione nuova (0.2.1) quando si decide di pubblicarla
 
 ---
 

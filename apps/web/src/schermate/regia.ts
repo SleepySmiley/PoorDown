@@ -44,13 +44,17 @@ export interface PosizioneMostrata {
   prigione: boolean;
 }
 
-/** Un gettone che vola da chi paga a chi incassa. `null` è la banca: la casella che c'entra, o il centro del tabellone. */
+/**
+ * Un gettone che vola da chi paga a chi incassa. `null` è la banca: la casella che c'entra, o il centro del tabellone.
+ * Dalla banca alla banca (i soldi che finiscono nel malloppo della Supernova) vola da `origine` (o dal centro) a `casella`.
+ */
 export interface Gettone {
   id: number;
   da: IdGiocatore | null;
   a: IdGiocatore | null;
   importo: number;
   casella?: number;
+  origine?: number;
 }
 
 /** La casella dove si è fermato chi gioca: rossa se lì ha pagato l'affitto. */
@@ -114,6 +118,8 @@ export interface Scena {
   roulette: { n: number; giocatore: IdGiocatore; spicchio: number; testo: string } | null;
   /** Regole folli: il dado dell'affitto quantistico. */
   quantico: { n: number; faccia: number; fattore: number } | null;
+  /** Regole folli: il dado della Supernova, che moltiplica il malloppo. */
+  supernova: { n: number; faccia: number; fattore: number } | null;
   /** Le sbarre della prigione: scendono quando entra qualcuno, si alzano quando esce. `n` cresce a ogni movimento. */
   sbarre: { n: number; verso: 'giu' | 'su' } | null;
   /** Chi sta facendo bancarotta, con le caselle che perde. */
@@ -151,12 +157,14 @@ const TIMBRO_MS = 1_400;
  * - `addebita`: il saldo di `da` scende quando il gettone parte (no per i rimborsi: il debito era già nel rosso).
  * - Il saldo di `a` sale quando il gettone arriva.
  * - `gettone`: false per il debito, che non sposta soldi ma toglie a chi aspettava la parte non pagata.
+ * - Dalla banca alla banca: i soldi che la banca mette nel malloppo della Supernova (`casella`), partendo da `origine`.
  */
 export interface MovimentoSoldi {
   da: IdGiocatore | null;
   a: IdGiocatore | null;
   importo: number;
   casella?: number;
+  origine?: number;
   addebita: boolean;
   gettone: boolean;
 }
@@ -181,7 +189,17 @@ export function movimentiSoldi(e: EventoStanza, partita: Stato): MovimentoSoldi[
     case 'buco_nero':
       return movimento(e.giocatore, null, e.importo, e.casella);
     case 'supernova':
-      return movimento(null, e.giocatore, e.importo, e.casella);
+      // Oltre il tetto di contante, la parte in più vola dalla stella all'avversario più povero.
+      return [
+        ...movimento(null, e.giocatore, e.importo, e.casella),
+        ...(e.alPovero ? movimento(null, e.alPovero.giocatore, e.alPovero.importo, e.casella) : []),
+      ];
+    case 'malloppo': {
+      // La banca mette i soldi nella stella: il gettone vola sulla Supernova, dalla Partenza se è il premio mangiato dalla tempesta.
+      const stella = tab.caselle.findIndex((c) => c.tipo === 'supernova');
+      if (stella < 0) return [];
+      return movimento(null, null, e.importo, stella).map((m) => (e.motivo === 'tempesta' ? { ...m, origine: 0 } : m));
+    }
     case 'trasferimento':
       return movimento(e.da, e.a, e.importo);
     case 'tassa':
@@ -354,6 +372,7 @@ export class Regia {
       cosmo: null,
       roulette: null,
       quantico: null,
+      supernova: null,
       sbarre: null,
       bancarotta: null,
       gettoni: [],
@@ -474,6 +493,7 @@ export class Regia {
       cosmo: null,
       roulette: null,
       quantico: null,
+      supernova: null,
       bancarotta: null,
       dadi: partita?.turno.dadi ?? ultimoLancio(s.registro) ?? this.scena.dadi,
     });
@@ -527,7 +547,8 @@ export class Regia {
         const n = tab.caselle.length;
         const { passi, verso } = percorso(e, n);
         const tempi = passiPedina(passi);
-        const partenza = verso === 1 ? this.partenzaDaAnticipare(e.giocatore) : undefined;
+        const { partenza, tempesta, polvere } = this.daAnticipare(e.giocatore);
+        const stella = tab.caselle.findIndex((c) => c.tipo === 'supernova');
         this.cambia({ meta: { giocatore: e.giocatore, casella: e.a }, arrivo: null });
         let casella = e.da;
         for (let i = 0; i < passi; i++) {
@@ -535,11 +556,10 @@ export class Regia {
           casella = (casella + verso + n) % n;
           this.muovi(e.giocatore, { casella, prigione: false }, tempi[i]);
           suona('passo', { forza: this.forza(e.giocatore) });
-          // Passando dalla Partenza il gettone parte subito, mentre la pedina continua a camminare.
-          if (casella === 0 && partenza && !this.anticipate.has(partenza.n)) {
-            this.anticipate.add(partenza.n);
-            this.effetto(partenza, false);
-          }
+          // Passando dalla Partenza il gettone parte subito, mentre la pedina continua a camminare
+          // (con la tempesta solare vola invece verso la Supernova); passando sopra la Supernova, la polvere di stelle.
+          if (casella === 0 && verso === 1) [partenza, tempesta].forEach((v) => this.anticipa(v));
+          if (casella === stella && i < passi - 1) this.anticipa(polvere.shift());
           await this.attendi(tempi[i]!);
         }
         if (gen !== this.generazione) return;
@@ -591,6 +611,18 @@ export class Regia {
         await this.attendi(TEMPI.quantico);
         if (gen !== this.generazione) return;
         this.cambia({ quantico: null });
+        return;
+      }
+      case 'supernova': {
+        // Il dado entra e si ferma sul moltiplicatore; poi la stella esplode e parte il gettone (vedi `effetto`).
+        this.cambia({ supernova: { n: voce.n, faccia: e.faccia, fattore: e.fattore } });
+        suona('quantico', { forza: this.forza(e.giocatore) });
+        await this.attendi(TEMPI.supernovaEsplode);
+        if (gen !== this.generazione) return;
+        suona('supernova', { forza: this.forza(e.giocatore) });
+        await this.attendi(TEMPI.supernova - TEMPI.supernovaEsplode);
+        if (gen !== this.generazione) return;
+        this.cambia({ supernova: null });
         return;
       }
       case 'teletrasporto': {
@@ -653,14 +685,27 @@ export class Regia {
     return undefined;
   }
 
-  /** La Partenza che segue questo spostamento (passandoci sopra, non fermandocisi): il suo gettone parte durante i passi. */
-  private partenzaDaAnticipare(id: IdGiocatore): VoceRegistro | undefined {
+  /**
+   * Le voci che seguono questo spostamento e vanno in scena durante i passi: la Partenza (passandoci sopra, non
+   * fermandocisi) con il premio che la tempesta solare manda alla Supernova, e la polvere di stelle (regole folli).
+   */
+  private daAnticipare(id: IdGiocatore): { partenza?: VoceRegistro; tempesta?: VoceRegistro; polvere: VoceRegistro[] } {
+    const trovate: { partenza?: VoceRegistro; tempesta?: VoceRegistro; polvere: VoceRegistro[] } = { polvere: [] };
     for (const v of this.coda) {
       const e = v.evento;
-      if (e.tipo === 'partenza') return e.giocatore === id && !e.arrivo ? v : undefined;
-      if (e.tipo === 'movimento' || e.tipo === 'teletrasporto' || e.tipo === 'dadi' || e.tipo === 'turno') return undefined;
+      if (e.tipo === 'movimento' || e.tipo === 'teletrasporto' || e.tipo === 'dadi' || e.tipo === 'turno') break;
+      if (e.tipo === 'partenza' && e.giocatore === id && !e.arrivo) trovate.partenza = v;
+      if (e.tipo === 'malloppo' && e.giocatore === id && e.motivo === 'tempesta' && trovate.partenza) trovate.tempesta = v;
+      if (e.tipo === 'malloppo' && e.giocatore === id && e.motivo === 'polvere') trovate.polvere.push(v);
     }
-    return undefined;
+    return trovate;
+  }
+
+  /** Mette in scena una voce in anticipo, mentre la pedina cammina: quando arriva il suo turno nella coda si salta. */
+  private anticipa(voce: VoceRegistro | undefined): void {
+    if (!voce || this.anticipate.has(voce.n)) return;
+    this.anticipate.add(voce.n);
+    this.effetto(voce, false);
   }
 
   /* ------------------------------------------------------------------ */
@@ -676,7 +721,9 @@ export class Regia {
     const partita = this.scena.partita;
     if (!partita) return;
     this.suonoEvento(e, partita);
-    for (const m of movimentiSoldi(e, partita)) this.muoviSoldi(m, inBase);
+    // La Supernova paga quando il suo dado si è fermato.
+    const attesa = e.tipo === 'supernova' && !inBase ? TEMPI.supernovaEsplode : 0;
+    for (const m of movimentiSoldi(e, partita)) this.muoviSoldi(m, inBase, attesa);
     const ritocca = (casella: number, cambia: (p: Proprieta) => Proprieta) => {
       if (!inBase) this.ritoccaProprieta(new Map([[casella, cambia]]));
     };
@@ -727,8 +774,12 @@ export class Regia {
       case 'buco_nero':
         if (!inBase) this.ritoccaCosmo((c) => ({ ...c, malloppo: c.malloppo + e.importo }));
         return;
+      case 'malloppo':
+        if (!inBase) this.ritoccaCosmo((c) => ({ ...c, malloppo: c.malloppo + e.importo }));
+        return;
       case 'supernova':
-        if (!inBase) this.ritoccaCosmo((c) => ({ ...c, malloppo: tabellone(partita.mappa).follie?.malloppo ?? 0 }));
+        // Il malloppo scende quando la stella esplode (una cifra fissa: anche dopo un allineamento resta giusta).
+        if (!inBase) this.dopo(attesa, () => this.ritoccaCosmo((c) => ({ ...c, malloppo: e.resta })));
         return;
       case 'gravita_invertita':
         if (!inBase) this.ritoccaCosmo((c) => ({ ...c, verso: -1 }));
@@ -808,9 +859,7 @@ export class Regia {
       case 'buco_nero':
         suona('buconero', { forza: this.forza(e.giocatore) });
         return;
-      case 'supernova':
-        suona('supernova', { forza: this.forza(e.giocatore) });
-        return;
+      // La Supernova suona nella sua scena, con il dado (`anima`).
       case 'meteorite':
         suona('meteorite', { forza: this.forza(e.giocatore) });
         return;
@@ -859,8 +908,9 @@ export class Regia {
   /**
    * Un movimento di denaro: chi paga scende quando il gettone parte, chi incassa sale quando arriva.
    * Il credito resta «in attesa» finché il gettone non arriva, anche se nel frattempo la partita si allinea.
+   * `attesa`: il gettone parte almeno così tardi (la Supernova, dopo il suo dado).
    */
-  private muoviSoldi(m: MovimentoSoldi, inBase: boolean): void {
+  private muoviSoldi(m: MovimentoSoldi, inBase: boolean, attesa = 0): void {
     const gen = this.generazioneEffetti;
     const id = this.prossimoGettone++;
     const versione = this.versioneBase;
@@ -870,7 +920,7 @@ export class Regia {
     }
     // Più pagamenti di fila (il compleanno, una carta «paga a ogni giocatore»): i gettoni partono uno alla volta.
     const ora = Date.now();
-    const quando = Math.max(ora, this.prossimaPartenza);
+    const quando = Math.max(ora + attesa, this.prossimaPartenza);
     this.prossimaPartenza = quando + SFASATURA_GETTONI_MS;
     const ritardo = quando - ora;
     if (m.a !== null) {
@@ -882,7 +932,15 @@ export class Regia {
       if (gen !== this.generazioneEffetti) return;
       const giaContato = inBase || versione !== this.versioneBase;
       if (m.addebita && m.da !== null && !giaContato) this.ritoccaSaldo(m.da, -m.importo);
-      this.cambia({ gettoni: [...this.scena.gettoni, { id, da: m.da, a: m.a, importo: m.importo, ...(m.casella === undefined ? {} : { casella: m.casella }) }] });
+      const gettone: Gettone = {
+        id,
+        da: m.da,
+        a: m.a,
+        importo: m.importo,
+        ...(m.casella === undefined ? {} : { casella: m.casella }),
+        ...(m.origine === undefined ? {} : { origine: m.origine }),
+      };
+      this.cambia({ gettoni: [...this.scena.gettoni, gettone] });
       this.dopo(VOLO_GETTONE_MS, () => {
         this.cambia({ gettoni: this.scena.gettoni.filter((g) => g.id !== id) });
         if (this.mio(m.a)) suona('incasso');

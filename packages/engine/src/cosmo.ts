@@ -1,12 +1,13 @@
 /*
- * Il cosmo delle regole folli (tabellone Sistema solare): a ogni giro un evento cosmico e il Mercato galattico,
- * più la Partenza a caso. Le caselle speciali e l'affitto quantistico stanno in regole.ts, dove si arriva sulle caselle.
+ * Il cosmo delle regole folli (tabellone Sistema solare): a ogni giro un evento cosmico, il Mercato galattico
+ * e un po' di soldi nel malloppo della Supernova, più la Partenza a caso. Le caselle speciali e l'affitto quantistico
+ * stanno in regole.ts, dove si arriva sulle caselle.
  * Un giro comincia quando il turno torna al primo giocatore dell'ordine; il primo giro è tranquillo.
  */
 
 import { compagni, proprietabile, regioneConEdifici } from './conti';
 import type { Contesto } from './contesto';
-import type { Cosmo, EventoCosmico, Stato, Tabellone } from './tipi';
+import type { Cosmo, EventoCosmico, IdGiocatore, Stato, Tabellone } from './tipi';
 
 /** Il cosmo di una partita nuova, oppure `undefined` se il tabellone non ha le regole folli. */
 export function cosmoIniziale(tab: Tabellone): Cosmo | undefined {
@@ -20,15 +21,29 @@ function aCaso(ctx: Contesto, min: number, max: number, passo: number): number {
 }
 
 /**
- * Il premio della Partenza. Con le regole folli è a caso (e la Tempesta solare lo azzera);
- * altrimenti quello fisso del tabellone.
+ * Il premio della Partenza. Con le regole folli è a caso, e con la Tempesta solare non va a chi passa
+ * ma nel malloppo della Supernova (`allaStella`); altrimenti quello fisso del tabellone.
  */
-export function premioPartenza(ctx: Contesto, arrivo: boolean): { importo: number; tempesta: boolean } {
+export function premioPartenza(ctx: Contesto, arrivo: boolean): { importo: number; tempesta: boolean; allaStella: number } {
   const f = ctx.tab.follie;
-  if (!f) return { importo: arrivo ? ctx.tab.partenza.arrivo : ctx.tab.partenza.passaggio, tempesta: false };
-  if (ctx.s.cosmo?.evento === 'tempesta') return { importo: 0, tempesta: true };
+  if (!f) return { importo: arrivo ? ctx.tab.partenza.arrivo : ctx.tab.partenza.passaggio, tempesta: false, allaStella: 0 };
   const p = f.partenza;
-  return { importo: aCaso(ctx, p.min, p.max, p.passo) + (arrivo ? p.arrivo : 0), tempesta: false };
+  const premio = aCaso(ctx, p.min, p.max, p.passo) + (arrivo ? p.arrivo : 0);
+  if (ctx.s.cosmo?.evento === 'tempesta') return { importo: 0, tempesta: true, allaStella: premio };
+  return { importo: premio, tempesta: false, allaStella: 0 };
+}
+
+/** Il malloppo della Supernova cresce: i soldi li mette la banca, nessuno li perde. */
+export function caricaStella(
+  ctx: Contesto,
+  motivo: 'giro' | 'polvere' | 'tempesta',
+  importo: number,
+  giocatore: IdGiocatore | null = null,
+): void {
+  const cosmo = ctx.s.cosmo;
+  if (!cosmo || importo <= 0) return;
+  cosmo.malloppo += importo;
+  ctx.eventi.push({ tipo: 'malloppo', motivo, importo, giocatore });
 }
 
 /** Comincia un giro nuovo: estrae l'evento cosmico e il pianeta del Mercato galattico, e applica gli eventi immediati. */
@@ -63,6 +78,7 @@ export function giroCosmico(ctx: Contesto): void {
     pb.proprietario = giocatori[0];
     ctx.eventi.push({ tipo: 'collisione', caselle: [a, b], giocatori });
   }
+  caricaStella(ctx, 'giro', f.crescitaGiro);
 }
 
 /**

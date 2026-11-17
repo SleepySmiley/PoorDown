@@ -124,7 +124,7 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
             <b>{nome(e.giocatore)}</b> {e.arrivo ? 'si ferma sulla Partenza' : 'passa dalla Partenza'}
           </>
         ),
-        dettaglio: e.tempesta ? 'La tempesta solare si mangia il premio' : undefined,
+        dettaglio: e.tempesta ? 'La tempesta solare porta il premio alla Supernova' : undefined,
         importo: e.tempesta ? undefined : { valore: e.importo, tono: tono(io, null, e.giocatore) },
       };
     case 'cosmo': {
@@ -171,7 +171,22 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
         dettaglio: 'I soldi finiscono nel malloppo della Supernova',
         importo: { valore: e.importo, tono: tono(io, e.giocatore, null) },
       };
-    case 'supernova':
+    case 'supernova': {
+      const p = e.alPovero;
+      const tetto = euro(tab.follie?.tetto ?? 0);
+      // Già al tetto: tutto il malloppo va al più povero.
+      if (p && e.importo === 0) {
+        return {
+          coppia: [e.giocatore, p.giocatore],
+          titolo: (
+            <>
+              <b>{nome(e.giocatore)}</b> ha già {tetto}: il malloppo va {aOppureAd(nome(p.giocatore))} <b>{nome(p.giocatore)}</b>
+            </>
+          ),
+          dettaglio: 'Supernova: al più povero',
+          importo: { valore: p.importo, tono: tono(io, null, p.giocatore) },
+        };
+      }
       return {
         icona: 'stella',
         chi: e.giocatore,
@@ -180,9 +195,16 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
             <b>{nome(e.giocatore)}</b> prende il malloppo
           </>
         ),
-        dettaglio: 'Supernova!',
+        dettaglio: p
+          ? `Tetto di ${tetto}: ${euro(p.importo)} ${preposizioneA(nome(p.giocatore))}`
+          : e.fattore === 1
+            ? 'Supernova!'
+            : e.fattore < 1
+              ? `Supernova ×${fattoreTesto(e.fattore)}: nella stella restano ${euro(e.resta)}`
+              : `Supernova ×${fattoreTesto(e.fattore)} su ${euro(e.malloppo)}`,
         importo: { valore: e.importo, tono: tono(io, null, e.giocatore) },
       };
+    }
     case 'roulette':
       return {
         icona: 'ruota',

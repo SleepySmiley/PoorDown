@@ -18,7 +18,7 @@ export const EVENTI_COSMICI: Record<EventoCosmico, { nome: string; effetto: stri
   quiete: { nome: 'Quiete cosmica', effetto: 'Niente di strano, per questo giro.' },
   allineamento: { nome: 'Allineamento planetario', effetto: 'Affitti doppi per tutto il giro.' },
   eclissi: { nome: 'Eclissi', effetto: 'Affitti a metà per tutto il giro.' },
-  tempesta: { nome: 'Tempesta solare', effetto: 'Per tutto il giro la Partenza non paga.' },
+  tempesta: { nome: 'Tempesta solare', effetto: 'Per tutto il giro il premio della Partenza va alla Supernova.' },
   meteoriti: { nome: 'Pioggia di meteoriti', effetto: 'Crolla un edificio a caso.' },
   gravita: { nome: 'Gravità invertita', effetto: 'Per tutto il giro si cammina al contrario.' },
   collisione: { nome: 'Collisione planetaria', effetto: 'Due proprietà a caso si scambiano di proprietario.' },
@@ -95,8 +95,30 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       return `${nome(evento.giocatore)} prende la fionda gravitazionale e riparte di ${Math.abs(evento.passi)} caselle${evento.passi < 0 ? ' all’indietro' : ''}.`;
     case 'buco_nero':
       return `Il Buco nero risucchia ${euro(evento.importo)} ${a(nome(evento.giocatore))}: finiscono nel malloppo della Supernova.`;
-    case 'supernova':
-      return `${nome(evento.giocatore)} si ferma sulla Supernova e prende il malloppo: ${euro(evento.importo)}.`;
+    case 'supernova': {
+      const chi = nome(evento.giocatore);
+      const p = evento.alPovero;
+      const vincita = evento.importo + (p?.importo ?? 0);
+      const dado = `${chi} si ferma sulla Supernova e il dado dice ×${fattoreTesto(evento.fattore)}`;
+      const testo =
+        evento.fattore === 1
+          ? `${chi} si ferma sulla Supernova e prende il malloppo: ${euro(vincita)}.`
+          : evento.fattore < 1
+            ? `${dado}: metà del malloppo, ${euro(vincita)}, e nella stella restano ${euro(evento.resta)}.`
+            : `${dado}: il malloppo di ${euro(evento.malloppo)} diventa ${euro(vincita)}.`;
+      if (!p) return testo;
+      const tetto = euro(tab.follie?.tetto ?? 0);
+      const povero = `${a(nome(p.giocatore))}, che ha meno contante di tutti`;
+      return evento.importo > 0
+        ? `${testo} Con il tetto di ${tetto} ${chi} ne tiene ${euro(evento.importo)}: gli altri ${euro(p.importo)} vanno ${povero}.`
+        : `${testo} ${chi} ha già ${tetto} o più: va tutto ${povero}.`;
+    }
+    case 'malloppo':
+      if (evento.motivo === 'tempesta') return `La tempesta solare porta i ${euro(evento.importo)} della Partenza nel malloppo della Supernova.`;
+      if (evento.motivo === 'polvere' && evento.giocatore !== null) {
+        return `${nome(evento.giocatore)} passa sopra la Supernova: la polvere di stelle aggiunge ${euro(evento.importo)} al malloppo.`;
+      }
+      return `La Supernova cresce: ${euro(evento.importo)} in più nel malloppo.`;
     case 'roulette':
       return `${nome(evento.giocatore)} gira la Roulette cosmica: «${evento.testo}»`;
     case 'meteorite':
@@ -109,7 +131,7 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
     case 'gravita_invertita':
       return `${nome(evento.giocatore)} inverte la gravità: fino alla fine del giro si cammina al contrario.`;
     case 'partenza':
-      if (evento.tempesta) return `${nome(evento.giocatore)} passa dalla Partenza, ma la tempesta solare si mangia il premio.`;
+      if (evento.tempesta) return `${nome(evento.giocatore)} passa dalla Partenza, ma la tempesta solare si porta via il premio.`;
       return evento.arrivo
         ? `${nome(evento.giocatore)} si ferma sulla Partenza e riceve ${euro(evento.importo)}.`
         : `${nome(evento.giocatore)} passa dalla Partenza e riceve ${euro(evento.importo)}.`;
