@@ -8,6 +8,7 @@ import type { Asta, IdGiocatore, MessaggioChat } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
 import { useSilenziati } from '../rete/silenziati';
 import { suona } from './audio';
+import { ricordoAsta, suonoRilancio, type RicordoAsta } from './rilanci';
 
 /** Con la scheda nascosta, il gong del turno si ripete ogni tanto finché tocca a me. */
 const RICHIAMO_MS = 60_000;
@@ -45,19 +46,20 @@ export function useTicchettio(secondi: number | null, soglia: number, forza = 1)
   }, [secondi, soglia, forza]);
 }
 
-/** I rilanci all'asta: il mio, quello degli altri e quello che supera me. */
+/**
+ * I rilanci all'asta: il mio, quello degli altri e quello che supera me. Quale suono spetta a ogni aggiornamento lo
+ * decide `suonoRilancio` (rilanci.ts), che segue l'importo dell'offerta migliore e non la lunghezza dell'elenco.
+ */
 export function useSuoniAsta(asta: Asta | null, io: IdGiocatore | null): void {
-  const offerte = asta?.offerte.length ?? 0;
-  const migliore = asta?.migliore?.giocatore ?? null;
-  const prima = useRef({ offerte, migliore });
+  const { casella, importo, migliore, mia } = ricordoAsta(asta, io);
+  const prima = useRef<RicordoAsta>({ casella, importo, migliore, mia });
   useEffect(() => {
-    const p = prima.current;
-    prima.current = { offerte, migliore };
-    if (offerte <= p.offerte || migliore === null) return;
-    if (migliore === io) suona('miaOfferta');
-    else if (io !== null && p.migliore === io) suona('superato');
-    else suona('offerta', { forza: 0.8 });
-  }, [offerte, migliore, io]);
+    const adesso: RicordoAsta = { casella, importo, migliore, mia };
+    const suono = suonoRilancio(prima.current, adesso, io);
+    prima.current = adesso;
+    if (suono === 'offerta') suona(suono, { forza: 0.8 });
+    else if (suono) suona(suono);
+  }, [casella, importo, migliore, mia, io]);
 }
 
 function fresco(quando: number): boolean {
