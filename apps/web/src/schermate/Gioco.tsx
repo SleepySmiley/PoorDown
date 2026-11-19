@@ -56,6 +56,8 @@ import { ListaImpostazioni } from './Impostazioni';
 import { useChatRichiudibile } from './colonna';
 import { Cronologia, EventoCorrente, RegistroCorto } from './EventoCorrente';
 import { FuoriDallaPartita, NotaVoto, VotoNellaRiga } from './Moderazione';
+import { bloccoVolo, meteVolo, type MetaVolo } from './mete';
+import { SceltaVolo } from './Volo';
 import { useScena } from './regia';
 import { FinePartita, PannelloStatistiche, StatisticheComplete } from './FinePartita';
 import {
@@ -142,17 +144,34 @@ function AzioniTurno({
   io,
   me,
   inviando,
+  mete,
   onMossa,
+  onScegliVolo,
 }: {
   partita: Stato;
   io: IdGiocatore;
   me: Giocatore;
   inviando: boolean;
+  /** Giro del mondo: dove si può volare adesso (vuota se non si può); `null` sugli altri tabelloni. */
+  mete: ReadonlyMap<number, MetaVolo> | null;
   onMossa: (m: Mossa) => void;
+  /** Giro del mondo: apre la scelta della meta sul tabellone. */
+  onScegliVolo: () => void;
 }): ReactNode {
   const tab = tabellone(partita.mappa);
   const t = partita.turno;
   const blocco = (m: Mossa) => (inviando ? 'Un attimo…' : motivo(partita, io, m));
+  // Giro del mondo: al posto dei dadi si può comprare un biglietto (con il passaporto). Con il Biglietto omaggio è gratis.
+  const pulsanteVolo = mete && (
+    <Pulsante
+      variante={t.voloOmaggio ? 'ambra' : 'secondario'}
+      icona="aereo"
+      blocco={inviando ? 'Un attimo…' : bloccoVolo(partita, io, mete)}
+      onClick={onScegliVolo}
+    >
+      {t.voloOmaggio ? 'Vola gratis' : 'Vola'}
+    </Pulsante>
+  );
 
   // Un solo pulsante ambra alla volta: è l'azione del turno che si aspetta adesso. Le alternative sono secondarie.
   if (t.fase === 'prigione') {
@@ -192,6 +211,7 @@ function AzioniTurno({
         >
           Tira i dadi
         </Pulsante>
+        {pulsanteVolo}
       </div>
     );
   }
@@ -214,14 +234,16 @@ function AzioniTurno({
       )}
       {daDecidere ? null : t.rilancio ? (
         <Pulsante
-          variante={libera ? 'secondario' : 'ambra'}
+          variante={libera || t.voloOmaggio ? 'secondario' : 'ambra'}
           icona="dado"
           blocco={blocco({ tipo: 'lancia' })}
           onClick={() => onMossa({ tipo: 'lancia' })}
         >
           Tira ancora
         </Pulsante>
-      ) : (
+      ) : null}
+      {!daDecidere && t.rilancio && pulsanteVolo}
+      {daDecidere || t.rilancio ? null : (
         <Pulsante
           variante={libera ? 'secondario' : 'ambra'}
           icona="spunta"
@@ -264,6 +286,9 @@ export function Gioco({
 
   const [inviando, setInviando] = useState(false);
   const [scheda, setScheda] = useState<number | null>(null);
+  /** Giro del mondo: sto scegliendo dove volare (nel turno numero `turno`), con la meta scelta sul tabellone. */
+  const [volo, setVolo] = useState<{ turno: number; meta: number | null } | null>(null);
+  const annullaVolo = useCallback(() => setVolo(null), []);
   const [mia, setMia] = useState<{ n: number; top: number; right: number } | null>(null);
   const [impostazioni, setImpostazioni] = useState(false);
   const [bancarotta, setBancarotta] = useState(false);
@@ -419,9 +444,39 @@ export function Gioco({
   const voceInCorso = scena.inCorso !== null ? registro.find((v) => v.n === scena.inCorso) : undefined;
   const subito = voceInCorso && !['carta', 'dadi', 'movimento'].includes(voceInCorso.evento.tipo);
   const evento = inCorso ? eventoCorrente(registro, subito ? voceInCorso.n : scena.registroFino) : null;
+  // Giro del mondo: dove posso volare adesso. La scelta della meta resta aperta solo nel turno in cui l'ho aperta.
+  const mete = mioTurno && io && tab.viaggi && !scena.occupata ? meteVolo(partita, io) : null;
+  const voloAperto = volo !== null && volo.turno === partita.turno.numero && mete !== null && mete.size > 0;
+  const vola = (casella: number) => {
+    setVolo(null);
+    mossa({ tipo: 'vola', casella });
+  };
   const azioni =
     mioTurno && me && io && !scena.occupata ? (
-      <AzioniTurno partita={partita} io={io} me={me} inviando={inviando} onMossa={mossa} />
+      voloAperto ? (
+        <SceltaVolo
+          partita={partita}
+          io={io}
+          mete={mete}
+          meta={volo.meta}
+          inviando={inviando}
+          onVola={vola}
+          onAnnulla={annullaVolo}
+        />
+      ) : (
+        <AzioniTurno
+          partita={partita}
+          io={io}
+          me={me}
+          inviando={inviando}
+          mete={tab.viaggi ? (mete ?? new Map()) : null}
+          onMossa={mossa}
+          onScegliVolo={() => {
+            setScheda(null);
+            setVolo({ turno: partita.turno.numero, meta: null });
+          }}
+        />
+      )
     ) : null;
 
   // I dadi restano spenti finché chi gioca non ha tirato: mostrano il tiro di prima, non il suo.
@@ -448,6 +503,7 @@ export function Gioco({
           attivita={attivita}
           occupata={scena.occupata}
           momento={momentoScena(scena, corrente.id)}
+          nota={voloAperto ? 'Scegli dove volare' : undefined}
           inviando={inviando}
           onMossa={mossa}
         />
@@ -636,6 +692,14 @@ export function Gioco({
     return <AzioneScheda icona="su" etichetta={etichetta} blocco={blocco} onClick={() => mossa(su)} />;
   })();
   const coloreDi = (id: IdGiocatore) => partita.giocatori.find((g) => g.id === id)?.colore ?? 1;
+  // Giro del mondo: l'aereo punta dalla casella di partenza verso la meta (0° = verso l'alto del tabellone).
+  const rottaAereo = (viaggio: { da: number; a: number } | undefined) => {
+    if (!viaggio) return undefined;
+    const geo = geometria(tab.caselle.length);
+    const da = geo.centro(viaggio.da);
+    const a = geo.centro(viaggio.a);
+    return (Math.atan2(a.y - da.y, a.x - da.x) * 180) / Math.PI + 90;
+  };
   const metaDadi = inCorso && scena.meta ? { n: scena.meta.casella, colore: coloreDi(scena.meta.giocatore) } : undefined;
   const cartaInScena = inCorso ? scena.carta : null;
   const chiPesca = cartaInScena ? partita.giocatori.find((g) => g.id === cartaInScena.giocatore) : undefined;
@@ -732,6 +796,7 @@ export function Gioco({
                   arrivi: scena.arrivi[g.id],
                   volo: scena.voli[g.id],
                   teletrasporto: scena.teletrasporti[g.id],
+                  aereo: rottaAereo(scena.aerei[g.id]),
                   sprofonda: scena.bancarotta?.giocatore === g.id,
                   evidenziata: inCorso && g.id === corrente?.id,
                 };
@@ -743,7 +808,13 @@ export function Gioco({
             lampeggia={scena.lampeggia}
             sbarre={scena.sbarre}
             sfila={scena.bancarotta?.caselle ?? scena.reset?.caselle}
+            volo={voloAperto ? { mete, scelta: volo.meta } : undefined}
             onApri={(n) => {
+              // Mentre scelgo dove volare, il clic su una meta la sceglie (invece di aprire la scheda della casella).
+              if (voloAperto) {
+                if (mete.has(n)) setVolo({ turno: volo.turno, meta: n });
+                return;
+              }
               setMia(null);
               setScheda((x) => (x === n ? null : n));
             }}

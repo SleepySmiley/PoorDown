@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
   aOppureAd,
+  destinazione,
   euro,
   EVENTI_COSMICI,
   FACCE_COSMICHE,
@@ -79,6 +80,11 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
   const nome = (id: IdGiocatore) => partita.giocatori.find((g) => g.id === id)?.nome ?? '?';
   const casella = (n: number) => tab.caselle[n];
   const nomeCasella = (n: number) => casella(n)?.nome ?? '?';
+  // «a Hell», «all’Aeroporto di Lukla», «alla casella Busta».
+  const verso = (n: number) => {
+    const c = casella(n);
+    return c ? destinazione(c) : '?';
+  };
   const regione = (n: number) => {
     const c = casella(n);
     return c?.tipo === 'citta' ? c.regione : undefined;
@@ -495,6 +501,34 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
           </>
         ),
         dettaglio: maiuscolaIniziale(MOTIVO_RIMOZIONE[e.motivo]),
+      };
+    case 'volo':
+      return {
+        icona: 'aereo',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> vola {verso(e.a)}
+          </>
+        ),
+        dettaglio:
+          e.prezzo === 0
+            ? 'Biglietto omaggio'
+            : e.incassa
+              ? `Biglietto pagato ${preposizioneA(nome(e.incassa))}, padrone dell’aeroporto`
+              : 'Biglietto pagato alla banca',
+        ...(e.prezzo > 0 ? { importo: { valore: e.prezzo, tono: tono(io, e.giocatore, e.incassa) } } : {}),
+      };
+    case 'passaporto':
+      return {
+        icona: 'aereo',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> ritira il passaporto
+          </>
+        ),
+        dettaglio: 'Da adesso può volare',
       };
     case 'rientro':
       return {

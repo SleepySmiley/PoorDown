@@ -1157,6 +1157,26 @@ button.casella:hover .casella__sfondo {
     animation: ombra-teletrasporto var(--d-teletrasporto) linear both;
   }
 
+  /* Giro del mondo, in aereo: la pedina decolla, attraversa il tabellone ad arco sopra le caselle e riatterra.
+     La posizione scorre nella parte centrale del volo; l'ombra resta a terra e si stringe mentre la pedina sale. */
+  .segnaposto--aereo {
+    transition:
+      left calc(var(--d-volo) * 0.66) var(--c-viaggio) calc(var(--d-volo) * 0.17),
+      top calc(var(--d-volo) * 0.66) var(--c-viaggio) calc(var(--d-volo) * 0.17);
+  }
+
+  .segnaposto--aereo .segnaposto__salto {
+    animation: volo-aereo var(--d-volo) var(--c-viaggio) both;
+  }
+
+  .segnaposto--aereo .segnaposto__ombra {
+    animation: ombra-aereo var(--d-volo) var(--c-viaggio) both;
+  }
+
+  .segnaposto__aereo {
+    animation: aereo-appare var(--d-volo) var(--c-viaggio) both;
+  }
+
   /* Bancarotta: la pedina sprofonda nel tabellone. */
   .segnaposto--sprofonda .segnaposto__disco {
     animation: sprofonda var(--d-viaggio) var(--c-partenza) var(--d-lenta) both;
@@ -1827,4 +1847,85 @@ button.casella:hover .casella__sfondo {
 .scheda--da-sinistra {
   left: calc(var(--margine) + 8px);
   transform-origin: left center;
+}
+
+/* L'aereo sotto la pedina in volo (Giro del mondo): sagoma ambra con il muso verso la meta. */
+.segnaposto__aereo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: 240%;
+  height: 240%;
+  translate: -50% -50%;
+  rotate: var(--rotta, 0deg);
+  color: color-mix(in srgb, var(--ambra) 55%, #6b3a00);
+  filter: drop-shadow(0 calc(var(--k) * 6) calc(var(--k) * 6) rgb(10 14 22 / 0.45));
+  pointer-events: none;
+}
+
+.segnaposto__aereo .icona {
+  width: 100%;
+  height: 100%;
+  fill: var(--ambra);
+  stroke-width: 1;
+}
+
+.segnaposto--aereo .segnaposto__salto {
+  position: relative;
+}
+
+@keyframes volo-aereo {
+  0% {
+    transform: none;
+  }
+
+  17% {
+    transform: translateY(-45%) scale(1.3);
+  }
+
+  50% {
+    transform: translateY(-95%) scale(1.5);
+  }
+
+  83% {
+    transform: translateY(-45%) scale(1.3);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes ombra-aereo {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  17%,
+  83% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+}
+
+@keyframes aereo-appare {
+  0%,
+  100% {
+    opacity: 0;
+    scale: 0.6;
+  }
+
+  14%,
+  86% {
+    opacity: 1;
+    scale: 1;
+  }
 }

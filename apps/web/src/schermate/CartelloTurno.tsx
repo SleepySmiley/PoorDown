@@ -45,6 +45,7 @@ export function CartelloTurno({
   attivita,
   occupata,
   momento,
+  nota,
   inviando,
   onMossa,
 }: {
@@ -59,6 +60,8 @@ export function CartelloTurno({
   occupata: boolean;
   /** Cosa mostra la scena in corso: il cartello lo racconta. */
   momento: Momento | null;
+  /** Al posto della frase della fase, quando chi gioca sta facendo qualcosa che il turno non sa (la scelta del volo). */
+  nota?: string;
   inviando: boolean;
   onMossa: (m: Mossa) => void;
 }): ReactNode {
@@ -71,7 +74,7 @@ export function CartelloTurno({
   // «Tocca a Bruno», «Tocca ad Anna»: il nome va in grassetto, la preposizione resta col resto del titolo.
   const tocca = `Tocca ${aOppureAd(corrente.nome)} `;
   const assente = vivo.giocatori.find((g) => g.id === corrente.id)?.offlineDa != null;
-  const fase = fraseTurno({ partita, io, attivita: attivita[corrente.id], assente, occupata, momento });
+  const fase = nota ?? fraseTurno({ partita, io, attivita: attivita[corrente.id], assente, occupata, momento });
   // Il tempo è quello della partita aggiornata: si mostra solo quando parla dello stesso turno.
   const tempo = vista && vista.corrente.id === corrente.id ? vista : null;
   const inPrigione = partita.turno.fase === 'prigione' && !occupata;

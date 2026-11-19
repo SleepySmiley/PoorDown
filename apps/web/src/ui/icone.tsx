@@ -9,6 +9,10 @@ const TRACCIATI = {
       <path d="M9 13.5h0M15 13.5h0" />
     </>
   ),
+  /** Giro del mondo: gli aeroporti, il biglietto e il volo. Visto dall'alto, con il muso verso l'alto. */
+  aereo: (
+    <path d="M12 2.5c.9 0 1.5.9 1.5 2.2v4.6l7 4.1v2l-7-2.1v4.4l2.2 1.7V21L12 20l-3.7 1v-1.6l2.2-1.7v-4.4l-7 2.1v-2l7-4.1V4.7c0-1.3.6-2.2 1.5-2.2z" />
+  ),
   busta: (
     <>
       <rect x="3" y="5" width="18" height="14" rx="1.5" />

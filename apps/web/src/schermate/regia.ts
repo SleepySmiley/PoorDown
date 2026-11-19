@@ -104,6 +104,8 @@ export interface Scena {
   voli: Readonly<Record<IdGiocatore, true>>;
   /** Pedine che si teletrasportano (carte folli): spariscono in un lampo e ricompaiono altrove. */
   teletrasporti: Readonly<Record<IdGiocatore, true>>;
+  /** Giro del mondo: pedine in aereo, con la casella di partenza e la meta del biglietto (per la rotta dell'aereo). */
+  aerei: Readonly<Record<IdGiocatore, { da: number; a: number }>>;
   /** Dove sta andando la pedina: la casella si accende appena i dadi si fermano. */
   meta: { giocatore: IdGiocatore; casella: number } | null;
   /** Dove si è fermato chi gioca, fino a fine turno. */
@@ -218,6 +220,9 @@ export function movimentiSoldi(e: EventoStanza, partita: Stato): MovimentoSoldi[
       return movimento(e.giocatore, null, e.importo, e.casella);
     case 'acquisto':
       return movimento(e.giocatore, null, e.prezzo, e.casella);
+    // Il biglietto aereo (Giro del mondo): all'aeroporto del lato se è di un avversario, se no alla banca.
+    case 'volo':
+      return movimento(e.giocatore, e.incassa, e.prezzo, e.aeroporto ?? e.da);
     case 'asta_vinta':
       return movimento(e.giocatore, null, e.importo, e.casella);
     case 'costruzione':
@@ -281,6 +286,7 @@ export function arrivoDelTurno(registro: readonly VoceRegistro[], fino = Infinit
         break;
       case 'movimento':
       case 'teletrasporto':
+      case 'volo':
         if (altro(e.giocatore)) break;
         return { casella: e.a, tono: affitti.has(`${e.giocatore}:${e.a}`) ? 'affitto' : 'normale' };
       case 'prigione':
@@ -382,6 +388,7 @@ export class Regia {
       arrivi: {},
       voli: {},
       teletrasporti: {},
+      aerei: {},
       meta: null,
       arrivo: arrivoDelTurno(s.registro),
       dadi: partita?.turno.dadi ?? [5, 2],
@@ -509,6 +516,7 @@ export class Regia {
       passoMs: {},
       voli: {},
       teletrasporti: {},
+      aerei: {},
       meta: null,
       arrivo: arrivoDelTurno(s.registro, this.ultimaVista),
       rotola: false,
@@ -684,6 +692,21 @@ export class Regia {
         });
         return;
       }
+      case 'volo': {
+        // Giro del mondo: la pedina decolla, vola ad arco sopra il tabellone con l'aereo e atterra sulla meta.
+        const diChiGioca = partita.turno.giocatore === e.giocatore;
+        this.cambia({ meta: null, arrivo: null, aerei: { ...this.scena.aerei, [e.giocatore]: { da: e.da, a: e.a } } });
+        this.muovi(e.giocatore, { casella: e.a, prigione: false });
+        await this.attendi(TEMPI.volo);
+        if (gen !== this.generazione) return;
+        this.cambia({
+          aerei: senza(this.scena.aerei, e.giocatore),
+          arrivo: diChiGioca ? { casella: e.a, tono: 'normale' } : this.scena.arrivo,
+          arrivi: { ...this.scena.arrivi, [e.giocatore]: (this.scena.arrivi[e.giocatore] ?? 0) + 1 },
+        });
+        suona('arrivo', { forza: this.forza(e.giocatore) });
+        return;
+      }
       case 'uscita_prigione': {
         const casella = this.scena.posizioni[e.giocatore]?.casella ?? partita.giocatori.find((g) => g.id === e.giocatore)?.posizione;
         if (casella !== undefined) this.cambia({ posizioni: { ...this.scena.posizioni, [e.giocatore]: { casella, prigione: false } } });
@@ -747,7 +770,14 @@ export class Regia {
     for (const v of this.coda) {
       const e = v.evento;
       if (e.tipo === 'movimento' && e.giocatore === id) return e;
-      if (e.tipo === 'dadi' || e.tipo === 'turno' || e.tipo === 'prigione' || e.tipo === 'movimento' || e.tipo === 'teletrasporto') {
+      if (
+        e.tipo === 'dadi' ||
+        e.tipo === 'turno' ||
+        e.tipo === 'prigione' ||
+        e.tipo === 'movimento' ||
+        e.tipo === 'teletrasporto' ||
+        e.tipo === 'volo'
+      ) {
         return undefined;
       }
     }
@@ -762,7 +792,7 @@ export class Regia {
     const trovate: { partenza?: VoceRegistro; tempesta?: VoceRegistro; polvere: VoceRegistro[] } = { polvere: [] };
     for (const v of this.coda) {
       const e = v.evento;
-      if (e.tipo === 'movimento' || e.tipo === 'teletrasporto' || e.tipo === 'dadi' || e.tipo === 'turno') break;
+      if (e.tipo === 'movimento' || e.tipo === 'teletrasporto' || e.tipo === 'volo' || e.tipo === 'dadi' || e.tipo === 'turno') break;
       if (e.tipo === 'partenza' && e.giocatore === id && !e.arrivo) trovate.partenza = v;
       if (e.tipo === 'malloppo' && e.giocatore === id && e.motivo === 'tempesta' && trovate.partenza) trovate.tempesta = v;
       if (e.tipo === 'malloppo' && e.giocatore === id && e.motivo === 'polvere') trovate.polvere.push(v);

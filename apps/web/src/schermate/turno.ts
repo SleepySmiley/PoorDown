@@ -50,17 +50,21 @@ export type Momento =
   | { tipo: 'carta'; mazzo: NomeMazzo }
   | { tipo: 'prigione' }
   | { tipo: 'teletrasporto' }
-  | { tipo: 'roulette' };
+  | { tipo: 'roulette' }
+  | { tipo: 'volo'; casella: number };
 
 /** Il momento della scena di chi gioca, dal più vistoso: carta, volo in prigione, teletrasporto, dadi, viaggio, arrivo. */
 export function momentoScena(
-  scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'> & Partial<Pick<Scena, 'teletrasporti' | 'roulette'>>,
+  scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'> &
+    Partial<Pick<Scena, 'teletrasporti' | 'roulette' | 'aerei' | 'posizioni'>>,
   giocatore: IdGiocatore,
 ): Momento | null {
   if (scena.carta?.giocatore === giocatore) return { tipo: 'carta', mazzo: scena.carta.mazzo };
   if (scena.roulette?.giocatore === giocatore) return { tipo: 'roulette' };
   if (scena.voli[giocatore]) return { tipo: 'prigione' };
   if (scena.teletrasporti?.[giocatore]) return { tipo: 'teletrasporto' };
+  const inAereo = scena.aerei?.[giocatore] ? scena.posizioni?.[giocatore] : undefined;
+  if (inAereo) return { tipo: 'volo', casella: inAereo.casella };
   if (scena.rotola) return { tipo: 'dadi' };
   if (scena.meta?.giocatore === giocatore) return { tipo: 'viaggio', casella: scena.meta.casella };
   if (scena.arrivo) return { tipo: 'arrivo', casella: scena.arrivo.casella, affitto: scena.arrivo.tono === 'affitto' };
@@ -81,6 +85,10 @@ function fraseMomento(partita: Stato, mio: boolean, momento: Momento, fase: Stat
       return mio ? 'Ti teletrasporti…' : 'si teletrasporta…';
     case 'roulette':
       return mio ? 'Giri la Roulette cosmica…' : 'gira la Roulette cosmica…';
+    case 'volo': {
+      const c = tab.caselle[momento.casella];
+      return c ? (mio ? `Voli ${destinazione(c)}…` : `vola ${destinazione(c)}…`) : null;
+    }
     case 'dadi':
       return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
     case 'viaggio': {
@@ -238,6 +246,8 @@ const IMPORTANTI = new Set<string>([
   'rientro',
   'reset',
   'ultimo_rimasto',
+  'volo',
+  'passaporto',
 ]);
 
 export interface EventoInVista {

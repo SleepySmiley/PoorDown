@@ -367,6 +367,11 @@ interface StatoCasella {
   valore?: { segno?: string; etichetta?: string; importo: number };
   /** Al posto dell'importo fisso della casella: il malloppo della Supernova, che cresce con i buchi neri. */
   importo?: string;
+  /**
+   * Giro del mondo, mentre si sceglie dove volare: `'no'` se qui non si può atterrare, altrimenti la fascia del
+   * biglietto (1–3), il prezzo, se mostrare il cartellino del prezzo (prima casella della fascia) e se è la meta scelta.
+   */
+  volo?: 'no' | { fascia: number; prezzo: number; cartellino: boolean; scelta: boolean };
 }
 
 function CasellaTabellone({
@@ -403,6 +408,9 @@ function CasellaTabellone({
     stato.lampeggia ? 'casella--lampeggia' : '',
     stato.sfila !== undefined ? 'casella--sfila' : '',
     stato.regione ? `casella--${stato.regione}` : '',
+    stato.volo === 'no' ? 'casella--non-volabile' : '',
+    typeof stato.volo === 'object' ? `casella--volabile casella--fascia-${stato.volo.fascia}` : '',
+    typeof stato.volo === 'object' && stato.volo.scelta ? 'casella--volo-scelta' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -466,16 +474,37 @@ function CasellaTabellone({
     );
   }
 
+  // Giro del mondo, scelta della meta: il velo della fascia di prezzo e, sulla prima casella della fascia, il prezzo.
+  const volo = typeof stato.volo === 'object' ? stato.volo : null;
+  const biglietto = volo ? (volo.prezzo === 0 ? 'Gratis' : euro(volo.prezzo)) : '';
+  const segniVolo = volo && (
+    <>
+      <span className="casella__volo" />
+      {(volo.cartellino || volo.scelta) && <span className="casella__biglietto">{biglietto}</span>}
+    </>
+  );
+
   if (!proprieta) {
+    // Mentre si sceglie dove volare, anche le caselle che non sono proprietà si cliccano.
+    if (volo) {
+      return (
+        <button type="button" className={classi} style={stile} data-casella={c.n} onClick={() => onApri?.(c.n)} aria-label={`${c.nome}, biglietto ${biglietto}`}>
+          {corpo}
+          {segniVolo}
+        </button>
+      );
+    }
     return (
       <div className={classi} style={stile} title={c.breve ? c.nome : undefined} data-casella={c.n}>
         {corpo}
       </div>
     );
   }
-  const descrizione = p
-    ? `, di ${p.proprietario.nome}${p.ipotecata ? ', ipotecata' : descriviEdifici(p)}`
-    : `, ${euro(c.prezzo ?? 0)}`;
+  const descrizione = volo
+    ? `, biglietto ${biglietto}`
+    : p
+      ? `, di ${p.proprietario.nome}${p.ipotecata ? ', ipotecata' : descriviEdifici(p)}`
+      : `, ${euro(c.prezzo ?? 0)}`;
   return (
     <button
       type="button"
@@ -491,6 +520,7 @@ function CasellaTabellone({
       {/* Fuori dal corpo, che nelle colonne è ruotato: la bandiera sfocata resta dritta. */}
       {c.tipo === 'citta' && <SfondoBandiera regione={regione} className="casella__sfondo" />}
       {corpo}
+      {segniVolo}
     </button>
   );
 }
@@ -514,6 +544,8 @@ export interface Segnaposto {
   volo?: boolean;
   /** Teletrasporto (carte folli): sparisce girando in un lampo e ricompare sulla casella d'arrivo. */
   teletrasporto?: boolean;
+  /** Giro del mondo: in aereo verso la meta del biglietto (decolla, vola ad arco, atterra); è la rotta in gradi (0 = verso l'alto). */
+  aereo?: number;
   /** Bancarotta: sprofonda nel tabellone. */
   sprofonda?: boolean;
   evidenziata?: boolean;
@@ -675,6 +707,7 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
     p.passoMs !== undefined ? 'segnaposto--cammina' : '',
     p.volo ? 'segnaposto--volo' : '',
     p.teletrasporto ? 'segnaposto--teletrasporto' : '',
+    p.aereo !== undefined ? 'segnaposto--aereo' : '',
     p.sprofonda ? 'segnaposto--sprofonda' : '',
   ]
     .filter(Boolean)
@@ -689,8 +722,9 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
           '--s': String(posa.scala),
           '--colore': `var(--p${p.colore})`,
           ...(p.passoMs !== undefined ? { '--passo': `${p.passoMs}ms` } : {}),
+          ...(p.aereo !== undefined ? { '--rotta': `${Math.round(p.aereo)}deg` } : {}),
         }),
-        zIndex: p.evidenziata || p.volo || p.teletrasporto ? 20 : posa.strato,
+        zIndex: p.evidenziata || p.volo || p.teletrasporto || p.aereo !== undefined ? 20 : posa.strato,
       }}
     >
       <span className="segnaposto__ombra" key={`ombra-${p.passo ?? 0}`} />
@@ -699,6 +733,11 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
         <span ref={disco} className={p.prigione ? 'segnaposto__disco segnaposto__disco--prigione' : 'segnaposto__disco'}>
           <Pedina colore={p.colore} iniziale={sigla ?? p.iniziale} className="pedina--tabellone" />
         </span>
+        {p.aereo !== undefined && (
+          <span className="segnaposto__aereo">
+            <Icona nome="aereo" />
+          </span>
+        )}
       </span>
     </span>
   );
@@ -726,6 +765,7 @@ export function Tabellone({
   lampeggia,
   sbarre,
   sfila,
+  volo,
   onApri,
 }: {
   mappa: IdMappa;
@@ -748,6 +788,11 @@ export function Tabellone({
   sbarre?: { n: number; verso: 'giu' | 'su' } | null;
   /** Caselle che tornano alla banca (bancarotta): i blocchi si sfilano uno dopo l'altro. */
   sfila?: readonly number[];
+  /**
+   * Giro del mondo, mentre chi gioca sceglie dove volare: le mete raggiungibili (con fascia, prezzo e distanza) e quella
+   * scelta. Le altre caselle si spengono; il clic su una meta arriva a `onApri`.
+   */
+  volo?: { mete: ReadonlyMap<number, { fascia: number; prezzo: number; distanza: number }>; scelta: number | null };
   onApri?: (n: number) => void;
 }): ReactNode {
   const [regioneAccesa, setRegioneAccesa] = useState<number | null>(null);
@@ -783,6 +828,23 @@ export function Tabellone({
     };
   })();
 
+  // Il cartellino del prezzo va sulla meta più vicina di ogni fascia: lì comincia quel prezzo.
+  const cartellini = new Set<number>();
+  if (volo) {
+    const prima = new Map<number, number>();
+    for (const [n, m] of volo.mete) {
+      const altra = prima.get(m.fascia);
+      if (altra === undefined || m.distanza < volo.mete.get(altra)!.distanza) prima.set(m.fascia, n);
+    }
+    for (const n of prima.values()) cartellini.add(n);
+  }
+  const statoVolo = (n: number): StatoCasella['volo'] => {
+    if (!volo) return undefined;
+    const m = volo.mete.get(n);
+    if (!m) return 'no';
+    return { fascia: m.fascia, prezzo: m.prezzo, cartellino: cartellini.has(n), scelta: volo.scelta === n };
+  };
+
   const classiGriglia = [
     'tabellone__griglia',
     sfocato ? 'tabellone__griglia--sfocata' : '',
@@ -803,6 +865,7 @@ export function Tabellone({
         '--targa': String(TARGA),
         '--d-prigione': `${TEMPI.prigione}ms`,
         '--d-teletrasporto': `${TEMPI.teletrasporto}ms`,
+        '--d-volo': `${TEMPI.volo}ms`,
       })}
     >
       <div className={classiGriglia} style={{ gridTemplateColumns: geo.tracce, gridTemplateRows: geo.tracce }}>
@@ -826,9 +889,10 @@ export function Tabellone({
                 regione: regioneAccesa === null ? undefined : c.gruppo === regioneAccesa ? 'accesa' : 'spenta',
                 valore: valoreAngolo(c),
                 importo: c.speciale === 'supernova' && partita?.cosmo ? euro(partita.cosmo.malloppo) : undefined,
+                volo: statoVolo(c.n),
               }}
               onApri={onApri}
-              onRegione={setRegioneAccesa}
+              onRegione={volo ? () => undefined : setRegioneAccesa}
             />
           );
         })}

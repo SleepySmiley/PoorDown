@@ -61,8 +61,8 @@ function vista(tab: Tabellone, c: Casella, n: number): CasellaVista {
     case 'citta':
       return { ...base, tipo: 'citta', prezzo: c.prezzo, gruppo: c.regione + 1, tinta: tab.regioni[c.regione]?.colore ?? c.regione + 1 };
     case 'stazione':
-      // Nel Sistema solare le stazioni sono mezzi spaziali (Navetta, Capsula, Astronave, Sonda).
-      return { ...base, tipo: 'stazione', prezzo: c.prezzo, icona: tab.id === 'sistema_solare' ? 'razzo' : 'treno' };
+      // Nel Sistema solare le stazioni sono mezzi spaziali (Navetta, Capsula, Astronave, Sonda); nel Giro del mondo aeroporti.
+      return { ...base, tipo: 'stazione', prezzo: c.prezzo, icona: tab.id === 'sistema_solare' ? 'razzo' : tab.viaggi ? 'aereo' : 'treno' };
     case 'servizio':
       return { ...base, tipo: 'servizio', prezzo: c.prezzo, icona: iconaServizio(c.nome) };
     case 'carta':
