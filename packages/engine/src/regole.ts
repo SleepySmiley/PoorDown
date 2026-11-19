@@ -4,7 +4,7 @@
  * Flusso del turno: docs/analisi/03-regole-turno.md §2.
  */
 
-import { tiraDadi } from './caso';
+import { mescola, tiraDadi } from './caso';
 import { caricaStella, effettoDadoCosmico, premioPartenza, prossimaLibera, tiraDadoCosmico } from './cosmo';
 import { accredita, errore, paga, pagaBanca, segnaTrasferimento, type Contesto } from './contesto';
 import {
@@ -792,14 +792,24 @@ function esciDiPrigione(ctx: Contesto, g: Giocatore, modo: 'doppio' | 'cauzione'
 
 /* ------------------------------ Carte ------------------------------ */
 
-/** La Carta Grazia resta nel mazzo, ma si salta finché qualcuno la tiene. */
+/**
+ * Pesca la prossima carta del mazzo. Quando esce l'ultima carta di un giro, il mazzo si rimescola tutto con il caso
+ * della partita (`crypto` sul server) e riparte dalla prima: così l'ordine non si ricostruisce dalle carte già uscite.
+ * La Carta Grazia resta nel mazzo, ma si salta finché qualcuno la tiene, anche dopo un rimescolamento.
+ */
 function pesca(ctx: Contesto, g: Giocatore, nome: NomeMazzo): void {
   const mazzo = ctx.s.mazzi[nome];
   const carte = ctx.tab.mazzi[nome];
   const tenuta = ctx.s.giocatori.some((x) => x.carteGrazia.includes(nome));
-  for (;;) {
+  // Si salta al più la Grazia, quindi due giri bastano sempre: il limite evita un ciclo senza fine con un mazzo
+  // fatto solo di carte da saltare (oggi nessun tabellone ne ha uno).
+  for (let pescate = 0; pescate < 2 * carte.length; pescate++) {
     const id = mazzo.ordine[mazzo.prossima]!;
-    mazzo.prossima = (mazzo.prossima + 1) % mazzo.ordine.length;
+    mazzo.prossima++;
+    if (mazzo.prossima >= mazzo.ordine.length) {
+      mazzo.ordine = mescola([...carte.keys()], ctx.caso);
+      mazzo.prossima = 0;
+    }
     const carta = carte[id]!;
     if (carta.effetto.tipo === 'grazia' && tenuta) continue;
     ctx.eventi.push({ tipo: 'carta', giocatore: g.id, mazzo: nome, carta: id, testo: carta.testo });

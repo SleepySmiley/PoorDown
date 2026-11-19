@@ -402,9 +402,12 @@ export interface Proprieta {
 }
 
 export interface Mazzo {
-  /** Ordine segreto delle carte (indici in `Tabellone.mazzi`). Non va mai mandato ai giocatori. */
+  /**
+   * Ordine segreto delle carte del giro in corso (indici in `Tabellone.mazzi`). Quando esce l'ultima carta, il mazzo
+   * si rimescola tutto per il giro dopo. Non va mai mandato ai giocatori.
+   */
   ordine: number[];
-  /** Posizione in `ordine` della prossima carta da pescare. */
+  /** Posizione in `ordine` della prossima carta da pescare: sempre dentro il mazzo (dopo l'ultima carta torna a 0). */
   prossima: number;
 }
 
