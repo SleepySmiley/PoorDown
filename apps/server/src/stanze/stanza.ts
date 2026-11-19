@@ -30,6 +30,7 @@ import {
   PENSIERO_BOT_MS,
   prossimaScadenza,
   pulisciNome,
+  regaloDiSquadra,
   REGISTRO_MAX,
   sposta,
   SQUADRE_MAX,
@@ -227,6 +228,11 @@ export class Stanza {
   private fineScena = 0;
   /** Il turno in cui ogni bot ha proposto l'ultimo scambio: non insiste a ogni turno. */
   private readonly ultimaProposta = new Map<IdGiocatore, number>();
+  /**
+   * Il turno in cui un bot ha offerto l'ultimo aiuto a ogni compagno in rosso: al più un'offerta per compagno a turno,
+   * così dopo un rifiuto non insiste. Non tocca l'attesa delle proposte normali (`ultimaProposta`).
+   */
+  private readonly ultimoAiuto = new Map<IdGiocatore, number>();
   /** Il prossimo tiro deciso dal pannello; `null` se i dadi sono liberi. Non si salva. */
   private dadiDecisi: DadiDecisi | null = null;
   /**
@@ -467,6 +473,7 @@ export class Stanza {
     this.pilaPannello = [];
     this.dadiDecisi = null;
     this.ultimaProposta.clear();
+    this.ultimoAiuto.clear();
     this.aggiornaPresenze();
     this.segna(...esito.eventi);
     return si(null);
@@ -803,13 +810,23 @@ export class Stanza {
     return this.partita !== null && (ultima === undefined || this.partita.turno.numero - ultima >= TURNI_TRA_PROPOSTE_BOT);
   }
 
+  /** In questo turno nessun bot ha ancora offerto aiuto al compagno in rosso. */
+  private puoAiutare(compagno: IdGiocatore): boolean {
+    return this.partita !== null && this.ultimoAiuto.get(compagno) !== this.partita.turno.numero;
+  }
+
   /** Un bot fa la sua prossima mossa. Se tocca a più bot (all'asta, per esempio), ne sceglie uno a caso. */
   private giocaBot(): void {
     // Prima le scadenze già passate (come per le mosse delle persone): un'offerta dopo la fine dell'asta non vale.
     this.scadenzeDellaPartita();
     const partita = this.partita;
     if (this.fase !== 'partita' || !partita) return;
-    const mosse = mosseDeiBot(partita, this.bot(), (id) => this.puoProporre(id));
+    const mosse = mosseDeiBot(
+      partita,
+      this.bot(),
+      (id) => this.puoProporre(id),
+      (compagno) => this.puoAiutare(compagno),
+    );
     if (mosse.length === 0) return;
     const scelta = mosse[this.amb.caso.intero(mosse.length)]!;
     const adesso = this.amb.adesso();
@@ -824,7 +841,12 @@ export class Stanza {
       }
       if (!esito.ok) return;
     }
-    if (scelta.azione.tipo === 'proponi') this.ultimaProposta.set(scelta.giocatore, partita.turno.numero);
+    if (scelta.azione.tipo === 'proponi') {
+      const { giocatore: da, a, dare, avere } = scelta.azione;
+      // L'aiuto a un compagno in rosso non conta come proposta: vale una volta a turno per compagno.
+      if (regaloDiSquadra(partita, { da, a, dare, avere })) this.ultimoAiuto.set(a, partita.turno.numero);
+      else this.ultimaProposta.set(scelta.giocatore, partita.turno.numero);
+    }
     this.registra(esito);
   }
 
@@ -851,7 +873,12 @@ export class Stanza {
     }
     const delGioco = eventi.filter((e): e is Evento => !['ingresso', 'uscita', 'nuovo_host', 'nuova_partita'].includes(e.tipo));
     this.fineScena = Math.max(this.fineScena, adesso) + durataScena(partita, delGioco);
-    const mosse = mosseDeiBot(partita, this.bot(), (id) => this.puoProporre(id));
+    const mosse = mosseDeiBot(
+      partita,
+      this.bot(),
+      (id) => this.puoProporre(id),
+      (compagno) => this.puoAiutare(compagno),
+    );
     if (mosse.length === 0) {
       this.prossimaMossaBot = null;
       return;

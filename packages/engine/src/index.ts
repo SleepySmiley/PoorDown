@@ -104,6 +104,7 @@ export {
   pacchettoVuoto,
   problemiScambio,
   PROPOSTE_IN_ATTESA_MAX,
+  regaloDiSquadra,
   SCAMBI_APERTI_MAX,
   valorePacchetto,
   type BozzaScambio,

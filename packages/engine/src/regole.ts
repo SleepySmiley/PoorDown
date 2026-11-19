@@ -48,7 +48,7 @@ import {
   verificaVoto,
   vota,
 } from './moderazione';
-import { proponi, rispondi, verificaProposta, verificaRisposta } from './scambi';
+import { proponi, regaloDiSquadra, rispondi, verificaProposta, verificaRisposta } from './scambi';
 import { tabellone } from './tabelloni';
 import { ASSENZA_MS, GRAZIA_DEBITO_MS, scadenzaTurno, TURNI_AUTOMATICI_MAX } from './tempo';
 import { chiudiTurno, elimina } from './turni';
@@ -409,7 +409,9 @@ function mossaAutomatica(s: Stato, id: IdGiocatore): Azione {
 
 /**
  * Il tempo del turno è finito: il gioco tira i dadi e chiude il turno al posto di chi gioca.
- * In debito fa bancarotta. Con il timer, chi ha già avuto due turni di fila finiti così esce dalla partita.
+ * In debito fa bancarotta, a meno che un compagno di squadra gli abbia offerto un regalo di soldi che basta a uscire
+ * dal rosso: quello lo accetta (regalarlo non costa niente a chi lo riceve, e la squadra conserva i suoi beni).
+ * Con il timer, chi ha già avuto due turni di fila finiti così esce dalla partita.
  * Se il gioco apre un'asta (o finisce sulla proprietà di un avversario, con la sfida a morra), il turno riprende
  * (e finisce) quando l'asta o la sfida si chiude.
  */
@@ -431,6 +433,13 @@ function giocaInAutomatico(ctx: Contesto): void {
     if (s.fase !== 'in_corso' || s.turno.giocatore !== id || s.turno.numero !== numero || s.asta || s.sfida) return;
     const io = giocatore(s, id)!;
     if (io.saldo < 0) {
+      const regalo = s.scambi.find((x) => x.a === id && regaloDiSquadra(s, x) && x.dare.soldi >= -io.saldo);
+      const accettato = regalo && applica(s, { tipo: 'accetta', giocatore: id, scambio: regalo.id }, ctx.caso, ctx.adesso);
+      if (accettato && accettato.ok) {
+        ctx.s = accettato.stato;
+        ctx.eventi.push(...accettato.eventi);
+        continue;
+      }
       elimina(ctx, io, 'bancarotta', true);
       return;
     }

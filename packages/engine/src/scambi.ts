@@ -36,6 +36,20 @@ export function pacchettoVuoto(p: Pacchetto): boolean {
   return p.soldi === 0 && p.caselle.length === 0 && p.grazie.length === 0;
 }
 
+/**
+ * Un regalo tra compagni di squadra: chi propone dà solo soldi e non chiede niente in cambio.
+ * Sono gli aiuti dei bot ai compagni in rosso (bot.ts); il gioco automatico li accetta prima di una bancarotta (regole.ts).
+ */
+export function regaloDiSquadra(stato: Stato, sc: Pick<Scambio, 'da' | 'a' | 'dare' | 'avere'>): boolean {
+  return (
+    compagni(stato, sc.da, sc.a) &&
+    sc.dare.soldi > 0 &&
+    sc.dare.caselle.length === 0 &&
+    sc.dare.grazie.length === 0 &&
+    pacchettoVuoto(sc.avere)
+  );
+}
+
 /** Le caselle dello scambio che adesso sono ipotecate. */
 export function caselleIpotecate(stato: Stato, bozza: BozzaScambio): number[] {
   return [...bozza.dare.caselle, ...bozza.avere.caselle].filter((i) => stato.proprieta[i]?.ipotecata === true).sort((x, y) => x - y);

@@ -1,7 +1,9 @@
 /*
  * I bot: giocatori automatici che occupano i posti liberi. Docs/analisi/02-lobby-impostazioni.md §8.
- * Comprano, costruiscono, offrono alle aste e rispondono agli scambi; sul Giro del mondo volano e giocano a morra. Ne propongono solo uno, ogni tanto: comprare
- * l'ultima città che manca a una loro regione, pagandola bene. In chat non scrivono.
+ * Comprano, costruiscono, offrono alle aste e rispondono agli scambi; sul Giro del mondo volano e giocano a morra.
+ * Ne propongono solo uno, ogni tanto: comprare l'ultima città che manca a una loro regione, pagandola bene.
+ * A squadre regalano al compagno in rosso i soldi che gli servono, quando conviene alla squadra (`aiutoPossibile`).
+ * In chat non scrivono.
  *
  * `mossaBot` guarda la partita e dice la prossima azione del bot, oppure `null` se per ora non ha niente da fare.
  * Non usa il caso: a parità di partita decide sempre allo stesso modo. Il ritmo (quanto aspettare tra una mossa
@@ -14,6 +16,7 @@ import {
   attivi,
   caselleDellaRegione,
   compagni,
+  costoEdifici,
   costoProssimoEdificio,
   costoRiscatto,
   giocatore,
@@ -23,11 +26,13 @@ import {
   proprietabile,
   rimborsoEdificio,
   valoreIpoteca,
+  valoreLiquidazione,
   VALORE_GRAZIA,
 } from './conti';
+import { euro } from './descrivi';
 import { RILANCI } from './economia';
 import { azioniPossibili, verifica } from './regole';
-import { problemiScambio, type BozzaScambio } from './scambi';
+import { pacchettoVuoto, problemiScambio, regaloDiSquadra, type BozzaScambio } from './scambi';
 import { tabellone } from './tabelloni';
 import { durataEvento } from './tempi';
 import type { Azione, Citta, Evento, Giocatore, IdGiocatore, Pacchetto, Scambio, Sfida, Stato } from './tipi';
@@ -138,6 +143,165 @@ export function guadagnoScambio(s: Stato, id: IdGiocatore, sc: BozzaScambio): { 
 }
 
 /* ------------------------------------------------------------------ */
+/* Aiuto ai compagni in rosso                                          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A squadre chi fa bancarotta in rosso lascia le sue proprietà alla banca (turni.ts, `elimina`), mentre i soldi passati
+ * tra compagni non cambiano il patrimonio della squadra: salvare un compagno dal rosso conserva i beni della squadra.
+ * Per il bot il costo vero è la liquidità, e i soldi buttati: se il compagno fallisce lo stesso, il regalo finisce
+ * ai suoi creditori. Le regole sono in `valutaAiuto`.
+ */
+
+/** Chi chiede aiuto scrive cifre tonde: se il bot copre tutto il rosso, accetta fino al rosso arrotondato a tanto. */
+const ARROTONDAMENTO_RICHIESTA = 100;
+/** Un giocatore che resta in partita incassa ancora la Partenza: per la squadra il suo posto vale tanti passaggi. */
+const PASSAGGI_DEL_POSTO = 2;
+
+/**
+ * Quanto incassa da solo il giocatore per uscire dal rosso: vende alla banca tutti i suoi edifici (metà del costo),
+ * poi ipoteca o vende le sue proprietà non ipotecate (metà del prezzo in tutti e due i casi). Non contano le città
+ * delle regioni dove restano edifici dei compagni: finché ce ne sono, lì non si ipoteca e non si vende.
+ */
+export function capacitaDiRientro(s: Stato, id: IdGiocatore): number {
+  const tab = tabellone(s.mappa);
+  let totale = 0;
+  for (const i of possedute(s, id)) {
+    const c = proprietabile(tab, i)!;
+    const p = s.proprieta[i]!;
+    if (c.tipo === 'citta') for (let livello = p.livello; livello > 0; livello--) totale += rimborsoEdificio(tab, c, livello);
+    if (p.ipotecata) continue;
+    const bloccata =
+      c.tipo === 'citta' &&
+      caselleDellaRegione(tab, c.regione).some((j) => s.proprieta[j]!.proprietario !== id && s.proprieta[j]!.livello > 0);
+    if (!bloccata) totale += valoreIpoteca(tab, i);
+  }
+  return totale;
+}
+
+/**
+ * Quanto perde la squadra se il giocatore fa bancarotta in rosso: le sue proprietà tornano alla banca (al prezzo pieno,
+ * quelle ipotecate al netto del riscatto) con i loro edifici, le sue Carte Grazia tornano nei mazzi, e nelle regioni che
+ * si rompono gli edifici dei compagni tornano alla banca a metà prezzo. Il compagno erede recupera solo l'avanzo della
+ * liquidazione dopo aver pagato il rosso. In più la squadra perde un giocatore che incasserebbe ancora la Partenza.
+ */
+export function valoreInGioco(s: Stato, id: IdGiocatore): number {
+  const g = giocatore(s, id);
+  if (!g || g.eliminato) return 0;
+  const tab = tabellone(s.mappa);
+  let valore = g.carteGrazia.length * VALORE_GRAZIA;
+  const regioni = new Set<number>();
+  for (const i of possedute(s, id)) {
+    const c = proprietabile(tab, i)!;
+    const p = s.proprieta[i]!;
+    valore += p.ipotecata ? c.prezzo - costoRiscatto(tab, i) : c.prezzo;
+    if (c.tipo !== 'citta') continue;
+    valore += costoEdifici(tab, c, p.livello);
+    regioni.add(c.regione);
+  }
+  for (const r of regioni) {
+    for (const i of caselleDellaRegione(tab, r)) {
+      const p = s.proprieta[i]!;
+      if (p.proprietario === null || p.livello === 0 || !compagni(s, id, p.proprietario)) continue;
+      valore += Math.ceil(costoEdifici(tab, proprietabile(tab, i) as Citta, p.livello) / 2);
+    }
+  }
+  const avanzo = Math.max(0, valoreLiquidazione(s, id) - Math.max(0, -g.saldo));
+  return valore - avanzo + PASSAGGI_DEL_POSTO * tab.partenza.passaggio;
+}
+
+interface Aiuto {
+  /** Quanto regala il bot. */
+  regalo: number;
+  /** Il rosso del compagno. */
+  serve: number;
+  /** Quanto il bot può dare senza scendere sotto la sua scorta. */
+  disponibile: number;
+}
+
+/**
+ * L'aiuto del bot `id` al compagno in rosso, oppure `null` se non lo aiuta:
+ * - gli serve tutto il rosso (`serve`);
+ * - il bot tiene la sua scorta (`riserva`): tutta se il compagno ce la farebbe da solo vendendo e ipotecando (il regalo gli
+ *   risparmia solo vendite a metà prezzo), metà se senza aiuto fallirebbe (la posta è più alta, il bot rischia di più);
+ * - se non copre tutto, dà la sua parte solo se il resto il compagno lo copre da solo: altrimenti i soldi andrebbero ai
+ *   creditori prima di una bancarotta comunque inevitabile;
+ * - conviene solo se salvandolo la squadra conserva più di quanto spende (`valoreInGioco`).
+ */
+function valutaAiuto(s: Stato, id: IdGiocatore, compagno: IdGiocatore): Aiuto | null {
+  if (s.fase !== 'in_corso' || !compagni(s, id, compagno)) return null;
+  const io = giocatore(s, id);
+  const lui = giocatore(s, compagno);
+  if (!io || !lui || io.eliminato || lui.eliminato || lui.saldo >= 0) return null;
+  const serve = -lui.saldo;
+  const daSolo = capacitaDiRientro(s, compagno);
+  const scorta = daSolo >= serve ? riserva(s, id) : Math.ceil(riserva(s, id) / 2);
+  const disponibile = Math.max(0, io.saldo - scorta);
+  const regalo = Math.min(serve, disponibile);
+  if (regalo <= 0) return null;
+  if (regalo < serve && daSolo < serve - regalo) return null;
+  if (valoreInGioco(s, compagno) <= regalo) return null;
+  return { regalo, serve, disponibile };
+}
+
+/** Quanto il bot `id` regalerebbe adesso al compagno in rosso (0: niente). Le regole sono in `valutaAiuto`. */
+export function aiutoPossibile(s: Stato, id: IdGiocatore, compagno: IdGiocatore): number {
+  return valutaAiuto(s, id, compagno)?.regalo ?? 0;
+}
+
+/**
+ * Il massimo che il bot dà a un compagno in rosso che gli chiede soldi: l'aiuto possibile; se copre tutto il rosso, anche
+ * una cifra tonda (il rosso arrotondato alle centinaia), sempre senza scendere sotto la scorta.
+ */
+export function massimoAiuto(s: Stato, id: IdGiocatore, compagno: IdGiocatore): number {
+  const aiuto = valutaAiuto(s, id, compagno);
+  if (!aiuto) return 0;
+  if (aiuto.regalo < aiuto.serve) return aiuto.regalo;
+  const tondo = Math.ceil(aiuto.serve / ARROTONDAMENTO_RICHIESTA) * ARROTONDAMENTO_RICHIESTA;
+  return Math.max(aiuto.regalo, Math.min(aiuto.disponibile, tondo));
+}
+
+/**
+ * Il bot che aiuta il compagno in rosso: tra i `bot` della sua squadra, quello che può dargli di più e, a pari regalo,
+ * quello con più soldi oltre la scorta; a pari merito il primo nell'ordine dei turni. `null` se nessuno.
+ */
+export function chiAiuta(s: Stato, compagno: IdGiocatore, bot: readonly IdGiocatore[]): IdGiocatore | null {
+  let scelto: { id: IdGiocatore; aiuto: Aiuto } | null = null;
+  for (const x of s.giocatori) {
+    if (!bot.includes(x.id)) continue;
+    const aiuto = valutaAiuto(s, x.id, compagno);
+    if (!aiuto) continue;
+    const meglio =
+      !scelto ||
+      aiuto.regalo > scelto.aiuto.regalo ||
+      (aiuto.regalo === scelto.aiuto.regalo && aiuto.disponibile > scelto.aiuto.disponibile);
+    if (meglio) scelto = { id: x.id, aiuto };
+  }
+  return scelto?.id ?? null;
+}
+
+/**
+ * Il compagno in rosso chiede al bot solo soldi (al più offrendo qualcosa in cambio): è una richiesta d'aiuto,
+ * che il bot accetta fino a `massimoAiuto`.
+ */
+function richiestaDiAiuto(s: Stato, sc: Scambio): boolean {
+  return (
+    compagni(s, sc.da, sc.a) &&
+    (giocatore(s, sc.da)?.saldo ?? 0) < 0 &&
+    sc.avere.soldi > 0 &&
+    sc.avere.caselle.length === 0 &&
+    sc.avere.grazie.length === 0
+  );
+}
+
+/** La nota del regalo, per chi lo riceve. */
+function notaDiAiuto({ regalo, serve }: Aiuto): string {
+  return regalo >= serve
+    ? `Ti passo ${euro(regalo)} per uscire dal rosso: siamo in squadra.`
+    : `Ti passo ${euro(regalo)} per il rosso: il resto lo copri vendendo o ipotecando.`;
+}
+
+/* ------------------------------------------------------------------ */
 /* Decisioni                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -163,6 +327,14 @@ function rispostaScambio(s: Stato, g: Giocatore, sc: Scambio): Azione {
   const accetta: Azione = { tipo: 'accetta', giocatore: g.id, scambio: sc.id };
   const rifiuta: Azione = { tipo: 'rifiuta', giocatore: g.id, scambio: sc.id };
   if (!ok(s, accetta)) return rifiuta;
+  if (compagni(s, g.id, sc.da)) {
+    // Un regalo del compagno non chiede niente: si prende, anche in rosso (è l'aiuto di un altro bot).
+    if (pacchettoVuoto(sc.avere)) return accetta;
+    // Il compagno in rosso chiede soldi: il bot li dà se conviene alla squadra, fino al massimo del suo aiuto.
+    // Oltre quel massimo decide la regola di sempre tra compagni (qui sotto): se in cambio offre qualcosa che vale,
+    // lo scambio resta buono come prima che esistesse l'aiuto.
+    if (richiestaDiAiuto(s, sc) && sc.avere.soldi <= massimoAiuto(s, g.id, sc.da)) return accetta;
+  }
   const { guadagno, dato } = guadagnoScambio(s, g.id, sc);
   // Con un compagno basta non rimetterci troppo: si vince insieme.
   if (compagni(s, g.id, sc.da)) return guadagno >= -dato * 0.25 && g.saldo - sc.avere.soldi >= 0 ? accetta : rifiuta;
@@ -393,10 +565,43 @@ function sceltaSfida(g: Giocatore, sf: Sfida): Azione {
   return sf.importo >= Math.max(100, g.saldo / 3) ? { tipo: 'sfida', giocatore: g.id } : { tipo: 'paga_affitto', giocatore: g.id };
 }
 
+/* ------------------------------------------------------------------ */
+/* Aiuto ai compagni in rosso: la proposta                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * L'aiuto a un compagno in rosso (anche fuori dal turno del bot): il regalo dei soldi che gli servono, con una nota,
+ * se la stanza lo permette adesso (`aiutare`) e conviene (`valutaAiuto`). Se un compagno gli ha già offerto un regalo,
+ * il bot non ne aggiunge un altro.
+ */
+function propostaDiAiuto(s: Stato, g: Giocatore, aiutare: (compagno: IdGiocatore) => boolean): Azione | null {
+  for (const lui of attivi(s)) {
+    if (lui.saldo >= 0 || !compagni(s, g.id, lui.id) || !aiutare(lui.id)) continue;
+    if (s.scambi.some((x) => x.a === lui.id && regaloDiSquadra(s, x))) continue;
+    const aiuto = valutaAiuto(s, g.id, lui.id);
+    if (!aiuto) continue;
+    const azione: Azione = {
+      tipo: 'proponi',
+      giocatore: g.id,
+      a: lui.id,
+      dare: { soldi: aiuto.regalo, caselle: [], grazie: [] },
+      avere: { soldi: 0, caselle: [], grazie: [] },
+      nota: notaDiAiuto(aiuto),
+    };
+    if (ok(s, azione)) return azione;
+  }
+  return null;
+}
+
 /** Cosa la stanza permette al bot in questo momento. */
 export interface OpzioniBot {
   /** Può proporre uno scambio: la stanza lo concede di rado, perché non insista con le stesse proposte. */
   proporre?: boolean;
+  /**
+   * A quali compagni in rosso può offrire aiuto adesso: la stanza lo concede una volta a turno per compagno, e solo al bot
+   * che può dare di più (`chiAiuta`). Senza, il bot non offre aiuto (come nelle simulazioni di soli bot del motore).
+   */
+  aiutare?: (compagno: IdGiocatore) => boolean;
 }
 
 /** Il bot è di turno e non c'è un'asta aperta. */
@@ -456,8 +661,9 @@ function mossaDelTurno(s: Stato, g: Giocatore, opzioni: OpzioniBot): Azione {
 
 /**
  * La prossima azione del bot `id`, oppure `null` se adesso non ha niente da fare.
- * In ordine: offerte all'asta, sfida a morra, risposte agli scambi, ritiro delle sue proposte non più valide, voto (segue chi ha già
- * votato), tempo a chi lo chiede, il suo turno.
+ * In ordine: offerte all'asta, sfida a morra, risposte agli scambi, ritiro delle sue proposte non più valide (e dei
+ * regali che non servono più), aiuto ai compagni in rosso, voto (segue chi ha già votato), tempo a chi lo chiede,
+ * il suo turno.
  */
 export function mossaBot(s: Stato, id: IdGiocatore, opzioni: OpzioniBot = {}): Azione | null {
   if (s.fase !== 'in_corso') return null;
@@ -481,6 +687,15 @@ export function mossaBot(s: Stato, id: IdGiocatore, opzioni: OpzioniBot = {}): A
   const superata = s.scambi.find((x) => x.da === id && problemiScambio(s, x).length > 0);
   if (superata) return { tipo: 'annulla', giocatore: id, scambio: superata.id };
 
+  // Il regalo a un compagno che nel frattempo è uscito dal rosso non serve più: lo ritira.
+  const inutile = s.scambi.find((x) => x.da === id && regaloDiSquadra(s, x) && (giocatore(s, x.a)?.saldo ?? 0) >= 0);
+  if (inutile) return { tipo: 'annulla', giocatore: id, scambio: inutile.id };
+
+  if (opzioni.aiutare) {
+    const aiuto = propostaDiAiuto(s, g, opzioni.aiutare);
+    if (aiuto) return aiuto;
+  }
+
   const t = s.turno;
   if (t.giocatore !== id) {
     // Il voto lo comincia una persona; i bot la seguono solo contro chi è assente (scollegato, o con l'ultimo turno
@@ -499,19 +714,33 @@ export function mossaBot(s: Stato, id: IdGiocatore, opzioni: OpzioniBot = {}): A
 
 /**
  * I bot ancora in gioco che adesso hanno qualcosa da fare, con la loro mossa.
+ * Un bot che sta ricevendo l'aiuto di un altro bot aspetta: niente vendite né bancarotta prima di accettare il regalo.
  * @param proporre quali bot possono proporre uno scambio adesso.
+ * @param aiutare a quali compagni in rosso si può offrire aiuto adesso: lo offre un solo bot, quello scelto da `chiAiuta`.
  */
 export function mosseDeiBot(
   s: Stato,
   bot: readonly IdGiocatore[],
   proporre: (id: IdGiocatore) => boolean = () => false,
+  aiutare: (compagno: IdGiocatore) => boolean = () => false,
 ): { giocatore: IdGiocatore; azione: Azione }[] {
   const vivi = new Set(attivi(s).map((g) => g.id));
-  return bot.flatMap((id) => {
+  const aiutanti = new Map<IdGiocatore, IdGiocatore | null>();
+  const aiutante = (compagno: IdGiocatore) => {
+    if (!aiutanti.has(compagno)) aiutanti.set(compagno, chiAiuta(s, compagno, bot));
+    return aiutanti.get(compagno);
+  };
+  const mosse = bot.flatMap((id) => {
     if (!vivi.has(id)) return [];
-    const azione = mossaBot(s, id, { proporre: proporre(id) });
+    const azione = mossaBot(s, id, { proporre: proporre(id), aiutare: (compagno) => aiutare(compagno) && aiutante(compagno) === id });
     return azione ? [{ giocatore: id, azione }] : [];
   });
+  const aiutati = new Set(
+    mosse.flatMap(({ giocatore: da, azione }) =>
+      azione.tipo === 'proponi' && regaloDiSquadra(s, { da, a: azione.a, dare: azione.dare, avere: azione.avere }) ? [azione.a] : [],
+    ),
+  );
+  return mosse.filter((m) => !aiutati.has(m.giocatore));
 }
 
 /* ------------------------------------------------------------------ */
