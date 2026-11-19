@@ -20,8 +20,11 @@ import type { Azione, Caso, Stato } from './tipi';
 const MONDO = { mappa: 'giro_del_mondo' } as const;
 const tab = GIRO_DEL_MONDO;
 
-function partita(n = 2): Stato {
-  return partitaDiProva(n, MONDO);
+/** Partita sul Giro del mondo; di solito tutti hanno già il passaporto, per volare subito. */
+function partita(n = 2, passaporti = true): Stato {
+  const s = partitaDiProva(n, MONDO);
+  if (passaporti) for (const x of s.giocatori) x.passaporto = true;
+  return s;
 }
 
 /** Caso che restituisce i valori in ordine, qualunque sia il massimo chiesto (per i dadi: il valore meno uno). */
@@ -41,14 +44,14 @@ const lancia: Azione = { tipo: 'lancia', giocatore: 'a' };
 const indice = (nome: string) => tab.caselle.findIndex((c) => c.nome === nome);
 
 describe('Giro del mondo: il tabellone', () => {
-  it('48 caselle, 11 paesi da 1 a 6 città, le tre caselle strane', () => {
+  it('48 caselle, 11 paesi da 1 a 4 città, le tre caselle strane', () => {
     expect(tab.caselle).toHaveLength(48);
-    expect(tab.regioni.map((_, r) => caselleDellaRegione(tab, r).length)).toEqual([1, 3, 3, 6, 3, 1, 2, 2, 2, 1, 1]);
+    expect(tab.regioni.map((_, r) => caselleDellaRegione(tab, r).length)).toEqual([1, 3, 3, 4, 3, 1, 2, 2, 2, 1, 1]);
     for (const tipo of ['bermuda', 'cambio_data', 'antipodi']) expect(tab.caselle.filter((c) => c.tipo === tipo)).toHaveLength(1);
     expect(tab.caselle.filter((c) => c.tipo === 'stazione').map((c) => c.breve)).toEqual(['Barra', 'Lukla', 'Gibilterra', 'Saba']);
   });
 
-  it('i paesi sono sparpagliati: gli Stati Uniti su tutti e quattro i lati, la Bolivia da una parte all’altra', () => {
+  it('i paesi sono sparpagliati: gli Stati Uniti uno per lato, la Bolivia da una parte all’altra', () => {
     const lati = (r: number) => new Set(caselleDellaRegione(tab, r).map((i) => Math.floor(i / 12)));
     const regione = (nome: string) => tab.regioni.findIndex((r) => r.nome === nome);
     expect([...lati(regione('Stati Uniti'))].sort()).toEqual([0, 1, 2, 3]);
@@ -157,7 +160,22 @@ describe('il biglietto aereo', () => {
   it('sui servizi, arrivando in volo, l’affitto conta i dadi come un 7', () => {
     const s = assegna(partita(), 'b', 15);
     const { stato } = esegui(s, vola(15));
-    expect(stato.sfida).toMatchObject({ casella: 15, importo: 28 });
+    // Con un servizio il moltiplicatore è 8, il doppio degli altri tabelloni.
+    expect(stato.sfida).toMatchObject({ casella: 15, importo: 56 });
+  });
+
+  it('il passaporto si ritira alla Partenza: prima si gira con i dadi', () => {
+    const s = partita(2, false);
+    expect(verifica(s, vola(5))?.codice).toBe('niente_voli');
+    g(s, 'a').posizione = 44;
+    const { stato, eventi } = esegui(s, lancia, dadi([2, 3]));
+    expect(eventi).toContainEqual({ tipo: 'passaporto', giocatore: 'a' });
+    expect(g(stato, 'a').passaporto).toBe(true);
+    expect(descrivi({ tipo: 'passaporto', giocatore: 'a' }, stato)).toBe('Anna ritira il passaporto: da adesso può volare.');
+    // Il secondo giro non lo ridà.
+    g(stato, 'a').posizione = 44;
+    stato.turno = { ...stato.turno, giocatore: 'a', fase: 'lancio', rilancio: false };
+    expect(esegui(stato, lancia, dadi([2, 3])).eventi.some((e) => e.tipo === 'passaporto')).toBe(false);
   });
 
   it('Biglietto omaggio: ci si muove ancora e il volo è gratis', () => {
@@ -172,6 +190,13 @@ describe('il biglietto aereo', () => {
     expect(g(dopo, 'a').saldo).toBe(1500);
     expect(dopo.turno.voloOmaggio).toBeUndefined();
     expect(descrivi(eventi[0]!, dopo)).toBe('Anna usa il Biglietto omaggio e vola a Ushuaia.');
+  });
+
+  it('con il Biglietto omaggio arriva anche il passaporto', () => {
+    const omaggio = tab.mazzi.cartolina.findIndex((c) => c.effetto.tipo === 'volo_omaggio');
+    const { stato, eventi } = esegui(primaCarta(partita(2, false), 'cartolina', omaggio), lancia, dadi([3, 5]));
+    expect(eventi).toContainEqual({ tipo: 'passaporto', giocatore: 'a' });
+    expect(verifica(stato, vola(47))).toBeNull();
   });
 });
 
@@ -250,6 +275,7 @@ describe('la sfida a morra cinese', () => {
 
   it('niente sfida tra compagni di squadra, né sulle proprietà ipotecate', () => {
     const squadre = assegna(partitaASquadre([0, 1, 0], MONDO), 'c', 5);
+    g(squadre, 'a').passaporto = true;
     expect(esegui(squadre, vola(5)).stato.sfida).toBeNull();
     const ipotecata = assegna(partita(), 'b', 5);
     ipotecata.proprieta[5]!.ipotecata = true;
@@ -293,6 +319,12 @@ describe('le caselle strane', () => {
     expect(stato.turno.rilancio).toBe(true);
     expect(verifica(stato, vola(40))).toBeNull();
   });
+
+  it('in volo la Linea del cambio di data si sorvola e basta: niente giorno in più', () => {
+    const { stato, eventi } = esegui(partita(), vola(21));
+    expect(eventi.some((e) => e.tipo === 'cambio_data')).toBe(false);
+    expect(stato.turno.rilancio).toBe(false);
+  });
 });
 
 describe('i bot sul Giro del mondo', () => {
@@ -316,7 +348,8 @@ describe('i bot sul Giro del mondo', () => {
     expect(mossaBot(s, 'a')).toEqual(vola(28));
   });
 
-  it('all’inizio vola a prendersi il Vaticano, un paese intero in una casella; senza soldi tira i dadi', () => {
+  it('senza passaporto tira i dadi; con il passaporto vola a prendersi il Vaticano, un paese intero in una casella', () => {
+    expect(mossaBot(partita(2, false), 'a')).toEqual(lancia);
     expect(mossaBot(partita(), 'a')).toEqual(vola(1));
     const povero = partita();
     g(povero, 'a').saldo = 200;

@@ -310,8 +310,18 @@ const MARGINE_VOLO = 40;
 /**
  * Quanto vale per il bot fermarsi su `casella`, a occhio, con `contante` in tasca: un affitto da pagare conta in
  * meno, una proprietà libera che gli conviene comprare conta quello che vale più del prezzo, una tassa conta in meno.
+ * Ragiona come chi gioca: se una città gli completa un paese, ci vola anche spendendo la scorta.
+ * `inVolo`: ci arriva in aereo, e la Linea del cambio di data non regala il giorno.
  */
-function valoreArrivo(s: Stato, g: Giocatore, casella: number, contante: number, scorta: number, rimbalzo = true): number {
+function valoreArrivo(
+  s: Stato,
+  g: Giocatore,
+  casella: number,
+  contante: number,
+  scorta: number,
+  inVolo: boolean,
+  rimbalzo = true,
+): number {
   const tab = tabellone(s.mappa);
   const n = tab.caselle.length;
   const c = tab.caselle[casella]!;
@@ -323,6 +333,7 @@ function valoreArrivo(s: Stato, g: Giocatore, casella: number, contante: number,
       if (p.proprietario === null) {
         const prezzo = prezzoAcquisto(s, casella);
         const valore = valoreCasella(s, g.id, casella);
+        // Come per l'acquisto: per completare un gruppo si spende anche la scorta.
         const completa = valore >= prezzo * 2;
         return contante - prezzo >= (completa ? 0 : scorta) ? Math.max(0, valore - prezzo) : 0;
       }
@@ -335,10 +346,10 @@ function valoreArrivo(s: Stato, g: Giocatore, casella: number, contante: number,
     case 'vai_in_prigione':
       return -COSTO_PRIGIONE;
     case 'cambio_data':
-      return VALORE_RILANCIO;
+      return inVolo ? 0 : VALORE_RILANCIO;
     case 'antipodi':
       // Dove si sbuca, una volta sola: la casella di fronte non è un'altra buca.
-      return rimbalzo ? valoreArrivo(s, g, (casella + n / 2) % n, contante, scorta, false) : 0;
+      return rimbalzo ? valoreArrivo(s, g, (casella + n / 2) % n, contante, scorta, inVolo, false) : 0;
     case 'vacanza':
       return s.impostazioni.cassaVacanza ? s.cassaVacanza : 0;
     default:
@@ -360,7 +371,7 @@ function voloBot(s: Stato, g: Giocatore, scorta: number): Azione | null {
     for (let d2 = 1; d2 <= 6; d2++) {
       const passi = d1 + d2;
       const partenza = g.posizione + passi >= n ? tab.partenza.passaggio : 0;
-      tiro += (valoreArrivo(s, g, (g.posizione + passi) % n, g.saldo, scorta) + partenza) / 36;
+      tiro += (valoreArrivo(s, g, (g.posizione + passi) % n, g.saldo, scorta, false) + partenza) / 36;
     }
   }
   let migliore: { azione: Azione; valore: number } | null = null;
@@ -368,7 +379,7 @@ function voloBot(s: Stato, g: Giocatore, scorta: number): Azione | null {
     const azione: Azione = { tipo: 'vola', giocatore: g.id, casella };
     if (!ok(s, azione)) continue;
     const prezzo = biglietto(s, g.id, casella)!.prezzo;
-    const valore = valoreArrivo(s, g, casella, g.saldo - prezzo, scorta) - prezzo;
+    const valore = valoreArrivo(s, g, casella, g.saldo - prezzo, scorta, true) - prezzo;
     if (!migliore || valore > migliore.valore) migliore = { azione, valore };
   }
   return migliore && migliore.valore > tiro + MARGINE_VOLO ? migliore.azione : null;

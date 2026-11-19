@@ -94,6 +94,8 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       return `${nome(evento.giocatore)} sparisce nel Triangolo delle Bermuda e ricompare ${destinazione(tab.caselle[evento.a]!)}.`;
     case 'antipodi':
       return `${nome(evento.giocatore)} scava una buca per l’altra parte del mondo e sbuca ${destinazione(tab.caselle[evento.a]!)}.`;
+    case 'passaporto':
+      return `${nome(evento.giocatore)} ritira il passaporto: da adesso può volare.`;
     case 'cambio_data':
       return `${nome(evento.giocatore)} attraversa la Linea del cambio di data e guadagna un giorno: si muove ancora.`;
     case 'sfida':

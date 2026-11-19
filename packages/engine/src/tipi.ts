@@ -101,7 +101,7 @@ export interface Angolo extends CasellaBase {
  * - `roulette`: gira la Roulette cosmica (`Follie.roulette`).
  * E quelle del Giro del mondo:
  * - `bermuda`: il Triangolo delle Bermuda, si sparisce e si ricompare su una casella a caso;
- * - `cambio_data`: la Linea del cambio di data, si guadagna un giorno e si tira ancora;
+ * - `cambio_data`: la Linea del cambio di data, chi ci arriva con i dadi guadagna un giorno e si muove ancora;
  * - `antipodi`: la Buca per l'altra parte del mondo, si sbuca sul lato opposto del tabellone.
  */
 export interface Speciale extends CasellaBase {
@@ -310,6 +310,11 @@ export interface Viaggi {
   fasce: readonly { fino: number; prezzo: number }[];
   /** Chi cade sulla proprietà di un avversario può sfidarlo a morra cinese invece di pagare. */
   sfida: boolean;
+  /**
+   * Si vola solo con il passaporto, che si ritira passando dalla Partenza (o con il Biglietto omaggio): il primo giro
+   * si fa con i dadi, così al primo turno nessuno fa la corsa ai paesi da una città sola.
+   */
+  passaporto: boolean;
 }
 
 export interface Tabellone {
@@ -385,6 +390,8 @@ export interface Giocatore {
   offlineDa: number | null;
   /** Indice della squadra in `Stato.squadre`; `null` se la partita non è a squadre. */
   squadra: number | null;
+  /** Giro del mondo: ha ritirato il passaporto (è passato dalla Partenza) e può volare. Manca finché non ce l'ha. */
+  passaporto?: true;
 }
 
 export interface Proprieta {
@@ -697,7 +704,9 @@ export type Evento =
   | { tipo: 'bermuda'; giocatore: IdGiocatore; da: number; a: number }
   /** La Buca per l'altra parte del mondo: la pedina sbuca sul lato opposto del tabellone. */
   | { tipo: 'antipodi'; giocatore: IdGiocatore; da: number; a: number }
-  /** La Linea del cambio di data: chi ci si ferma guadagna un giorno e tira ancora. */
+  /** Il passaporto: `giocatore` passa dalla Partenza (o pesca il Biglietto omaggio) e da adesso può volare. */
+  | { tipo: 'passaporto'; giocatore: IdGiocatore }
+  /** La Linea del cambio di data: chi ci si ferma con i dadi guadagna un giorno e si muove ancora. */
   | { tipo: 'cambio_data'; giocatore: IdGiocatore }
   /** `da` sfida `a` a morra cinese per l'affitto di `casella` (`importo`, quello normale). */
   | { tipo: 'sfida'; da: IdGiocatore; a: IdGiocatore; casella: number; importo: number }

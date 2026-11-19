@@ -157,6 +157,7 @@ export function problemi(s: Stato): string[] {
     }
     if (x.banca < 0 || x.banca > BANCA_MAX_MS) out.push(`${x.id}: banca di tempo fuori dai limiti (${x.banca}).`);
     if (x.automatici < 0) out.push(`${x.id}: turni automatici negativi.`);
+    if (x.passaporto && !tab.viaggi?.passaporto) out.push(`${x.id}: passaporto su un tabellone senza passaporti.`);
     if (s.impostazioni.squadre ? x.squadra === null || !s.squadre[x.squadra] : x.squadra !== null) {
       out.push(`${x.id}: squadra sbagliata (${x.squadra}).`);
     }

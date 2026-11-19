@@ -1,11 +1,15 @@
 /*
  * Tabellone "Giro del mondo": 48 caselle (12 per lato) di posti veri ma assurdi, scelti per il nome o per una stranezza.
  * - I paesi sono sparpagliati: le loro città stanno su lati diversi, e per completarne uno conviene volare.
- * - Gruppi da 1 a 6 città, prezzi a casaccio: Å costa 1 € (una lettera), Bangkok col nome completo 168 € (un euro
+ * - Gruppi da 1 a 4 città, prezzi a casaccio: Å costa 1 € (una lettera), Bangkok col nome completo 168 € (un euro
  *   a lettera), Hell 666 €, Yaren 10 € (è la capitale di un paese che per legge non ne ha), il Vaticano 500 €.
  * - Regole sue (`viaggi`): invece di tirare i dadi si può comprare un biglietto e volare dove si vuole; chi cade
  *   sulla proprietà di un avversario può sfidarlo a morra cinese invece di pagare.
  * - Tre caselle strane: il Triangolo delle Bermuda, la Linea del cambio di data, la Buca per l'altra parte del mondo.
+ * - Il passaporto: si vola solo dopo essere passati dalla Partenza, così al primo turno nessuno fa la corsa ai paesi
+ *   da una città sola (con la corsa, chi giocava per terzo prendeva Bangkok e vinceva il 40% delle partite).
+ * - Servizi con il moltiplicatore doppio: chi vola li evita.
+ * Equilibrio misurato con 800 partite di 4 bot: vittorie per posto 26 · 21 · 27 · 27%, come su Europa.
  * - Busta e Cartolina solo sue, con testi comici come sul Sistema solare.
  */
 
@@ -17,7 +21,7 @@ const REGIONI: Regione[] = [
   { nome: 'Nauru', sigla: 'NRU', colore: 1, bandiera: 'NR', costoCasa: 10, costoAlbergo: 10 },
   { nome: 'Norvegia', sigla: 'NOR', colore: 2, bandiera: 'NO', costoCasa: 150, costoAlbergo: 150 },
   { nome: 'Canada', sigla: 'CAN', colore: 3, bandiera: 'CA', costoCasa: 50, costoAlbergo: 50 },
-  // L'Italia d'America: sei paesi veri con il nome di una città italiana, uno per lato e due in più.
+  // L'Italia d'America: quattro paesi veri con il nome di una città italiana, uno per lato.
   { nome: 'Stati Uniti', sigla: 'USA', colore: 4, bandiera: 'US', costoCasa: 100, costoAlbergo: 100 },
   { nome: 'Australia', sigla: 'AUS', colore: 5, bandiera: 'AU', costoCasa: 100, costoAlbergo: 100 },
   { nome: 'Thailandia', sigla: 'THA', colore: 6, bandiera: 'TH', costoCasa: 100, costoAlbergo: 100 },
@@ -81,12 +85,12 @@ const CASELLE: Casella[] = [
   citta(BANGKOK, 5, LETTERE_BANGKOK, { breve: 'Bangkok' }),
   citta('Flin Flon', 2, 100),
   { tipo: 'cambio_data', nome: 'Linea del cambio di data', breve: 'Cambio data' },
-  citta('Florence', 3, 140),
+  CARTOLINA_CASELLA,
   citta('Woolloomooloo', 4, 200),
   { tipo: 'vacanza', nome: 'Vacanza' },
   // Su due continenti.
   citta('Istanbul', 7, 260),
-  citta('Naples', 3, 120),
+  BUSTA_CASELLA,
   CARTOLINA_CASELLA,
   citta('Moose Jaw', 2, 140),
   // Il pezzo di Russia fuori dalla Russia.
@@ -200,6 +204,7 @@ const VIAGGI: Viaggi = {
     { fino: 48, prezzo: 150 },
   ],
   sfida: true,
+  passaporto: true,
 };
 
 export const GIRO_DEL_MONDO: Tabellone = {
@@ -213,7 +218,8 @@ export const GIRO_DEL_MONDO: Tabellone = {
   prigione: 12,
   cauzione: 50,
   affittiStazioni: [25, 50, 100, 200],
-  moltiplicatoriServizi: [4, 10],
+  // Il doppio degli altri tabelloni: chi vola li evita, e con ×4 e ×10 non rendevano quasi niente.
+  moltiplicatoriServizi: [8, 20],
   mazzi: { busta: BUSTA, cartolina: CARTOLINA },
   viaggi: VIAGGI,
 };

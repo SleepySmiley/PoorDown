@@ -128,6 +128,9 @@ function verificaNelTurno(stato: Stato, g: Giocatore, azione: Azione): Errore | 
       if (!tab.viaggi) return errore('niente_voli', 'Su questo tabellone non si vola.');
       if (t.fase === 'prigione') return errore('niente_voli', 'Dalla prigione non si vola: prima devi uscire.');
       if (t.fase === 'dopo_lancio' && !t.rilancio) return errore('gia_lanciato', 'In questo turno ti sei già mosso.');
+      if (tab.viaggi.passaporto && !g.passaporto) {
+        return errore('niente_voli', 'Il passaporto si ritira alla Partenza: prima fai un giro con i dadi.');
+      }
       if (daDecidere) return decidi;
       if (g.saldo < 0) return errore('saldo_negativo', SALDO_NEGATIVO);
       return verificaMeta(stato, g, azione.casella);
@@ -563,6 +566,7 @@ function muovi(
     ctx.eventi.push({ tipo: 'partenza', giocatore: g.id, importo, arrivo, ...(tempesta ? { tempesta: true as const } : {}) });
     accredita(ctx, g, importo);
     caricaStella(ctx, 'tempesta', allaStella, g.id);
+    daiPassaporto(ctx, g);
   }
   polvereDiStelle(ctx, g, da, passi);
   if (fermati) arriva(ctx, g);
@@ -738,7 +742,9 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       return;
     }
     case 'cambio_data':
-      // Si guadagna un giorno: ci si muove ancora (dadi o volo), come dopo un doppio.
+      // Si guadagna un giorno: ci si muove ancora (dadi o volo), come dopo un doppio. Solo arrivando con i dadi:
+      // in volo la linea si sorvola e basta, se no diventa un parcheggio sicuro con la mossa in regalo.
+      if (!s.turno.dadi) return;
       ctx.eventi.push({ tipo: 'cambio_data', giocatore: g.id });
       if (!ctx.turnoFinito) s.turno.rilancio = true;
       return;
@@ -763,6 +769,13 @@ function incarcera(ctx: Contesto, g: Giocatore, motivo: 'casella' | 'carta' | 't
   g.vacanza = false;
   ctx.s.statistiche.prigione[g.id] = (ctx.s.statistiche.prigione[g.id] ?? 0) + 1;
   ctx.eventi.push({ tipo: 'prigione', giocatore: g.id, motivo });
+}
+
+/** Giro del mondo: alla Partenza si ritira il passaporto, e da lì si può volare. */
+function daiPassaporto(ctx: Contesto, g: Giocatore): void {
+  if (!ctx.tab.viaggi?.passaporto || g.passaporto) return;
+  g.passaporto = true;
+  ctx.eventi.push({ tipo: 'passaporto', giocatore: g.id });
 }
 
 /** Sposta la pedina con un salto (carte folli): niente passi, niente Partenza, niente effetto della casella. */
@@ -921,10 +934,12 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
       ctx.eventi.push({ tipo: 'gravita_invertita', giocatore: g.id });
       return;
     case 'volo_omaggio':
-      // Ci si muove ancora; se si vola, il biglietto è gratis (vale fino alla fine del turno).
+      // Ci si muove ancora; se si vola, il biglietto è gratis (vale fino alla fine del turno). Con il biglietto
+      // arriva anche il passaporto, se non lo si aveva.
       if (ctx.turnoFinito || g.id !== s.turno.giocatore) return;
       s.turno.rilancio = true;
       s.turno.voloOmaggio = true;
+      daiPassaporto(ctx, g);
       return;
   }
 }
