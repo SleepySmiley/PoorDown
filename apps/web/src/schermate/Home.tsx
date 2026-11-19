@@ -29,14 +29,18 @@ const AGGIORNA_ELENCO_MS = 5_000;
 /** Righe del tabellone delle partenze: quelle vuote restano disegnate, come sui tabelloni veri. */
 const RIGHE_TABELLONE = 6;
 
-/** Regole che possono essere diverse da quelle standard, con l'icona della scheda della stanza. */
-const REGOLE: { chiave: keyof Impostazioni; icona: NomeIcona; nome: string }[] = [
+/**
+ * Regole che possono essere diverse da quelle standard, con l'icona della scheda della stanza.
+ * `soloASquadre`: conta (e si mostra) solo nelle stanze a squadre.
+ */
+const REGOLE: { chiave: keyof Impostazioni; icona: NomeIcona; nome: string; soloASquadre?: true }[] = [
   { chiave: 'affittoDoppioSetCompleto', icona: 'monete', nome: 'Affitto doppio con la regione completa' },
   { chiave: 'cassaVacanza', icona: 'vacanza', nome: 'Cassa della Vacanza' },
   { chiave: 'aste', icona: 'martelletto', nome: 'Aste' },
   { chiave: 'nienteAffittoInPrigione', icona: 'ribasso', nome: 'Niente affitto dalla prigione' },
   { chiave: 'ipoteche', icona: 'banca', nome: 'Ipoteche' },
   { chiave: 'costruzioneUniforme', icona: 'uniforme', nome: 'Costruzione uniforme' },
+  { chiave: 'costruzioneDiSquadra', icona: 'casa', nome: 'Costruzione di squadra', soloASquadre: true },
   { chiave: 'timerTurno', icona: 'orologio', nome: 'Timer di turno' },
   { chiave: 'durataMassima', icona: 'coppa', nome: 'Durata massima' },
 ];
@@ -140,7 +144,9 @@ function statoStanza(s: StanzaInElenco): { testo: string; azione: string; tono: 
 }
 
 function RigaPartenza({ s, onEntra }: { s: StanzaInElenco; onEntra: () => void }): ReactNode {
-  const diverse = REGOLE.filter((r) => s.impostazioni[r.chiave] !== IMPOSTAZIONI_PREDEFINITE[r.chiave]);
+  const diverse = REGOLE.filter(
+    (r) => (!r.soloASquadre || s.impostazioni.squadre) && s.impostazioni[r.chiave] !== IMPOSTAZIONI_PREDEFINITE[r.chiave],
+  );
   const soldi = s.impostazioni.soldiIniziali !== IMPOSTAZIONI_PREDEFINITE.soldiIniziali;
   const posti = Math.max(s.giocatoriMax, s.giocatori.length);
   const stato = statoStanza(s);

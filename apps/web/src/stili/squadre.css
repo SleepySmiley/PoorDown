@@ -1,7 +1,8 @@
 /* Squadre, bot e scelta del tabellone.
    Le regole hanno due classi: stanza.css si importa per ultimo e vincerebbe sulle regole con una classe sola. */
 
-/* ---------- Binario: il numero della squadra, come sui cartelli delle partenze ---------- */
+/* ---------- Binario: il numero della squadra, come sui cartelli delle partenze ----------
+   Nel colore della squadra (--squadra, messo dal componente), lo stesso delle sue proprietà sul tabellone. */
 
 .binario {
   display: inline-grid;
@@ -11,8 +12,8 @@
   height: 26px;
   padding: 0 5px;
   border-radius: var(--r-1);
-  background: var(--cartello);
-  color: #fff;
+  background: var(--squadra, var(--cartello));
+  color: var(--su-squadra);
   font: 700 1.0625rem/1 var(--stretto);
   box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.85);
 }
@@ -54,6 +55,11 @@
 
 .squadre .squadra + .squadra {
   border-top: 1px solid var(--quadro-linea);
+}
+
+/* Una fascia nel colore della squadra lungo il bordo sinistro: lo stesso delle sue proprietà sul tabellone. */
+.squadre .squadra {
+  box-shadow: inset 4px 0 0 var(--squadra, transparent);
 }
 
 .squadra .squadra__testa {

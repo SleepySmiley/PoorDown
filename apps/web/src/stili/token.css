@@ -12,7 +12,8 @@
  * - rosso        = solo pericolo e saldi negativi;
  * - verde        = soldi in arrivo e «Accetta»;
  * - colori --g*  = solo le regioni (stemmi, testate delle schede città);
- * - colori --p*  = solo i giocatori (pedine, blocchi delle proprietà).
+ * - colori --p*  = solo i giocatori (pedine, blocchi delle proprietà);
+ * - colori --sq* = solo le squadre (numero della squadra; a squadre, i blocchi delle proprietà).
  */
 
 :root {
@@ -118,6 +119,17 @@
   --p10: #bfe86e;
   --p11: #ff6b9a;
   --p12: #c9d1db;
+
+  /* ---------- I 4 colori delle squadre ----------
+     Chiari come quelli dei giocatori (sul blocco del proprietario il testo è scuro), ma più pieni; lontani tra loro
+     anche per chi confonde il rosso e il verde, e con luminosità diverse: arancio, azzurro, giallo, viola.
+     Colorano il numero della squadra e, nelle partite a squadre, i blocchi delle proprietà. */
+  --sq1: #f2a93b;
+  --sq2: #5cb8ec;
+  --sq3: #efe05a;
+  --sq4: #d58ab9;
+  /* Testo sopra i colori delle squadre: sono tutti chiari. */
+  --su-squadra: var(--inchiostro);
 
   /* ---------- Caratteri ---------- */
   --stretto: 'Barlow Condensed', system-ui, sans-serif;

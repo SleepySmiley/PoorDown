@@ -21,6 +21,7 @@ export const REGOLE_MODIFICABILI = [
   'nienteAffittoInPrigione',
   'ipoteche',
   'costruzioneUniforme',
+  'costruzioneDiSquadra',
   'timerTurno',
   'durataMassima',
 ] as const satisfies readonly (keyof Impostazioni)[];

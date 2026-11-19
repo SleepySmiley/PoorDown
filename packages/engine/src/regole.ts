@@ -17,6 +17,7 @@ import {
   possedute,
   prezzoAcquisto,
   proprietabile,
+  puoCostruireSu,
   regioneConEdifici,
   valoreVendita,
 } from './conti';
@@ -993,6 +994,10 @@ export function azioniPossibili(stato: Stato, id: IdGiocatore): Azione[] {
     ...RILANCI.map((r): Azione => ({ tipo: 'offri', giocatore: id, importo: offerta + r })),
     ...possedute(stato, id).flatMap((casella): Azione[] =>
       (['costruisci', 'demolisci', 'ipoteca', 'riscatta', 'vendi'] as const).map((tipo) => ({ tipo, giocatore: id, casella })),
+    ),
+    // Con la costruzione di squadra si costruisce anche sulle città dei compagni (e così fanno i bot).
+    ...stato.proprieta.flatMap((p, casella): Azione[] =>
+      p?.proprietario && p.proprietario !== id && puoCostruireSu(stato, id, casella) ? [{ tipo: 'costruisci', giocatore: id, casella }] : [],
     ),
     { tipo: 'bancarotta', giocatore: id },
   ];

@@ -3,7 +3,7 @@
  * - TestataGioco: marchio, codice della stanza (apre «Invita»: link, Copia, QR), Suoni, Impostazioni, Regole e il menu «⋯»
  *   con «Torna alla home» e «Dichiara bancarotta»;
  * - PannelloGiocatori: una riga su due linee per giocatore (nome intero; saldo a palette e stati scritti),
- *   la riga di chi gioca accesa d'ambra.
+ *   la riga di chi gioca accesa d'ambra; a squadre, in fondo, la scelta dei colori delle proprietà.
  * La chat sotto è quella di Chat.tsx, richiudibile (useChatRichiudibile in colonna.ts).
  */
 
@@ -11,10 +11,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { euro, type IdGiocatore, type VistaStanza } from '@poordown/engine';
 import { CodiceQr } from '../CodiceQr';
+import { scegliColoriDiSquadra, useColoriDiSquadra } from '../rete/coloriSquadra';
 import { linkStanza, useInfoServer } from '../rete/sessione';
 import { copia } from '../ui/appunti';
 import { Chip } from '../ui/Chip';
-import { Palette, Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
+import { Interruttore, Palette, Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
 import { Finestra } from '../ui/Finestra';
 import { Icona } from '../ui/icone';
 import { Marchio } from '../ui/Marchio';
@@ -199,6 +200,28 @@ export function TestataGioco({
 }
 
 /* ---------------- Giocatori ---------------- */
+
+const SPIEGA_COLORI =
+  'Acceso: le proprietà sul tabellone hanno il colore della squadra di chi le possiede (il numero accanto alla pedina). ' +
+  'Spento: il colore della pedina di chi le possiede. Vale solo per te, in questo browser.';
+
+/**
+ * A squadre, in fondo all'elenco dei giocatori: le proprietà nel colore della squadra (acceso, il predefinito)
+ * o in quello del giocatore che le possiede. È una preferenza di chi guarda (rete/coloriSquadra.ts).
+ */
+export function ColoriDiSquadra(): ReactNode {
+  const perSquadra = useColoriDiSquadra();
+  return (
+    <div className="colori-squadra" title={SPIEGA_COLORI}>
+      <Icona nome="squadre" className="colori-squadra__icona" />
+      <p className="colori-squadra__testo">
+        <span className="colori-squadra__nome">Colori di squadra</span>
+        <span className="colori-squadra__breve">{perSquadra ? 'Proprietà nel colore della squadra' : 'Proprietà nel colore del giocatore'}</span>
+      </p>
+      <Interruttore acceso={perSquadra} etichetta="Proprietà nel colore della squadra" onCambia={scegliColoriDiSquadra} />
+    </div>
+  );
+}
 
 export interface DatiGiocatore {
   id: IdGiocatore;

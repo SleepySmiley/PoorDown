@@ -25,7 +25,10 @@ export function bonusPerPosto(soldiIniziali: number, giocatori: number): number 
   return Math.floor((soldiIniziali * quota) / 5) * 5;
 }
 
-/** Valori di una stanza nuova, come su richup, più il timer di turno e la durata massima (attivi). Le squadre partono spente. */
+/**
+ * Valori di una stanza nuova, come su richup, più il timer di turno e la durata massima (attivi).
+ * Le squadre partono spente, e con loro la costruzione di squadra.
+ */
 export const IMPOSTAZIONI_PREDEFINITE: Readonly<Impostazioni> = Object.freeze({
   giocatoriMax: 4,
   stanzaPrivata: true,
@@ -42,4 +45,5 @@ export const IMPOSTAZIONI_PREDEFINITE: Readonly<Impostazioni> = Object.freeze({
   timerTurno: true,
   durataMassima: true,
   squadre: false,
+  costruzioneDiSquadra: false,
 });

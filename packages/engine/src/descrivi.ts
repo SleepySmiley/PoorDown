@@ -216,8 +216,11 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
         : `${nome(evento.giocatore)} va in vacanza e salta il prossimo turno.`;
     case 'vendita':
       return `${nome(evento.giocatore)} vende ${casella(evento.casella)} alla banca per ${euro(evento.importo)}.`;
-    case 'costruzione':
-      return `${nome(evento.giocatore)} costruisce ${evento.livello === 5 ? 'un albergo' : 'una casa'} ${a(casella(evento.casella))} per ${euro(evento.costo)}.`;
+    case 'costruzione': {
+      // Con la costruzione di squadra la città può essere di un compagno: «… a Firenze, di Marco, per 100 €».
+      const di = evento.proprietario ? `, di ${nome(evento.proprietario)},` : '';
+      return `${nome(evento.giocatore)} costruisce ${evento.livello === 5 ? 'un albergo' : 'una casa'} ${a(casella(evento.casella))}${di} per ${euro(evento.costo)}.`;
+    }
     case 'demolizione':
       return `${nome(evento.giocatore)} vende alla banca ${evento.livello === 4 ? 'l’albergo' : 'una casa'} di ${casella(evento.casella)} per ${euro(evento.importo)}.`;
     case 'ipoteca':
