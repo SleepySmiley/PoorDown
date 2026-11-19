@@ -83,6 +83,29 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
     }
     case 'teletrasporto':
       return `${nome(evento.giocatore)} si teletrasporta ${destinazione(tab.caselle[evento.a]!)}.`;
+    case 'volo': {
+      const chi = nome(evento.giocatore);
+      const dove = destinazione(tab.caselle[evento.a]!);
+      if (evento.prezzo === 0) return `${chi} usa il Biglietto omaggio e vola ${dove}.`;
+      if (evento.incassa === null || evento.aeroporto === null) return `${chi} compra un biglietto da ${euro(evento.prezzo)} e vola ${dove}.`;
+      return `${chi} vola ${dove}: il biglietto da ${euro(evento.prezzo)} lo incassa ${nome(evento.incassa)}, che ha ${conArticolo(casella(evento.aeroporto))}.`;
+    }
+    case 'bermuda':
+      return `${nome(evento.giocatore)} sparisce nel Triangolo delle Bermuda e ricompare ${destinazione(tab.caselle[evento.a]!)}.`;
+    case 'antipodi':
+      return `${nome(evento.giocatore)} scava una buca per l’altra parte del mondo e sbuca ${destinazione(tab.caselle[evento.a]!)}.`;
+    case 'cambio_data':
+      return `${nome(evento.giocatore)} attraversa la Linea del cambio di data e guadagna un giorno: si muove ancora.`;
+    case 'sfida':
+      return `${nome(evento.da)} non vuole pagare ${euro(evento.importo)} per ${casella(evento.casella)} e sfida ${nome(evento.a)} a morra cinese.`;
+    case 'morra': {
+      const [mio, suo] = evento.segni;
+      const lento = evento.aCaso ? ` ${nome(evento.aCaso)} non sceglie in tempo e gioca a caso.` : '';
+      const segni = `Morra cinese: ${nome(evento.da)} fa ${mio}, ${nome(evento.a)} fa ${suo}.${lento}`;
+      if (evento.esito === 'vinta') return `${segni} Vince ${nome(evento.da)}: niente affitto.`;
+      if (evento.esito === 'persa') return `${segni} Vince ${nome(evento.a)}: affitto doppio, ${euro(evento.importo)}.`;
+      return `${segni} Pareggio: si paga l’affitto normale.`;
+    }
     case 'robin_hood':
       return `${nome(evento.da)} ha più contante di tutti e dà ${euro(evento.importo)} ${a(nome(evento.a))}, che ne ha meno di tutti.`;
     case 'moneta':
@@ -327,6 +350,11 @@ export function contenuto(p: Pacchetto, casella: (i: number) => string): string 
   return `${cose.slice(0, -1).join(', ')} e ${cose.at(-1)!}`;
 }
 
+/** «l’Aeroporto di Barra», «la Stazione Nord»: il nome con l'articolo femminile o eliso, come in `destinazione`. */
+function conArticolo(nome: string): string {
+  return /^[AEIOUÀÈÉÌÒÙ]/i.test(nome) ? `l’${nome}` : `la ${nome}`;
+}
+
 /** "a Napoli", "ad Aosta", "alla Stazione Nord", "all’Acquedotto", "alla casella Busta"… */
 export function destinazione(c: Casella): string {
   const vocale = /^[AEIOUÀÈÉÌÒÙ]/i.test(c.nome);
@@ -345,6 +373,9 @@ export function destinazione(c: Casella): string {
     case 'buco_nero':
     case 'supernova':
     case 'roulette':
+    case 'bermuda':
+    case 'cambio_data':
+    case 'antipodi':
       return `alla casella ${c.nome}`;
     case 'premio':
       return `al ${c.nome}`;

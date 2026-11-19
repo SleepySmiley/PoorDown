@@ -164,7 +164,9 @@ export function problemi(s: Stato): string[] {
 
   const t = s.turno;
   if (s.fase === 'in_corso') {
-    if ((t.tempo.fermoDa !== null) !== (s.asta !== null)) out.push('Orologio del turno fermo senza asta, o che scorre durante l’asta.');
+    if ((t.tempo.fermoDa !== null) !== (s.asta !== null || !!s.sfida)) {
+      out.push('Orologio del turno fermo senza asta né sfida, o che scorre durante l’asta o la sfida.');
+    }
     if (t.tempo.assenteDa != null && giocatore(s, t.giocatore)?.offlineDa === null) out.push('Grazia da scollegato per chi è collegato.');
     if (t.tempo.regalato !== t.tempo.regali.length * 60_000) out.push('Tempo regalato che non torna con i regali.');
     if (t.votazione.voti.includes(t.giocatore)) out.push('Voto di chi gioca contro sé stesso.');
@@ -230,7 +232,17 @@ export function problemi(s: Stato): string[] {
     if (sc.id >= s.prossimoScambio) out.push(`Scambio ${sc.id}: numero non ancora assegnato.`);
   }
   if (new Set(s.scambi.map((x) => x.id)).size !== s.scambi.length) out.push('Scambi con lo stesso numero.');
-  if (s.fase === 'finita' && (s.asta || s.scambi.length)) out.push('Partita finita con un’asta o scambi aperti.');
+  if (s.fase === 'finita' && (s.asta || s.sfida || s.scambi.length)) out.push('Partita finita con un’asta, una sfida o scambi aperti.');
+  if (s.sfida) {
+    const sf = s.sfida;
+    if (!tab.viaggi?.sfida) out.push('Sfida a morra su un tabellone senza sfide.');
+    if (s.asta) out.push('Sfida e asta aperte insieme.');
+    if (sf.sfidante !== t.giocatore) out.push('Sfida lanciata da chi non è di turno.');
+    if (!attivo(sf.sfidante) || !attivo(sf.proprietario) || sf.sfidante === sf.proprietario) out.push('Sfida: parti non valide.');
+    if ((sf.segno !== null) !== (sf.fase === 'morra')) out.push('Sfida: segno dello sfidante che non torna con la fase.');
+    if (sf.importo <= 0) out.push('Sfida per un affitto non positivo.');
+  }
+  if (s.turno.voloOmaggio && !tab.viaggi) out.push('Biglietto omaggio su un tabellone senza voli.');
 
   if (s.cassaVacanza < 0) out.push('Cassa della Vacanza negativa.');
   if (!s.impostazioni.cassaVacanza && s.cassaVacanza !== 0) out.push('Cassa della Vacanza piena con la regola spenta.');

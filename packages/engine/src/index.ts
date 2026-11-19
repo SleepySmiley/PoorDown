@@ -56,6 +56,7 @@ export {
   TURNI_A_TESTA,
 } from './impostazioni';
 export { finitaPerDurata, ultimoTurno } from './turni';
+export { aeroportoDelLato, biglietto, esitoMorra, MORRA_MS, SCELTA_MS, SEGNI, type Biglietto } from './viaggi';
 export { nomeCasuale, pulisciNome } from './nomi';
 export {
   GRAZIE_MAX,

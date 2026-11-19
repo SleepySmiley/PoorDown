@@ -19,6 +19,7 @@ import {
   valoreIpoteca,
 } from './conti';
 import { tabellone } from './tabelloni';
+import { fermaOrologio, riprendiOrologio } from './tempo';
 import type { Citta, Errore, Giocatore, IdGiocatore, Stato } from './tipi';
 
 /** Quanto dura un'asta, e quanto tempo resta dopo ogni offerta. */
@@ -167,7 +168,7 @@ export function apriAsta(ctx: Contesto, g: Giocatore): void {
   ctx.s.turno.acquisto = null;
   ctx.s.asta = { casella, giocatore: g.id, migliore: null, offerte: [], scadenza: ctx.adesso + ASTA_MS };
   // Durante l'asta l'orologio del turno è fermo.
-  ctx.s.turno.tempo.fermoDa ??= ctx.adesso;
+  fermaOrologio(ctx.s, ctx.adesso);
   ctx.eventi.push({ tipo: 'asta', giocatore: g.id, casella });
 }
 
@@ -209,14 +210,7 @@ export function chiudiAsta(ctx: Contesto): void {
   const asta = s.asta;
   if (!asta) return;
   s.asta = null;
-  // L'orologio del turno riparte da dove si era fermato, e con lui la grazia di chi gioca scollegato.
-  const tempo = s.turno.tempo;
-  if (tempo.fermoDa !== null) {
-    const pausa = Math.max(0, ctx.adesso - tempo.fermoDa);
-    tempo.inizio += pausa;
-    if (tempo.assenteDa != null) tempo.assenteDa += pausa;
-    tempo.fermoDa = null;
-  }
+  riprendiOrologio(s, ctx.adesso);
   const migliore = asta.migliore;
   const vincitore = migliore ? giocatore(s, migliore.giocatore) : undefined;
   const p = s.proprieta[asta.casella]!;

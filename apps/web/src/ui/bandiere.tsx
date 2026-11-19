@@ -8,6 +8,7 @@
 
 import type { ReactNode } from 'react';
 import type { Bandiera } from '@poordown/engine';
+import { DisegnoMondo } from './bandiere-mondo';
 import { DisegnoPianeta } from './bandiere-pianeti';
 import { DisegnoRegione } from './bandiere-regioni';
 
@@ -73,8 +74,9 @@ function Portogallo(): ReactNode {
 }
 
 /**
- * Il disegno di una bandiera, da mettere dentro un <svg viewBox="0 0 30 20">: i paesi qui, le regioni italiane
- * in bandiere-regioni.tsx, i pianeti del Sistema solare in bandiere-pianeti.tsx. `id` rende unici nella pagina i ritagli delle bandiere che ne usano.
+ * Il disegno di una bandiera, da mettere dentro un <svg viewBox="0 0 30 20">: i paesi europei qui, quelli del Giro
+ * del mondo in bandiere-mondo.tsx, le regioni italiane in bandiere-regioni.tsx, i pianeti del Sistema solare in
+ * bandiere-pianeti.tsx. `id` rende unici nella pagina i ritagli delle bandiere che ne usano.
  */
 export function DisegnoBandiera({ paese, id }: { paese: Bandiera; id: string }): ReactNode {
   switch (paese) {
@@ -109,6 +111,18 @@ export function DisegnoBandiera({ paese, id }: { paese: Bandiera; id: string }):
     case 'nettuno':
     case 'plutone':
       return <DisegnoPianeta pianeta={paese} id={id} />;
+    case 'NR':
+    case 'NO':
+    case 'CA':
+    case 'US':
+    case 'AU':
+    case 'TH':
+    case 'BO':
+    case 'TR':
+    case 'RU':
+    case 'AR':
+    case 'VA':
+      return <DisegnoMondo paese={paese} id={id} />;
     default:
       return <DisegnoRegione regione={paese} id={id} />;
   }

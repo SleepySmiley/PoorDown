@@ -35,6 +35,7 @@ export function verificaRegalo(stato: Stato, g: Giocatore): Errore | null {
   const t = stato.turno.tempo;
   if (stato.turno.giocatore === g.id) return errore('non_tuo_turno', 'Non puoi regalare tempo a te stesso.');
   if (stato.asta) return errore('asta_in_corso', 'Durante l’asta l’orologio è fermo: non serve regalare tempo.');
+  if (stato.sfida) return errore('sfida_in_corso', 'Durante la sfida l’orologio è fermo: non serve regalare tempo.');
   if (!turnoConLimite(stato)) return errore('timer_spento', 'In questa partita il timer di turno non è attivo.');
   if (t.regali.includes(g.id)) return errore('gia_regalato', 'In questo turno hai già regalato del tempo.');
   if (t.regalato + REGALO_MS > REGALI_MAX_MS) {

@@ -7,6 +7,7 @@ import {
   GIOCATORI_MAX,
   GIOCATORI_MIN,
   NOTA_MAX,
+  SEGNI,
   SOLDI_INIZIALI_POSSIBILI,
   TABELLONI,
   type Attivita,
@@ -14,6 +15,7 @@ import {
   type Mossa,
   type NomeMazzo,
   type Pacchetto,
+  type Segno,
 } from '@poordown/engine';
 
 type Oggetto = Record<string, unknown>;
@@ -110,7 +112,15 @@ export function leggiMossa(dati: unknown): Mossa | null {
     case 'bancarotta':
     case 'chiedi_tempo':
     case 'regala_tempo':
+    case 'paga_affitto':
       return { tipo };
+    case 'sfida':
+    case 'morra': {
+      // Senza segno vale a caso; un segno sconosciuto non passa.
+      const segno = o?.segno;
+      if (segno === undefined) return { tipo };
+      return SEGNI.includes(segno as Segno) ? { tipo, segno: segno as Segno } : null;
+    }
     case 'vota': {
       const favorevole = booleano(dati, 'favorevole');
       return favorevole === null ? null : { tipo, favorevole };
@@ -124,7 +134,8 @@ export function leggiMossa(dati: unknown): Mossa | null {
     case 'costruisci':
     case 'demolisci':
     case 'ipoteca':
-    case 'riscatta': {
+    case 'riscatta':
+    case 'vola': {
       const casella = intero(dati, 'casella');
       return casella === null ? null : { tipo, casella };
     }

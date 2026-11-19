@@ -1,6 +1,6 @@
 /*
  * I bot: giocatori automatici che occupano i posti liberi. Docs/analisi/02-lobby-impostazioni.md §8.
- * Comprano, costruiscono, offrono alle aste e rispondono agli scambi. Ne propongono solo uno, ogni tanto: comprare
+ * Comprano, costruiscono, offrono alle aste e rispondono agli scambi; sul Giro del mondo volano e giocano a morra. Ne propongono solo uno, ogni tanto: comprare
  * l'ultima città che manca a una loro regione, pagandola bene. In chat non scrivono.
  *
  * `mossaBot` guarda la partita e dice la prossima azione del bot, oppure `null` se per ora non ha niente da fare.
@@ -30,7 +30,8 @@ import { azioniPossibili, verifica } from './regole';
 import { problemiScambio, type BozzaScambio } from './scambi';
 import { tabellone } from './tabelloni';
 import { durataEvento } from './tempi';
-import type { Azione, Citta, Evento, Giocatore, IdGiocatore, Pacchetto, Scambio, Stato } from './tipi';
+import type { Azione, Citta, Evento, Giocatore, IdGiocatore, Pacchetto, Scambio, Sfida, Stato } from './tipi';
+import { biglietto } from './viaggi';
 
 /* ------------------------------------------------------------------ */
 /* Valutazioni                                                         */
@@ -295,6 +296,92 @@ function propostaBot(s: Stato, g: Giocatore, scorta: number): Azione | null {
   return propostaCompleta(s, g, disponibili) ?? propostaAvvicina(s, g, disponibili);
 }
 
+/* ------------------------------------------------------------------ */
+/* Giro del mondo: voli e sfide                                        */
+/* ------------------------------------------------------------------ */
+
+/** Quanto pesa per il bot finire in prigione, a occhio: un turno perso e la cauzione. */
+const COSTO_PRIGIONE = 60;
+/** Quanto vale muoversi ancora (Linea del cambio di data), a occhio. */
+const VALORE_RILANCIO = 30;
+/** Il volo deve rendere almeno tanto più del tiro dei dadi, se no il bot tira: il biglietto deve valere la spesa. */
+const MARGINE_VOLO = 40;
+
+/**
+ * Quanto vale per il bot fermarsi su `casella`, a occhio, con `contante` in tasca: un affitto da pagare conta in
+ * meno, una proprietà libera che gli conviene comprare conta quello che vale più del prezzo, una tassa conta in meno.
+ */
+function valoreArrivo(s: Stato, g: Giocatore, casella: number, contante: number, scorta: number, rimbalzo = true): number {
+  const tab = tabellone(s.mappa);
+  const n = tab.caselle.length;
+  const c = tab.caselle[casella]!;
+  switch (c.tipo) {
+    case 'citta':
+    case 'stazione':
+    case 'servizio': {
+      const p = s.proprieta[casella]!;
+      if (p.proprietario === null) {
+        const prezzo = prezzoAcquisto(s, casella);
+        const valore = valoreCasella(s, g.id, casella);
+        const completa = valore >= prezzo * 2;
+        return contante - prezzo >= (completa ? 0 : scorta) ? Math.max(0, valore - prezzo) : 0;
+      }
+      return alleati(s, p.proprietario, g.id) ? 0 : -affitto(s, casella, 7);
+    }
+    case 'tassa':
+      return -(c.tassa.tipo === 'fissa' ? c.tassa.valore : Math.round((Math.max(0, contante) * c.tassa.valore) / 100));
+    case 'premio':
+      return c.importo;
+    case 'vai_in_prigione':
+      return -COSTO_PRIGIONE;
+    case 'cambio_data':
+      return VALORE_RILANCIO;
+    case 'antipodi':
+      // Dove si sbuca, una volta sola: la casella di fronte non è un'altra buca.
+      return rimbalzo ? valoreArrivo(s, g, (casella + n / 2) % n, contante, scorta, false) : 0;
+    case 'vacanza':
+      return s.impostazioni.cassaVacanza ? s.cassaVacanza : 0;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Il volo del bot, se conviene più dei dadi: confronta il tiro medio (con il premio della Partenza, che in volo non
+ * si prende) con la meta migliore meno il biglietto. Così vola per comprare la città che gli completa un paese,
+ * o per scappare da una fila di alberghi; altrimenti tira.
+ */
+function voloBot(s: Stato, g: Giocatore, scorta: number): Azione | null {
+  const tab = tabellone(s.mappa);
+  if (!tab.viaggi) return null;
+  const n = tab.caselle.length;
+  let tiro = 0;
+  for (let d1 = 1; d1 <= 6; d1++) {
+    for (let d2 = 1; d2 <= 6; d2++) {
+      const passi = d1 + d2;
+      const partenza = g.posizione + passi >= n ? tab.partenza.passaggio : 0;
+      tiro += (valoreArrivo(s, g, (g.posizione + passi) % n, g.saldo, scorta) + partenza) / 36;
+    }
+  }
+  let migliore: { azione: Azione; valore: number } | null = null;
+  for (let casella = 0; casella < n; casella++) {
+    const azione: Azione = { tipo: 'vola', giocatore: g.id, casella };
+    if (!ok(s, azione)) continue;
+    const prezzo = biglietto(s, g.id, casella)!.prezzo;
+    const valore = valoreArrivo(s, g, casella, g.saldo - prezzo, scorta) - prezzo;
+    if (!migliore || valore > migliore.valore) migliore = { azione, valore };
+  }
+  return migliore && migliore.valore > tiro + MARGINE_VOLO ? migliore.azione : null;
+}
+
+/**
+ * Sulla proprietà di un avversario: il bot lo sfida a morra quando l'affitto fa male (almeno 100 € e un terzo del suo
+ * contante), altrimenti paga. Il segno lo lascia al caso: nella morra nessun segno è migliore degli altri.
+ */
+function sceltaSfida(g: Giocatore, sf: Sfida): Azione {
+  return sf.importo >= Math.max(100, g.saldo / 3) ? { tipo: 'sfida', giocatore: g.id } : { tipo: 'paga_affitto', giocatore: g.id };
+}
+
 /** Cosa la stanza permette al bot in questo momento. */
 export interface OpzioniBot {
   /** Può proporre uno scambio: la stanza lo concede di rado, perché non insista con le stesse proposte. */
@@ -349,12 +436,16 @@ function mossaDelTurno(s: Stato, g: Giocatore, opzioni: OpzioniBot): Azione {
     if (proposta) return proposta;
   }
 
+  // Giro del mondo: al posto dei dadi, il volo, quando conviene.
+  const volo = voloBot(s, g, scorta);
+  if (volo) return volo;
+
   return di('lancia')[0] ?? di('fine_turno')[0] ?? possibili.find((a) => a.tipo !== 'bancarotta') ?? possibili[0]!;
 }
 
 /**
  * La prossima azione del bot `id`, oppure `null` se adesso non ha niente da fare.
- * In ordine: offerte all'asta, risposte agli scambi, ritiro delle sue proposte non più valide, voto (segue chi ha già
+ * In ordine: offerte all'asta, sfida a morra, risposte agli scambi, ritiro delle sue proposte non più valide, voto (segue chi ha già
  * votato), tempo a chi lo chiede, il suo turno.
  */
 export function mossaBot(s: Stato, id: IdGiocatore, opzioni: OpzioniBot = {}): Azione | null {
@@ -366,6 +457,11 @@ export function mossaBot(s: Stato, id: IdGiocatore, opzioni: OpzioniBot = {}): A
     const offerta = offertaAsta(s, g);
     if (offerta) return offerta;
   }
+
+  // La sfida a morra: lo sfidante decide se pagare, il proprietario risponde con un segno a caso.
+  const sf = s.sfida;
+  if (sf?.fase === 'scelta' && sf.sfidante === id) return sceltaSfida(g, sf);
+  if (sf?.fase === 'morra' && sf.proprietario === id) return { tipo: 'morra', giocatore: id };
 
   const proposta = s.scambi.find((x) => x.a === id);
   if (proposta) return rispostaScambio(s, g, proposta);
@@ -386,7 +482,7 @@ export function mossaBot(s: Stato, id: IdGiocatore, opzioni: OpzioniBot = {}): A
     if (t.tempo.richiesta && ok(s, regalo)) return regalo;
     return null;
   }
-  if (s.asta) return null;
+  if (s.asta || s.sfida) return null;
   return mossaDelTurno(s, g, opzioni);
 }
 

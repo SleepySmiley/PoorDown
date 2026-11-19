@@ -21,12 +21,12 @@ export interface CasellaVista {
   importo?: string;
   /** Regione 1–10 (l'indice del motore più uno), solo per le città: `tab.regioni[gruppo - 1]`. */
   gruppo?: number;
-  /** Colore dello stemma della regione (le variabili --g1…--g10), solo per le città. */
+  /** Colore dello stemma della regione (le variabili --g1…--g11), solo per le città. */
   tinta?: number;
   /** Angoli: 0 Partenza, 1 Prigione, 2 Vacanza, 3 Vai in prigione (per gli arrotondamenti e la disposizione). */
   angolo?: number;
   icona?: NomeIcona;
-  /** Le caselle folli del Sistema solare (fionda, wormhole, buco nero, supernova, roulette). */
+  /** Le caselle folli del Sistema solare (fionda, wormhole, buco nero, supernova, roulette) e del Giro del mondo. */
   speciale?: Speciale['tipo'];
 }
 
@@ -37,6 +37,9 @@ const ICONE_SPECIALI: Record<Speciale['tipo'], NomeIcona> = {
   buco_nero: 'buconero',
   supernova: 'stella',
   roulette: 'ruota',
+  bermuda: 'spirale',
+  cambio_data: 'orologio',
+  antipodi: 'pianeta',
 };
 
 const ICONE_SERVIZI: NomeIcona[] = ['fulmine', 'fiamma', 'goccia'];
@@ -76,6 +79,9 @@ function vista(tab: Tabellone, c: Casella, n: number): CasellaVista {
     case 'buco_nero':
     case 'supernova':
     case 'roulette':
+    case 'bermuda':
+    case 'cambio_data':
+    case 'antipodi':
       // Il Buco nero dice quanto risucchia; il malloppo della Supernova cambia e lo aggiunge il tabellone.
       return {
         ...base,

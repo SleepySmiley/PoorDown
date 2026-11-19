@@ -52,6 +52,16 @@ import { tabellone } from './tabelloni';
 import { ASSENZA_MS, GRAZIA_DEBITO_MS, scadenzaTurno, TURNI_AUTOMATICI_MAX } from './tempo';
 import { chiudiTurno, elimina } from './turni';
 import type { Azione, Caso, Effetto, Errore, Esito, Evento, Giocatore, IdGiocatore, NomeMazzo, Stato } from './tipi';
+import {
+  apriSfida,
+  biglietto,
+  chiudiSfida,
+  giocaMorra,
+  lanciaSfida,
+  scadenzaSfida,
+  verificaMeta,
+  verificaSfida,
+} from './viaggi';
 
 export { TENTATIVI_PRIGIONE } from './turni';
 const DOPPI_PER_LA_PRIGIONE = 3;
@@ -85,9 +95,16 @@ export function verifica(stato: Stato, azione: Azione): Errore | null {
     case 'rifiuta':
     case 'annulla':
       return verificaRisposta(stato, azione);
+    // La sfida a morra: lo sfidante (di turno) decide, il proprietario (fuori turno) risponde.
+    case 'paga_affitto':
+      return verificaSfida(stato, g, azione.tipo);
+    case 'sfida':
+    case 'morra':
+      return verificaSfida(stato, g, azione.tipo, azione.segno);
     default:
       if (stato.turno.giocatore !== g.id) return errore('non_tuo_turno', 'Non è il tuo turno.');
       if (stato.asta) return errore('asta_in_corso', 'Aspetta la fine dell’asta.');
+      if (stato.sfida) return errore('sfida_in_corso', 'Prima paga l’affitto o finisci la sfida a morra.');
       return verificaNelTurno(stato, g, azione);
   }
 }
@@ -105,6 +122,15 @@ function verificaNelTurno(stato: Stato, g: Giocatore, azione: Azione): Errore | 
       if (daDecidere) return decidi;
       if (g.saldo < 0) return errore('saldo_negativo', SALDO_NEGATIVO);
       return null;
+
+    // Il volo prende il posto del tiro: si può quando si potrebbe tirare, ma non dalla prigione.
+    case 'vola':
+      if (!tab.viaggi) return errore('niente_voli', 'Su questo tabellone non si vola.');
+      if (t.fase === 'prigione') return errore('niente_voli', 'Dalla prigione non si vola: prima devi uscire.');
+      if (t.fase === 'dopo_lancio' && !t.rilancio) return errore('gia_lanciato', 'In questo turno ti sei già mosso.');
+      if (daDecidere) return decidi;
+      if (g.saldo < 0) return errore('saldo_negativo', SALDO_NEGATIVO);
+      return verificaMeta(stato, g, azione.casella);
 
     case 'compra': {
       const n = acquistoInSospeso(stato);
@@ -168,6 +194,9 @@ function verificaNelTurno(stato: Stato, g: Giocatore, azione: Azione): Errore | 
     case 'annulla':
     case 'regala_tempo':
     case 'vota':
+    case 'paga_affitto':
+    case 'sfida':
+    case 'morra':
       return null;
   }
 }
@@ -263,6 +292,18 @@ export function applica(stato: Stato, azione: Azione, caso: Caso, adesso = 0): E
     case 'vota':
       vota(ctx, g, azione.favorevole);
       break;
+    case 'vola':
+      vola(ctx, g, azione.casella);
+      break;
+    case 'paga_affitto':
+      chiudiSfida(ctx, s.sfida!.importo);
+      break;
+    case 'sfida':
+      lanciaSfida(ctx, azione.segno);
+      break;
+    case 'morra':
+      giocaMorra(ctx, azione.segno);
+      break;
   }
   ritocca(ctx);
   return { ok: true, stato: s, eventi: ctx.eventi };
@@ -285,6 +326,7 @@ export function espelli(stato: Stato, id: IdGiocatore, caso: Caso, adesso: numbe
 
 type Scadenza =
   | { tipo: 'asta'; quando: number }
+  | { tipo: 'sfida'; quando: number }
   | { tipo: 'turno'; quando: number }
   | { tipo: 'voto'; quando: number }
   | { tipo: 'assenza'; quando: number; giocatore: IdGiocatore };
@@ -294,6 +336,7 @@ function scadenze(s: Stato): Scadenza[] {
   if (s.fase !== 'in_corso') return [];
   const lista: Scadenza[] = [];
   if (s.asta) lista.push({ tipo: 'asta', quando: s.asta.scadenza });
+  if (s.sfida) lista.push({ tipo: 'sfida', quando: s.sfida.scadenza });
   const turno = scadenzaTurno(s);
   if (turno !== null) lista.push({ tipo: 'turno', quando: turno });
   if (s.turno.votazione.scadenza !== null) lista.push({ tipo: 'voto', quando: s.turno.votazione.scadenza });
@@ -330,6 +373,9 @@ export function applicaScadenze(stato: Stato, caso: Caso, adesso: number): Esito
       case 'asta':
         chiudiAsta(ctx);
         break;
+      case 'sfida':
+        scadenzaSfida(ctx);
+        break;
       case 'assenza':
         elimina(ctx, giocatore(ctx.s, prima.giocatore)!, 'assenza');
         break;
@@ -360,7 +406,8 @@ function mossaAutomatica(s: Stato, id: IdGiocatore): Azione {
 /**
  * Il tempo del turno è finito: il gioco tira i dadi e chiude il turno al posto di chi gioca.
  * In debito fa bancarotta. Con il timer, chi ha già avuto due turni di fila finiti così esce dalla partita.
- * Se il gioco apre un'asta, il turno riprende (e finisce) quando l'asta si chiude.
+ * Se il gioco apre un'asta (o finisce sulla proprietà di un avversario, con la sfida a morra), il turno riprende
+ * (e finisce) quando l'asta o la sfida si chiude.
  */
 function giocaInAutomatico(ctx: Contesto): void {
   const id = ctx.s.turno.giocatore;
@@ -377,7 +424,7 @@ function giocaInAutomatico(ctx: Contesto): void {
   }
   for (let i = 0; i < 10; i++) {
     const s = ctx.s;
-    if (s.fase !== 'in_corso' || s.turno.giocatore !== id || s.turno.numero !== numero || s.asta) return;
+    if (s.fase !== 'in_corso' || s.turno.giocatore !== id || s.turno.numero !== numero || s.asta || s.sfida) return;
     const io = giocatore(s, id)!;
     if (io.saldo < 0) {
       elimina(ctx, io, 'bancarotta', true);
@@ -390,7 +437,7 @@ function giocaInAutomatico(ctx: Contesto): void {
   }
   // Non dovrebbe succedere: se il turno resta bloccato, il giocatore esce e la partita va avanti.
   const s = ctx.s;
-  if (s.fase === 'in_corso' && s.turno.numero === numero && !s.asta) elimina(ctx, giocatore(s, id)!, 'tempo');
+  if (s.fase === 'in_corso' && s.turno.numero === numero && !s.asta && !s.sfida) elimina(ctx, giocatore(s, id)!, 'tempo');
 }
 
 /* ------------------------- Dadi e movimento ------------------------ */
@@ -404,6 +451,8 @@ function lancia(ctx: Contesto, g: Giocatore): void {
   t.acquisto = null;
   t.rilancio = false;
   t.fase = 'dopo_lancio';
+  // Chi aveva il Biglietto omaggio e tira i dadi invece di volare, lo perde.
+  delete t.voloOmaggio;
   if (doppio) ctx.s.statistiche.doppi++;
   // Con le regole folli, il dado cosmico rotola insieme ai due dadi.
   const cosmico = tiraDadoCosmico(ctx);
@@ -429,6 +478,26 @@ function lancia(ctx: Contesto, g: Giocatore): void {
       if (doppio && !ctx.turnoFinito) t.rilancio = true;
     }
   }
+  if (ctx.turnoFinito) chiudiTurno(ctx);
+}
+
+/**
+ * Il volo del Giro del mondo, al posto del tiro: si paga il biglietto all'aeroporto del lato (o alla banca), la pedina
+ * vola sulla meta senza passare dalla Partenza e la casella d'arrivo fa effetto. Niente dadi, quindi niente doppio.
+ */
+function vola(ctx: Contesto, g: Giocatore, casella: number): void {
+  const t = ctx.s.turno;
+  const b = biglietto(ctx.s, g.id, casella)!;
+  t.dadi = null;
+  t.acquisto = null;
+  t.rilancio = false;
+  t.fase = 'dopo_lancio';
+  delete t.voloOmaggio;
+  ctx.eventi.push({ tipo: 'volo', giocatore: g.id, da: g.posizione, a: casella, prezzo: b.prezzo, aeroporto: b.aeroporto, incassa: b.incassa });
+  if (b.incassa) paga(ctx, g, b.incassa, b.prezzo);
+  else pagaBanca(ctx, g, b.prezzo, true);
+  g.posizione = casella;
+  arriva(ctx, g);
   if (ctx.turnoFinito) chiudiTurno(ctx);
 }
 
@@ -543,8 +612,9 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       }
       // Sulle proprie caselle, e a squadre su quelle dei compagni, non si paga.
       if (alleati(s, p.proprietario, g.id)) return;
+      // Senza dadi (si è arrivati in volo) i servizi contano 7, il tiro più probabile.
       const dadi = s.turno.dadi;
-      let importo = affitto(s, casella, dadi ? dadi[0] + dadi[1] : 0);
+      let importo = affitto(s, casella, dadi ? dadi[0] + dadi[1] : 7);
       if (importo <= 0) return;
       // Scudo (dado cosmico): chi gioca non paga affitti in questo tiro.
       if (s.cosmo?.dado === 'scudo' && g.id === s.turno.giocatore) {
@@ -559,6 +629,11 @@ function arriva(ctx: Contesto, g: Giocatore): void {
         ctx.eventi.push({ tipo: 'quantico', giocatore: g.id, casella, faccia, fattore });
         importo = Math.round(importo * fattore);
         if (importo <= 0) return;
+      }
+      // Giro del mondo: chi gioca può pagare o sfidare il proprietario a morra cinese.
+      if (tab.viaggi?.sfida && g.id === s.turno.giocatore) {
+        apriSfida(ctx, g, p.proprietario, casella, importo);
+        return;
       }
       ctx.eventi.push({ tipo: 'affitto', da: g.id, a: p.proprietario, casella, importo });
       paga(ctx, g, p.proprietario, importo);
@@ -645,6 +720,28 @@ function arriva(ctx: Contesto, g: Giocatore): void {
       eseguiEffetto(ctx, g, uscito.effetto, 'cartolina');
       return;
     }
+    case 'bermuda': {
+      // Si sparisce e si ricompare su una casella a caso, mai su un altro Triangolo: niente catene infinite.
+      const mete = tab.caselle.flatMap((x, i) => (x.tipo === 'bermuda' ? [] : [i]));
+      const a = mete[ctx.caso.intero(mete.length)]!;
+      ctx.eventi.push({ tipo: 'bermuda', giocatore: g.id, da: casella, a });
+      g.posizione = a;
+      arriva(ctx, g);
+      return;
+    }
+    case 'antipodi': {
+      // Si sbuca dall'altra parte del mondo: il lato opposto del tabellone, senza passare dalla Partenza.
+      const a = (casella + tab.caselle.length / 2) % tab.caselle.length;
+      ctx.eventi.push({ tipo: 'antipodi', giocatore: g.id, da: casella, a });
+      g.posizione = a;
+      arriva(ctx, g);
+      return;
+    }
+    case 'cambio_data':
+      // Si guadagna un giorno: ci si muove ancora (dadi o volo), come dopo un doppio.
+      ctx.eventi.push({ tipo: 'cambio_data', giocatore: g.id });
+      if (!ctx.turnoFinito) s.turno.rilancio = true;
+      return;
     case 'partenza':
     case 'prigione':
       return;
@@ -823,6 +920,12 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
       s.cosmo.verso = -1;
       ctx.eventi.push({ tipo: 'gravita_invertita', giocatore: g.id });
       return;
+    case 'volo_omaggio':
+      // Ci si muove ancora; se si vola, il biglietto è gratis (vale fino alla fine del turno).
+      if (ctx.turnoFinito || g.id !== s.turno.giocatore) return;
+      s.turno.rilancio = true;
+      s.turno.voloOmaggio = true;
+      return;
   }
 }
 
@@ -847,8 +950,8 @@ function vendi(ctx: Contesto, g: Giocatore, casella: number): void {
 /* ---------------------------- Aiuti -------------------------------- */
 
 /**
- * Le azioni che il giocatore può fare adesso. Per l'asta propone i rilanci dei pulsanti;
- * gli scambi non ci sono, perché il loro contenuto lo sceglie il giocatore.
+ * Le azioni che il giocatore può fare adesso. Per l'asta propone i rilanci dei pulsanti; la sfida e la morra
+ * sono senza segno (a caso). Non ci sono gli scambi e i voli, perché il contenuto e la meta li sceglie il giocatore.
  */
 export function azioniPossibili(stato: Stato, id: IdGiocatore): Azione[] {
   const offerta = stato.asta?.migliore?.importo ?? 0;
@@ -859,6 +962,9 @@ export function azioniPossibili(stato: Stato, id: IdGiocatore): Azione[] {
     { tipo: 'fine_turno', giocatore: id },
     { tipo: 'paga_cauzione', giocatore: id },
     { tipo: 'usa_grazia', giocatore: id },
+    { tipo: 'paga_affitto', giocatore: id },
+    { tipo: 'sfida', giocatore: id },
+    { tipo: 'morra', giocatore: id },
     ...RILANCI.map((r): Azione => ({ tipo: 'offri', giocatore: id, importo: offerta + r })),
     ...possedute(stato, id).flatMap((casella): Azione[] =>
       (['costruisci', 'demolisci', 'ipoteca', 'riscatta', 'vendi'] as const).map((tipo) => ({ tipo, giocatore: id, casella })),

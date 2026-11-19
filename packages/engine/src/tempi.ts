@@ -28,6 +28,17 @@ export const TEMPI = {
   prigione: 1150,
   /** Il teletrasporto delle carte folli: la pedina sparisce in un lampo e ricompare sulla casella d'arrivo. */
   teletrasporto: 950,
+  /* Giro del mondo. */
+  /** Il volo: la pedina decolla, vola ad arco sopra il tabellone con l'aereo e atterra sulla meta. */
+  volo: 1400,
+  /** Il Triangolo delle Bermuda: la pedina gira in un vortice, sparisce e ricompare altrove. */
+  bermuda: 1300,
+  /** La Buca per l'altra parte del mondo: la pedina sprofonda e sbuca sul lato opposto. */
+  antipodi: 1100,
+  /** La Linea del cambio di data: il calendario gira di un giorno. */
+  cambioData: 700,
+  /** La morra cinese: le due mani battono tre volte («sasso, carta, forbici!») e si aprono. */
+  morra: 1800,
   /* Regole folli del Sistema solare. */
   /** Inizio di un giro: il riquadro dell'evento cosmico entra, si legge, poi si rimpicciolisce. */
   cosmo: 2600,
@@ -149,6 +160,16 @@ export function durataEvento(e: Evento, caselle: number): number {
       return TEMPI.prigione;
     case 'teletrasporto':
       return TEMPI.teletrasporto;
+    case 'volo':
+      return TEMPI.volo;
+    case 'bermuda':
+      return TEMPI.bermuda;
+    case 'antipodi':
+      return TEMPI.antipodi;
+    case 'cambio_data':
+      return TEMPI.cambioData;
+    case 'morra':
+      return TEMPI.morra;
     case 'cosmo':
       return TEMPI.cosmo;
     case 'quantico':

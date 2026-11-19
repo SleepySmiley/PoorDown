@@ -5,7 +5,7 @@
 
 export type IdGiocatore = string;
 /** I tabelloni: vedi docs/identita/tabellone-e-carte.md e docs/identita/tabelloni-alternativi.md. */
-export type IdMappa = 'classica' | 'europa' | 'grandi_aree' | 'fortuna' | 'sistema_solare';
+export type IdMappa = 'classica' | 'europa' | 'grandi_aree' | 'fortuna' | 'sistema_solare' | 'giro_del_mondo';
 export type NomeMazzo = 'busta' | 'cartolina';
 
 /* ------------------------------------------------------------------ */
@@ -99,9 +99,13 @@ export interface Angolo extends CasellaBase {
  * - `buco_nero`: risucchia una parte del contante nel malloppo (`Cosmo.malloppo`);
  * - `supernova`: chi ci si ferma tira il dado della Supernova e prende il malloppo moltiplicato (`Follie.supernova`);
  * - `roulette`: gira la Roulette cosmica (`Follie.roulette`).
+ * E quelle del Giro del mondo:
+ * - `bermuda`: il Triangolo delle Bermuda, si sparisce e si ricompare su una casella a caso;
+ * - `cambio_data`: la Linea del cambio di data, si guadagna un giorno e si tira ancora;
+ * - `antipodi`: la Buca per l'altra parte del mondo, si sbuca sul lato opposto del tabellone.
  */
 export interface Speciale extends CasellaBase {
-  tipo: 'fionda' | 'wormhole' | 'buco_nero' | 'supernova' | 'roulette';
+  tipo: 'fionda' | 'wormhole' | 'buco_nero' | 'supernova' | 'roulette' | 'bermuda' | 'cambio_data' | 'antipodi';
 }
 
 export type Proprietabile = Citta | Stazione | Servizio;
@@ -112,7 +116,7 @@ export interface Regione {
   nome: string;
   /** Tre lettere per lo stemma (es. "TOS"). */
   sigla: string;
-  /** Colore dello stemma, 1–10 (le variabili --g1…--g10). Di solito l'indice della regione più uno. */
+  /** Colore dello stemma, 1–11 (le variabili --g1…--g11). Di solito l'indice della regione più uno. */
   colore: number;
   /** Al posto dello stemma, la bandiera del paese o della regione del gruppo. */
   bandiera?: Bandiera;
@@ -156,11 +160,27 @@ export type BandieraPianeta =
   | 'nettuno'
   | 'plutone';
 
+/** I paesi del Giro del mondo, con il codice ISO (ui/bandiere-mondo.tsx). */
+export type BandieraMondo = 'NR' | 'NO' | 'CA' | 'US' | 'AU' | 'TH' | 'BO' | 'TR' | 'RU' | 'AR' | 'VA';
+
 /**
- * Le bandiere disegnate nel browser (ui/bandiere.tsx): i paesi con il codice ISO, poi le regioni italiane,
- * poi i pianeti del Sistema solare.
+ * Le bandiere disegnate nel browser (ui/bandiere.tsx): i paesi europei con il codice ISO, quelli del Giro del mondo,
+ * poi le regioni italiane, poi i pianeti del Sistema solare.
  */
-export type Bandiera = 'IE' | 'CH' | 'AT' | 'GR' | 'PT' | 'NL' | 'PL' | 'ES' | 'FR' | 'DE' | BandieraRegione | BandieraPianeta;
+export type Bandiera =
+  | 'IE'
+  | 'CH'
+  | 'AT'
+  | 'GR'
+  | 'PT'
+  | 'NL'
+  | 'PL'
+  | 'ES'
+  | 'FR'
+  | 'DE'
+  | BandieraMondo
+  | BandieraRegione
+  | BandieraPianeta;
 
 export type Effetto =
   /** Positivo: la banca paga. Negativo: si paga la banca. */
@@ -197,7 +217,9 @@ export type Effetto =
   /** Si perde metà del contante, al massimo `massimo` (Roulette cosmica). */
   | { tipo: 'meta_contante'; massimo: number }
   /** Gravità invertita: fino alla fine del giro tutti tirano i dadi e camminano al contrario. */
-  | { tipo: 'inverti' };
+  | { tipo: 'inverti' }
+  /** Biglietto omaggio (Giro del mondo): si muove ancora, e se vola non paga il biglietto. */
+  | { tipo: 'volo_omaggio' };
 
 /** Gli eventi cosmici del Sistema solare: uno per giro, dal secondo giro. */
 export type EventoCosmico = 'quiete' | 'allineamento' | 'eclissi' | 'tempesta' | 'meteoriti' | 'gravita' | 'collisione';
@@ -275,6 +297,21 @@ export interface Carta {
   effetto: Effetto;
 }
 
+/**
+ * Le regole del Giro del mondo: il biglietto aereo e la sfida a morra cinese.
+ * Il volo parte dall'aeroporto del lato dove si trova la pedina: se è di un avversario il biglietto lo incassa lui,
+ * se è proprio (o di un compagno) costa la metà, altrimenti va alla banca.
+ */
+export interface Viaggi {
+  /**
+   * Il prezzo del biglietto per la distanza, in caselle contate in avanti: vale la prima fascia con `fino` almeno
+   * uguale alla distanza. L'ultima arriva fino al giro intero.
+   */
+  fasce: readonly { fino: number; prezzo: number }[];
+  /** Chi cade sulla proprietà di un avversario può sfidarlo a morra cinese invece di pagare. */
+  sfida: boolean;
+}
+
 export interface Tabellone {
   id: IdMappa;
   nome: string;
@@ -293,6 +330,8 @@ export interface Tabellone {
   mazzi: Readonly<Record<NomeMazzo, readonly Carta[]>>;
   /** Le regole folli (Sistema solare): affitto quantistico, Partenza a caso, eventi cosmici, mercato, caselle speciali. */
   follie?: Follie;
+  /** Il biglietto aereo e la sfida a morra cinese (Giro del mondo). */
+  viaggi?: Viaggi;
 }
 
 /* ------------------------------------------------------------------ */
@@ -417,6 +456,8 @@ export interface Turno {
   rilancio: boolean;
   /** Casella libera su cui si è fermato e che può comprare. */
   acquisto: number | null;
+  /** Ha pescato il Biglietto omaggio (Giro del mondo): il prossimo volo di questo turno è gratis. */
+  voloOmaggio?: true;
   tempo: TempoTurno;
   votazione: Votazione;
 }
@@ -436,6 +477,31 @@ export interface Asta {
   /** Ultime offerte, dalla più recente. */
   offerte: Offerta[];
   /** Quando finisce, in millisecondi dell'orologio del server. Ogni offerta la sposta più avanti. */
+  scadenza: number;
+}
+
+/** I segni della morra cinese. */
+export type Segno = 'sasso' | 'carta' | 'forbici';
+
+/**
+ * La sfida a morra cinese (Giro del mondo): chi gioca è caduto sulla proprietà di un avversario.
+ * - `scelta`: lo sfidante decide se pagare l'affitto o sfidare (scegliendo il suo segno);
+ * - `morra`: ha sfidato, e il proprietario sceglie il suo segno.
+ * Vince lo sfidante: non paga. Vince il proprietario: affitto doppio. Pareggio: affitto normale.
+ * Finché è aperta l'orologio del turno è fermo, come all'asta.
+ */
+export interface Sfida {
+  /** Chi è caduto sulla proprietà: il giocatore di turno. */
+  sfidante: IdGiocatore;
+  /** Chi incassa: il proprietario quando la pedina si è fermata (anche se poi la proprietà cambia di mano). */
+  proprietario: IdGiocatore;
+  casella: number;
+  /** L'affitto normale, calcolato all'arrivo. */
+  importo: number;
+  fase: 'scelta' | 'morra';
+  /** Il segno dello sfidante: segreto finché la morra non si chiude (la vista dei browser lo toglie). */
+  segno: Segno | null;
+  /** Quando scade la fase (ms del server): allo scadere della scelta si paga, della morra il proprietario ha un segno a caso. */
   scadenza: number;
 }
 
@@ -533,6 +599,8 @@ export interface Stato {
   statistiche: Statistiche;
   /** Solo sui tabelloni con le regole folli: evento del giro, mercato, malloppo, verso di marcia. */
   cosmo?: Cosmo;
+  /** La sfida a morra cinese in corso (Giro del mondo). Manca nelle partite degli altri tabelloni. */
+  sfida?: Sfida | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -577,7 +645,15 @@ export type Azione =
   /** Un altro giocatore regala un minuto a chi gioca. */
   | { tipo: 'regala_tempo'; giocatore: IdGiocatore }
   /** Voto (o ritiro del voto) per togliere dalla partita chi sta giocando il turno. */
-  | { tipo: 'vota'; giocatore: IdGiocatore; favorevole: boolean };
+  | { tipo: 'vota'; giocatore: IdGiocatore; favorevole: boolean }
+  /** Invece di tirare i dadi, compra il biglietto e vola sulla casella (Giro del mondo). */
+  | { tipo: 'vola'; giocatore: IdGiocatore; casella: number }
+  /** Sulla proprietà di un avversario: paga l'affitto invece di sfidarlo. */
+  | { tipo: 'paga_affitto'; giocatore: IdGiocatore }
+  /** Sulla proprietà di un avversario: lo sfida a morra cinese con questo segno (senza segno, a caso). */
+  | { tipo: 'sfida'; giocatore: IdGiocatore; segno?: Segno }
+  /** Il proprietario sfidato risponde con il suo segno (senza segno, a caso). */
+  | { tipo: 'morra'; giocatore: IdGiocatore; segno?: Segno };
 
 export type TipoAzione = Azione['tipo'];
 
@@ -604,6 +680,41 @@ export type Evento =
   | { tipo: 'scudo'; giocatore: IdGiocatore; casella: number; importo: number }
   /** Spostamento di una carta folle (wormhole, scambio di posto): la pedina vola, non cammina, e non passa dalla Partenza. */
   | { tipo: 'teletrasporto'; giocatore: IdGiocatore; da: number; a: number }
+  /**
+   * Il volo del Giro del mondo: la pedina vola da `da` ad `a` senza passare dalla Partenza. `prezzo` è il biglietto
+   * (0 con il Biglietto omaggio), pagato all'aeroporto del lato (`aeroporto`); `incassa` è chi lo riceve, `null` la banca.
+   */
+  | {
+      tipo: 'volo';
+      giocatore: IdGiocatore;
+      da: number;
+      a: number;
+      prezzo: number;
+      aeroporto: number | null;
+      incassa: IdGiocatore | null;
+    }
+  /** Il Triangolo delle Bermuda: la pedina sparisce e ricompare su una casella a caso. */
+  | { tipo: 'bermuda'; giocatore: IdGiocatore; da: number; a: number }
+  /** La Buca per l'altra parte del mondo: la pedina sbuca sul lato opposto del tabellone. */
+  | { tipo: 'antipodi'; giocatore: IdGiocatore; da: number; a: number }
+  /** La Linea del cambio di data: chi ci si ferma guadagna un giorno e tira ancora. */
+  | { tipo: 'cambio_data'; giocatore: IdGiocatore }
+  /** `da` sfida `a` a morra cinese per l'affitto di `casella` (`importo`, quello normale). */
+  | { tipo: 'sfida'; da: IdGiocatore; a: IdGiocatore; casella: number; importo: number }
+  /**
+   * Com'è finita la morra: i segni di sfidante e proprietario, l'esito per lo sfidante e quanto paga (0, l'affitto o il
+   * doppio). `aCaso`: chi non ha scelto in tempo e ha avuto un segno a caso. Se `importo` è più di 0 segue l'affitto.
+   */
+  | {
+      tipo: 'morra';
+      da: IdGiocatore;
+      a: IdGiocatore;
+      casella: number;
+      segni: [Segno, Segno];
+      esito: 'vinta' | 'persa' | 'pari';
+      importo: number;
+      aCaso?: IdGiocatore;
+    }
   /** Carta Robin Hood: chi ha più contante (`da`) dà `importo` a chi ne ha meno (`a`). */
   | { tipo: 'robin_hood'; da: IdGiocatore; a: IdGiocatore; importo: number }
   /** Carta della moneta: con testa `giocatore` riceve `importo` dalla banca, con croce lo paga. */
@@ -771,7 +882,13 @@ export type CodiceErrore =
   | 'voto_non_disponibile'
   | 'gia_votato'
   | 'non_votato'
-  | 'sta_giocando';
+  | 'sta_giocando'
+  | 'niente_voli'
+  | 'meta_non_valida'
+  | 'sfida_in_corso'
+  | 'niente_sfida'
+  | 'non_tua_sfida'
+  | 'segno_non_valido';
 
 export interface Errore {
   codice: CodiceErrore;

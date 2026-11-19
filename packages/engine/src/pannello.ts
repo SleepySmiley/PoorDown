@@ -243,6 +243,7 @@ function applicaModifica(ctx: Contesto, m: Exclude<ModificaPartita, { tipo: 'sta
       const g = inGioco(s, m.giocatore);
       if (typeof g === 'string') return g;
       if (s.asta) return 'C’è un’asta in corso: aspetta che finisca prima di passare il turno.';
+      if (s.sfida) return 'C’è una sfida a morra in corso: aspetta che finisca prima di passare il turno.';
       const uscente = giocatore(s, t.giocatore);
       if (uscente && !uscente.eliminato) chiudiOrologio(s, uscente, t, ctx.adesso);
       iniziaTurno(s, ctx.eventi, g, ctx.adesso);

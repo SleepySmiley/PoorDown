@@ -16,6 +16,15 @@ describe('lettura dei comandi di gioco', () => {
     expect(leggiMossa({ tipo: 'offri', importo: 2.5 })).toBeNull();
   });
 
+  it('Giro del mondo: volo, sfida e morra', () => {
+    expect(leggiMossa({ tipo: 'vola', casella: 28 })).toEqual({ tipo: 'vola', casella: 28 });
+    expect(leggiMossa({ tipo: 'vola' })).toBeNull();
+    expect(leggiMossa({ tipo: 'paga_affitto', segno: 'sasso' })).toEqual({ tipo: 'paga_affitto' });
+    expect(leggiMossa({ tipo: 'sfida', segno: 'forbici' })).toEqual({ tipo: 'sfida', segno: 'forbici' });
+    expect(leggiMossa({ tipo: 'morra' })).toEqual({ tipo: 'morra' });
+    expect(leggiMossa({ tipo: 'morra', segno: 'pozzo' })).toBeNull();
+  });
+
   it('scambi: si costruisce un oggetto nuovo, con le caselle senza ripetizioni', () => {
     const letta = leggiMossa({
       tipo: 'proponi',

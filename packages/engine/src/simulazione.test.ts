@@ -32,12 +32,23 @@ function probabile(caso: Caso, su10: number): boolean {
   return caso.intero(10) < su10;
 }
 
+/** Sul Giro del mondo, ogni tanto, al posto dei dadi un volo verso una meta a caso. `null` se non si vola. */
+function voloCasuale(s: Stato, caso: Caso): Azione | null {
+  const id = s.turno.giocatore;
+  if (!TABELLONI[s.mappa].viaggi || !probabile(caso, 3)) return null;
+  const azione: Azione = { tipo: 'vola', giocatore: id, casella: caso.intero(TABELLONI[s.mappa].caselle.length) };
+  return verifica(s, azione) === null ? azione : null;
+}
+
 /** Un giocatore qualunque: compra spesso, costruisce a volte, in rosso vende o ipoteca. */
 function decidi(s: Stato, caso: Caso): Azione {
   const id = s.turno.giocatore;
   const possibili = azioniPossibili(s, id);
   const di = (tipo: Azione['tipo']) => possibili.filter((a) => a.tipo === tipo);
   const saldo = s.giocatori.find((g) => g.id === id)!.saldo;
+
+  // Sulla proprietà di un avversario: paga o sfida a morra, a caso.
+  if (s.sfida?.fase === 'scelta') return scegli([...di('paga_affitto'), ...di('sfida')], caso)!;
 
   if (saldo < 0) {
     return scegli([...di('demolisci'), ...di('ipoteca'), ...di('vendi')], caso) ?? di('bancarotta')[0]!;
@@ -49,7 +60,7 @@ function decidi(s: Stato, caso: Caso): Azione {
   if (di('ipoteca').length && probabile(caso, 1) && caso.intero(5) === 0) return scegli(di('ipoteca'), caso)!;
   const uscite = [...di('paga_cauzione'), ...di('usa_grazia')];
   if (uscite.length && probabile(caso, 3)) return scegli(uscite, caso)!;
-  return di('lancia')[0] ?? di('fine_turno')[0] ?? possibili[0]!;
+  return voloCasuale(s, caso) ?? di('lancia')[0] ?? di('fine_turno')[0] ?? possibili[0]!;
 }
 
 /** Una parte casuale dei beni del giocatore. */
@@ -228,6 +239,17 @@ function giocaPartita(seme: number) {
     } else if (scambio) {
       esito = applica(s, scambio, caso, adesso);
       descrizione = scambio.tipo;
+    } else if (s.sfida?.fase === 'morra') {
+      // Il proprietario sceglie il segno, oppure lascia scadere il tempo e gioca a caso.
+      if (probabile(caso, 7)) {
+        const azione: Azione = { tipo: 'morra', giocatore: s.sfida.proprietario, segno: scegli(['sasso', 'carta', 'forbici'] as const, caso)! };
+        esito = applica(s, azione, caso, adesso);
+        descrizione = 'morra';
+      } else {
+        adesso = Math.max(adesso, s.sfida.scadenza);
+        esito = applicaScadenze(s, caso, adesso)!;
+        descrizione = 'fine della morra';
+      }
     } else if (s.asta) {
       const mossa = mossaAsta(s, caso, adesso);
       if ('azione' in mossa) {
@@ -276,6 +298,8 @@ describe('simulazione di partite intere', () => {
       'costruzione', 'demolizione', 'ipoteca', 'riscatto', 'asta', 'asta_vinta', 'asta_deserta',
       'scambio_proposto', 'scambio_accettato', 'scambio_rifiutato', 'scambio_annullato',
       'tempo_scaduto', 'tempo_chiesto', 'tempo_regalato', 'voto', 'rimozione', 'eredita',
+      // Giro del mondo.
+      'volo', 'bermuda', 'antipodi', 'cambio_data', 'sfida', 'morra',
     ];
     expect(tutti.filter((t) => !visti.has(t))).toEqual([]);
     // E ogni modo di uscire dalla partita.

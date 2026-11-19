@@ -86,9 +86,24 @@ export function fineTurno(s: Stato): number | null {
   return fine;
 }
 
-/** La scadenza del turno da far rispettare adesso: durante l'asta l'orologio è fermo. */
+/** La scadenza del turno da far rispettare adesso: durante l'asta e la sfida a morra l'orologio è fermo. */
 export function scadenzaTurno(s: Stato): number | null {
-  return s.asta ? null : fineTurno(s);
+  return s.asta || s.sfida ? null : fineTurno(s);
+}
+
+/** Ferma l'orologio del turno (asta, sfida a morra): la scadenza non corre finché non riparte. */
+export function fermaOrologio(s: Stato, adesso: number): void {
+  s.turno.tempo.fermoDa ??= adesso;
+}
+
+/** L'orologio del turno riparte da dove si era fermato, e con lui la grazia di chi gioca scollegato. */
+export function riprendiOrologio(s: Stato, adesso: number): void {
+  const tempo = s.turno.tempo;
+  if (tempo.fermoDa === null) return;
+  const pausa = Math.max(0, adesso - tempo.fermoDa);
+  tempo.inizio += pausa;
+  if (tempo.assenteDa != null) tempo.assenteDa += pausa;
+  tempo.fermoDa = null;
 }
 
 export interface TempoMostrato {
@@ -96,7 +111,7 @@ export interface TempoMostrato {
   rimasto: number;
   /** Il tempo intero del turno, per l'anello del timer. */
   totale: number;
-  /** L'asta tiene fermo l'orologio. */
+  /** L'asta (o la sfida a morra) tiene fermo l'orologio. */
   fermo: boolean;
   /** Da quanto è cominciato il turno. */
   trascorso: number;
@@ -140,6 +155,7 @@ export function sposta(stato: Stato, ms: number): Stato {
   if (t.assenteDa != null) t.assenteDa += ms;
   if (s.turno.votazione.scadenza !== null) s.turno.votazione.scadenza += ms;
   if (s.asta) s.asta.scadenza += ms;
+  if (s.sfida) s.sfida.scadenza += ms;
   // Il tempo in pausa non conta nella durata della partita.
   if (s.statistiche.fine === null) s.statistiche.inizio += ms;
   return s;

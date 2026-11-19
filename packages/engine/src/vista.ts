@@ -6,7 +6,7 @@ import type { Azione, IdGiocatore, Stato } from './tipi';
 
 /**
  * Lo stato come lo ricevono i browser: senza l'ordine dei mazzi, così nessuno può prevedere la prossima carta,
- * e senza il grafico del patrimonio finché la partita è in corso.
+ * senza il segno di chi ha lanciato una sfida a morra e senza il grafico del patrimonio finché la partita è in corso.
  * Resta un `Stato`, quindi l'interfaccia può usare `verifica`, `azioniPossibili`, `affitto` e gli altri calcoli;
  * solo `applica` non va usato sulla vista, perché senza mazzi non saprebbe pescare.
  */
@@ -15,6 +15,8 @@ export function vistaPartita(stato: Stato): Stato {
   copia.mazzi = { busta: { ordine: [], prossima: 0 }, cartolina: { ordine: [], prossima: 0 } };
   // Il grafico del patrimonio serve solo a fine partita: intanto gli aggiornamenti restano leggeri.
   if (copia.fase === 'in_corso') copia.statistiche.patrimonio = [];
+  // Il segno dello sfidante resta segreto finché il proprietario non ha scelto il suo.
+  if (copia.sfida) copia.sfida.segno = null;
   return copia;
 }
 

@@ -831,7 +831,7 @@ export class Stanza {
   /**
    * Decide quando i bot faranno la prossima cosa. In lobby: se servono bot, il prossimo entra tra qualche secondo.
    * In partita: un bot gioca quando i browser hanno finito di mostrare le animazioni, più un attimo per "pensare";
-   * all'asta e agli scambi risponde dopo un paio di secondi.
+   * all'asta e agli scambi risponde dopo un paio di secondi, alla morra dopo un secondo o due.
    */
   private pianificaBot(eventi: readonly EventoStanza[]): void {
     const adesso = this.amb.adesso();
@@ -862,6 +862,9 @@ export class Stanza {
       this.prossimaMossaBot = adesso + 800 + caso.intero(1000);
     } else if ([...tipi].every((t) => t === 'accetta' || t === 'rifiuta')) {
       this.prossimaMossaBot = adesso + 2000 + caso.intero(1500);
+    } else if ([...tipi].every((t) => t === 'morra')) {
+      // Sfidato a morra: il bot ci pensa un attimo, come una persona, dopo che la scena è finita.
+      this.prossimaMossaBot = Math.max(this.fineScena, adesso) + 1200 + caso.intero(1500);
     } else {
       this.prossimaMossaBot = Math.max(this.fineScena, adesso) + PENSIERO_BOT_MS + caso.intero(500);
     }

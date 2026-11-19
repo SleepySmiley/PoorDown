@@ -19,6 +19,7 @@ import {
 import { TURNI_A_TESTA, TURNI_DI_AVVISO_A_TESTA } from './impostazioni';
 import { segnaPatrimonio } from './statistiche';
 import { chiudiOrologio, tempoIniziale, votiNecessari } from './tempo';
+import { annullaSfida } from './viaggi';
 import type { Debito, Evento, Giocatore, MotivoUscita, Stato } from './tipi';
 
 /** Tiri falliti dopo i quali si esce di prigione gratis, al turno successivo. */
@@ -184,6 +185,7 @@ function passaCrediti(s: Stato, g: Giocatore, erede: Giocatore | undefined): voi
  *   i loro edifici lì tornano alla banca a metà prezzo;
  * - in tutti e due i casi, quello che gli altri gli devono lo dovranno al compagno.
  * I suoi scambi aperti spariscono e, se all'asta era il migliore offerente, torna buona l'offerta precedente.
+ * Se era in una sfida a morra (da sfidante o da sfidato), la sfida si chiude senza che nessuno paghi.
  * Se resta un solo giocatore (a squadre: una sola squadra), la partita finisce; se toccava a lui, il turno passa.
  * Se invece giocava un altro e i voti contro di lui bastano ormai a toglierlo, esce anche lui.
  * @param automatica bancarotta decisa dal gioco perché il tempo è scaduto in debito.
@@ -235,6 +237,7 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
     s.asta.offerte = s.asta.offerte.filter((o) => o.giocatore !== g.id);
     s.asta.migliore = s.asta.offerte[0] ?? null;
   }
+  annullaSfida(s, g.id, ctx.adesso);
   s.turno.votazione.voti = s.turno.votazione.voti.filter((id) => id !== g.id);
   if (s.turno.votazione.voti.length === 0) s.turno.votazione.scadenza = null;
 
@@ -273,6 +276,7 @@ export function chiudiPartita(ctx: Contesto, vincitore: Giocatore | undefined, d
   s.vincitore = vincitore?.id ?? null;
   s.squadraVincitrice = s.impostazioni.squadre ? (vincitore?.squadra ?? null) : null;
   s.asta = null;
+  if (s.sfida) s.sfida = null;
   s.scambi = [];
   s.statistiche.fine = ctx.adesso;
   segnaPatrimonio(s);

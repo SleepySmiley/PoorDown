@@ -124,6 +124,7 @@ export function creaPartita(
   };
   const cosmo = cosmoIniziale(tab);
   if (cosmo) stato.cosmo = cosmo;
+  if (tab.viaggi?.sfida) stato.sfida = null;
   segnaPatrimonio(stato);
 
   const eventi: Evento[] = [{ tipo: 'inizio', ordineCasuale: impostazioni.ordineCasuale, bonus }];

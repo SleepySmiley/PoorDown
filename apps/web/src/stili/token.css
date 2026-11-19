@@ -87,7 +87,7 @@
   --flap-testo: #f4f1e8;
   --flap-fessura: rgb(0 0 0 / 0.65);
 
-  /* ---------- Regioni (gruppi 1–10: il tabellone Europa ne ha 10) ---------- */
+  /* ---------- Regioni (gruppi 1–11: Europa ne ha 10, il Giro del mondo 11) ---------- */
   --g1: #8c5a3c;
   --g2: #3db2e8;
   --g3: #00965e;
@@ -98,6 +98,7 @@
   --g8: #2a56c6;
   --g9: #00838f;
   --g10: #b0127a;
+  --g11: #6b7a12;
   /* Testo sopra le regioni chiare (le altre hanno il bianco). */
   --su-g2: var(--inchiostro);
   --su-g4: var(--inchiostro);

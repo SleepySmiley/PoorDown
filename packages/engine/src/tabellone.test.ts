@@ -121,8 +121,9 @@ describe.each(Object.values(TABELLONI).map((tab) => [tab.nome, tab] as const))('
     expect(angoli).toEqual([0, n / 4, n / 2, (3 * n) / 4]);
   });
 
-  // Con le regole folli (Sistema solare) l'equilibrio è sballato apposta: prezzi che non crescono, gruppi da una casella.
-  const folle = tab.follie !== undefined;
+  // Con le regole folli (Sistema solare) e sul Giro del mondo l'equilibrio è sballato apposta: prezzi che non
+  // crescono, gruppi da una casella.
+  const folle = tab.follie !== undefined || tab.viaggi !== undefined;
 
   it('prezzi e affitti crescono lungo il tabellone e con i livelli', () => {
     let prezzoPrima = 0;
@@ -142,7 +143,7 @@ describe.each(Object.values(TABELLONI).map((tab) => [tab.nome, tab] as const))('
     for (const [r, regione] of tab.regioni.entries()) {
       expect(regione.sigla).toMatch(/^[A-Z]{3}$/);
       expect(regione.colore).toBeGreaterThanOrEqual(1);
-      expect(regione.colore).toBeLessThanOrEqual(10);
+      expect(regione.colore).toBeLessThanOrEqual(11);
       expect(caselleDellaRegione(tab, r).length).toBeGreaterThanOrEqual(folle ? 1 : 2);
     }
     expect(new Set(tab.regioni.map((r) => r.colore)).size).toBe(tab.regioni.length);
