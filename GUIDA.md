@@ -13,6 +13,7 @@ Durante la partita:
 - **Come si gioca** (il punto di domanda in alto) spiega le regole.
 - L’**altoparlante** in alto regola il volume dei suoni. Quando tocca a te suona un gong, anche se stai guardando un’altra scheda.
 - Se chiudi la pagina per sbaglio, riapri lo stesso link: ritrovi il tuo posto. Hai **2 minuti** per tornare, poi perdi il posto; intanto i tuoi turni passano da soli.
+- A squadre, se finisci in rosso un bot della tua squadra può offrirti i soldi che servono: si apre una proposta di scambio, premi **Accetta**.
 
 ## Se accendi tu il gioco
 
@@ -70,6 +71,7 @@ In alto, **Annulla l’ultima modifica** rimette le cose com’erano, finché la
 
 - Il link cambia a ogni accensione del gioco: copiatelo di nuovo dalla stanza. Se nella finestra nera c’è scritto «link nuovo», anche quello di prima ha smesso di funzionare.
 - Se la finestra dice «non riesco ad aprire il link», il PC non raggiunge internet o Cloudflare non risponde. Il gioco riprova da solo; intanto funziona solo per chi è in casa.
+- Se la finestra dice che cloudflared scaricato «non è quello atteso», PoorDown l’ha cancellato senza avviarlo, per sicurezza. Dopo tre volte il gioco online si spegne fino alla prossima accensione: chiudi la finestra nera e riaccendi il gioco. Se succede ancora, qualcosa sulla connessione modifica i file scaricati (per esempio un antivirus o un proxy): intanto si gioca solo in casa.
 
 **In casa, gli amici non riescono ad aprire il link che inizia con `http://192.168…`**
 
