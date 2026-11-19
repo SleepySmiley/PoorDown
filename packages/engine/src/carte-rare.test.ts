@@ -173,6 +173,19 @@ describe('carte rare del Giro del mondo', () => {
     expect(problemi(stato)).toEqual([]);
   });
 
+  it('nell’attesa dell’ultimo rimasto la Vita extra esce una volta su quattro', () => {
+    expect(tab.rare!.vitaInAttesa).toBe(2500);
+    const s = pronta(2, 10);
+    Object.assign(g(s, 'b'), { eliminato: { turno: 8, motivo: 'bancarotta' }, saldo: 0 });
+    // Il tiro 2000 è sopra la soglia normale della Vita extra (120) ma sotto quella dell'attesa (2500).
+    const fuoriAttesa = esegui(s, lancia(), caso(...SULLA_CARTOLINA, 2_000));
+    expect(fuoriAttesa.eventi).toContainEqual(expect.objectContaining({ tipo: 'carta', carta: LOTTERIA }));
+    s.ultimoRimasto = { turni: 2 };
+    const inAttesa = esegui(s, lancia(), caso(...SULLA_CARTOLINA, 2_000, 0));
+    expect(inAttesa.eventi).toContainEqual(expect.objectContaining({ tipo: 'carta', rara: true, carta: rara('vita_extra') }));
+    expect(g(inAttesa.stato, 'b').eliminato).toBeNull();
+  });
+
   it('Vita extra durante il conto alla rovescia; la Bancarotta all’ultimo rimasto non esce mai', () => {
     const s = pronta(2, 10);
     Object.assign(g(s, 'b'), { eliminato: { turno: 8, motivo: 'bancarotta' }, saldo: 0 });

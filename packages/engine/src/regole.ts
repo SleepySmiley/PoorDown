@@ -870,12 +870,15 @@ function pesca(ctx: Contesto, g: Giocatore, nome: NomeMazzo): void {
  * del mazzo. Se non ce n'è nessuna che può uscire non si tira nemmeno. `null` se esce la carta del mazzo.
  */
 function cartaRara(ctx: Contesto, g: Giocatore): { indice: number } | null {
-  const candidate = (ctx.tab.rare?.carte ?? []).flatMap((r, indice) => (puoUscire(ctx, g, r) ? [{ indice, r }] : []));
+  const rare = ctx.tab.rare;
+  if (!rare) return null;
+  const candidate = rare.carte.flatMap((r, indice) => (puoUscire(ctx, g, r) ? [{ indice, r }] : []));
   if (candidate.length === 0) return null;
   const tiro = ctx.caso.intero(10_000);
   let soglia = 0;
   for (const { indice, r } of candidate) {
-    soglia += r.su10000;
+    // Nell'attesa dell'ultimo rimasto la Vita extra esce più spesso, se no chi è fuori non rientra quasi mai.
+    soglia += r.carta.effetto.tipo === 'vita_extra' && ctx.s.ultimoRimasto ? rare.vitaInAttesa : r.su10000;
     if (tiro < soglia) return { indice };
   }
   return null;

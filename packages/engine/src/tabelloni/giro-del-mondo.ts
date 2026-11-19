@@ -238,6 +238,8 @@ const RARE: CarteRare = {
     },
   ],
   ultimiTurni: 3,
+  // Nei 3 turni dell'ultimo rimasto, una carta su quattro è una Vita extra.
+  vitaInAttesa: 2500,
 };
 
 export const GIRO_DEL_MONDO: Tabellone = {

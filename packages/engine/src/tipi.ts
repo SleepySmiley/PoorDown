@@ -348,6 +348,11 @@ export interface CartaRara {
 export interface CarteRare {
   carte: readonly CartaRara[];
   ultimiTurni: number;
+  /**
+   * Durante il conto alla rovescia dell'ultimo rimasto la Vita extra esce più spesso: `vitaInAttesa` volte su 10.000
+   * al posto di `su10000`. Con la probabilità normale chi è fuori non rientrava quasi mai (4 attese su 721).
+   */
+  vitaInAttesa: number;
 }
 
 export interface Tabellone {
