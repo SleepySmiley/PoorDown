@@ -91,15 +91,18 @@ export function Pedina({
   colore,
   iniziale,
   className,
+  tinta,
 }: {
   colore: number;
   iniziale?: string;
   className?: string;
+  /** Un altro colore al posto di quello della pedina (es. quello di una squadra, `var(--sq1)`). */
+  tinta?: string;
 }): ReactNode {
   return (
     <span
       className={className ? `pedina ${className}` : 'pedina'}
-      style={variabili({ '--colore': `var(--p${colore})` })}
+      style={variabili({ '--colore': tinta ?? `var(--p${colore})` })}
       aria-hidden="true"
     >
       {iniziale}

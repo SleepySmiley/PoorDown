@@ -15,7 +15,8 @@ import { Chip } from '../ui/Chip';
 import { Pedina, PulsanteIcona } from '../ui/comuni';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { COMPARSA } from '../ui/movimento';
-import { iniziale } from '../ui/utili';
+import { coloreSquadra } from '../ui/squadre';
+import { iniziale, variabili } from '../ui/utili';
 import { Binario } from './Colonne';
 
 const TUTTE = Array.from({ length: SQUADRE_MAX }, (_, i) => i);
@@ -276,7 +277,7 @@ export function PannelloSquadre({
           const nome = stanza.squadre[t] ?? `Squadra ${t + 1}`;
           const membri = stanza.partecipanti.filter((p) => p.squadra === t);
           return (
-            <li key={t} className={mia === t ? 'squadra squadra--mia' : 'squadra'}>
+            <li key={t} className={mia === t ? 'squadra squadra--mia' : 'squadra'} style={variabili({ '--squadra': coloreSquadra(t) })}>
               <header className="squadra__testa">
                 <Binario indice={t} nome={nome} />
                 <NomeSquadra key={nome} indice={t} nome={nome} modificabile={sonoHost} />

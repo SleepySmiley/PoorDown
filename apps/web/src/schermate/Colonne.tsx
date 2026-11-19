@@ -10,7 +10,8 @@ import { copia } from '../ui/appunti';
 import { Chip } from '../ui/Chip';
 import { Pedina, PulsanteIcona, Soldi } from '../ui/comuni';
 import { Finestra } from '../ui/Finestra';
-import { iniziale } from '../ui/utili';
+import { coloreSquadra } from '../ui/squadre';
+import { iniziale, variabili } from '../ui/utili';
 import { Icona } from '../ui/icone';
 import { PassiDelGioco } from '../ui/Regole';
 import { BollaChat, Chat } from './Chat';
@@ -197,10 +198,18 @@ export interface DatiRiga {
   squadra?: { indice: number; nome: string };
 }
 
-/** Il numero della squadra, come il binario sui cartelli delle partenze. */
+/**
+ * Il numero della squadra, come il binario sui cartelli delle partenze, nel colore della squadra: lo stesso delle sue
+ * proprietà sul tabellone, così si capisce di chi sono.
+ */
 export function Binario({ indice, nome, className }: { indice: number; nome: string; className?: string }): ReactNode {
   return (
-    <span className={className ? `binario ${className}` : 'binario'} title={nome} aria-label={nome}>
+    <span
+      className={className ? `binario ${className}` : 'binario'}
+      title={nome}
+      aria-label={nome}
+      style={variabili({ '--squadra': coloreSquadra(indice) })}
+    >
       {indice + 1}
     </span>
   );

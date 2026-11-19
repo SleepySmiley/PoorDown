@@ -30,6 +30,8 @@ interface Voce {
   descrizione: string;
   /** Arriva in una fase successiva: si vede ma non si può ancora cambiare. */
   presto?: boolean;
+  /** Compare solo quando serve (es. la costruzione di squadra, solo con le squadre accese). */
+  visibile?: (imp: Impostazioni) => boolean;
 }
 
 const GRUPPI: { titolo: string; voci: Voce[] }[] = [
@@ -63,6 +65,15 @@ const GRUPPI: { titolo: string; voci: Voce[] }[] = [
         nome: 'Squadre',
         breve: 'Si vince insieme',
         descrizione: 'I compagni non si pagano l’affitto, costruiscono sulle regioni della squadra e vincono insieme',
+      },
+      {
+        chiave: 'costruzioneDiSquadra',
+        icona: 'casa',
+        nome: 'Costruzione di squadra',
+        breve: 'Case anche sulle città dei compagni',
+        descrizione:
+          'Chiunque della squadra costruisce case e alberghi anche sulle città dei compagni, pagando di tasca sua. Gli edifici li vende chi possiede la città',
+        visibile: (imp) => imp.squadre,
       },
       {
         chiave: 'mappa',
@@ -276,7 +287,7 @@ export function ListaImpostazioni({
         <section key={g.titolo} className="imposta__gruppo" aria-label={g.titolo}>
           <h3 className="imposta__titolo">{g.titolo}</h3>
           <ul className="imposta__righe">
-            {g.voci.map((voce) => (
+            {g.voci.filter((voce) => voce.visibile?.(imp) ?? true).map((voce) => (
               <Riga
                 key={voce.chiave}
                 voce={voce}

@@ -38,6 +38,11 @@ export interface Impostazioni {
    * ereditano i beni di chi fa bancarotta e vincono insieme.
    */
   squadre: boolean;
+  /**
+   * Costruzione di squadra (vale solo con `squadre`): chiunque della squadra costruisce anche sulle città dei compagni,
+   * pagando di tasca sua. Senza, su una città costruisce solo chi la possiede. Gli edifici li vende sempre chi la possiede.
+   */
+  costruzioneDiSquadra: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -432,9 +437,12 @@ export interface Proprieta {
 }
 
 export interface Mazzo {
-  /** Ordine segreto delle carte (indici in `Tabellone.mazzi`). Non va mai mandato ai giocatori. */
+  /**
+   * Ordine segreto delle carte del giro in corso (indici in `Tabellone.mazzi`). Quando esce l'ultima carta, il mazzo
+   * si rimescola tutto per il giro dopo. Non va mai mandato ai giocatori.
+   */
   ordine: number[];
-  /** Posizione in `ordine` della prossima carta da pescare. */
+  /** Posizione in `ordine` della prossima carta da pescare: sempre dentro il mazzo (dopo l'ultima carta torna a 0). */
   prossima: number;
 }
 
@@ -816,8 +824,11 @@ export type Evento =
   | { tipo: 'uscita_prigione'; giocatore: IdGiocatore; modo: 'doppio' | 'cauzione' | 'grazia' | 'tentativi' }
   | { tipo: 'vacanza'; giocatore: IdGiocatore; incasso: number }
   | { tipo: 'vendita'; giocatore: IdGiocatore; casella: number; importo: number }
-  /** `livello`: quello raggiunto (5 = albergo). */
-  | { tipo: 'costruzione'; giocatore: IdGiocatore; casella: number; livello: number; costo: number }
+  /**
+   * `livello`: quello raggiunto (5 = albergo). `giocatore` è chi costruisce e paga. `proprietario`: con la costruzione
+   * di squadra, il compagno che possiede la città, quando non è chi costruisce (manca se costruisce il proprietario).
+   */
+  | { tipo: 'costruzione'; giocatore: IdGiocatore; casella: number; livello: number; costo: number; proprietario?: IdGiocatore }
   /** `livello`: quello rimasto dopo la vendita dell'edificio. */
   | { tipo: 'demolizione'; giocatore: IdGiocatore; casella: number; livello: number; importo: number }
   | { tipo: 'ipoteca'; giocatore: IdGiocatore; casella: number; importo: number }

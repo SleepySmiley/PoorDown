@@ -2,14 +2,18 @@
  * I puntini di una regione accanto al nome di una città: uno per ogni città della regione, in ordine di
  * tabellone, nel colore di chi la possiede (cerchio vuoto se è libera). Il puntino della città stessa ha
  * l'anello: si vede subito quante città della regione ha già ognuno (●●○).
+ * A squadre il colore è quello della squadra, come sul tabellone (salvo che chi guarda scelga quello dei giocatori).
  */
 
 import '../stili/economia.css';
 import type { ReactNode } from 'react';
 import { caselleDellaRegione, proprietabile, tabellone, type Stato } from '@poordown/engine';
+import { useColoriDiSquadra } from '../rete/coloriSquadra';
+import { tintaProprietario } from './squadre';
 import { variabili } from './utili';
 
 export function PuntiRegione({ partita, casella, className }: { partita: Stato; casella: number; className?: string }): ReactNode {
+  const perSquadra = useColoriDiSquadra();
   const tab = tabellone(partita.mappa);
   const c = proprietabile(tab, casella);
   if (c?.tipo !== 'citta') return null;
@@ -31,7 +35,7 @@ export function PuntiRegione({ partita, casella, className }: { partita: Stato; 
           ]
             .filter(Boolean)
             .join(' ')}
-          style={p.g ? variabili({ '--colore': `var(--p${p.g.colore})` }) : undefined}
+          style={p.g ? variabili({ '--colore': tintaProprietario(partita, p.g, perSquadra) }) : undefined}
         />
       ))}
     </span>

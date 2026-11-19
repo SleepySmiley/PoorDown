@@ -413,7 +413,8 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
             <b>{nome(e.giocatore)}</b> costruisce {e.livello === 5 ? 'un albergo' : 'una casa'}
           </>
         ),
-        dettaglio: nomeCasella(e.casella),
+        // Con la costruzione di squadra la città può essere di un compagno.
+        dettaglio: e.proprietario ? `${nomeCasella(e.casella)}, di ${nome(e.proprietario)}` : nomeCasella(e.casella),
         importo: { valore: e.costo, tono: tono(io, e.giocatore, null) },
       };
     case 'demolizione':

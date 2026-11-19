@@ -13,6 +13,7 @@ import {
   LIVELLO_ALBERGO,
   possiedeRegione,
   proprietabile,
+  puoCostruireSu,
   regioneConEdifici,
   regioneIpotecata,
   rimborsoEdificio,
@@ -31,11 +32,21 @@ const OFFERTE_MOSTRATE = 20;
 
 const NON_TUA = errore('non_tua', 'Questa proprietà non è tua.');
 
+const SOLO_CITTA = errore('non_costruibile', 'Case e alberghi si costruiscono solo sulle città.');
+
 /** La città del giocatore, oppure il motivo per cui non lo è. */
 function cittaMia(stato: Stato, g: Giocatore, casella: number): Citta | Errore {
   const c = proprietabile(tabellone(stato.mappa), casella);
   if (!c || stato.proprieta[casella]?.proprietario !== g.id) return NON_TUA;
-  if (c.tipo !== 'citta') return errore('non_costruibile', 'Case e alberghi si costruiscono solo sulle città.');
+  if (c.tipo !== 'citta') return SOLO_CITTA;
+  return c;
+}
+
+/** La città dove il giocatore può costruire: la sua o, con la costruzione di squadra, quella di un compagno. */
+function cittaDaCostruire(stato: Stato, g: Giocatore, casella: number): Citta | Errore {
+  const c = proprietabile(tabellone(stato.mappa), casella);
+  if (!c || !puoCostruireSu(stato, g.id, casella)) return NON_TUA;
+  if (c.tipo !== 'citta') return SOLO_CITTA;
   return c;
 }
 
@@ -48,8 +59,12 @@ function altriLivelli(stato: Stato, c: Citta, casella: number, soloDi?: IdGiocat
 
 /* ------------------------ Case e alberghi -------------------------- */
 
+/**
+ * Si costruisce sulle proprie città e, con la costruzione di squadra, su quelle dei compagni: paga chi costruisce.
+ * La regione va completata con la squadra e, con la costruzione uniforme, sale tutta insieme.
+ */
 export function verificaCostruzione(stato: Stato, g: Giocatore, casella: number): Errore | null {
-  const c = cittaMia(stato, g, casella);
+  const c = cittaDaCostruire(stato, g, casella);
   if ('codice' in c) return c;
   const livello = stato.proprieta[casella]!.livello;
   if (!possiedeRegione(stato, g.id, c.regione)) {
@@ -77,12 +92,16 @@ export function costruisci(ctx: Contesto, g: Giocatore, casella: number): void {
   const costo = costoProssimoEdificio(ctx.tab, c, p.livello);
   g.saldo -= costo;
   p.livello++;
-  ctx.eventi.push({ tipo: 'costruzione', giocatore: g.id, casella, livello: p.livello, costo });
+  // Con la costruzione di squadra può costruire un compagno: l'evento dice anche di chi è la città.
+  const diUnCompagno = p.proprietario !== null && p.proprietario !== g.id ? { proprietario: p.proprietario } : {};
+  ctx.eventi.push({ tipo: 'costruzione', giocatore: g.id, casella, livello: p.livello, costo, ...diUnCompagno });
 }
 
 /**
  * Per vendere contano solo le città del giocatore: a squadre le case dei compagni non bloccano le sue
  * (chi è in rosso deve poterle vendere). Per costruire invece la regione sale tutta insieme.
+ * Gli edifici li vende solo chi possiede la città, anche con la costruzione di squadra: appartengono alla città,
+ * chiunque li abbia pagati.
  */
 export function verificaDemolizione(stato: Stato, g: Giocatore, casella: number): Errore | null {
   const c = cittaMia(stato, g, casella);

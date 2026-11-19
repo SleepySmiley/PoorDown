@@ -5,6 +5,7 @@ import {
   ASSENZA_MS,
   costoProssimoEdificio,
   costoRiscatto,
+  costruzioneDiSquadra,
   euro,
   haVinto,
   LIVELLO_ALBERGO,
@@ -45,10 +46,11 @@ import { Coriandoli } from '../ui/Coriandoli';
 import { DURATA, SCORRE, VELO } from '../ui/movimento';
 import { Pannello } from '../ui/Pannello';
 import { Pulsante } from '../ui/Pulsante';
+import { cittaDelCompagno } from '../ui/squadre';
 import { Asta } from './Asta';
 import { CartelloTurno } from './CartelloTurno';
 import { Chat, ChatChiusa } from './Chat';
-import { RigaGiocatoreGioco, TestataGioco } from './ColonnaGioco';
+import { ColoriDiSquadra, RigaGiocatoreGioco, TestataGioco } from './ColonnaGioco';
 import { Finestra, Tavolo } from './Colonne';
 import { ListaImpostazioni } from './Impostazioni';
 import { useChatRichiudibile } from './colonna';
@@ -73,6 +75,12 @@ import { eventoCorrente, momentoScena, tentativoPrigione, useTitoloScheda, useVa
 /** `null` se la mossa si può fare adesso, altrimenti il motivo (per il suggerimento del pulsante). */
 function motivo(partita: Stato, io: IdGiocatore, mossa: Mossa): string | null {
   return verifica(partita, { ...mossa, giocatore: io } as Azione)?.messaggio ?? null;
+}
+
+/** «Costruisci una casa per 100 €», «Costruisci l’albergo per 100 €»; sopra l'albergo solo «Costruisci». */
+function etichettaCostruisci(livello: number, costo: number): string {
+  if (livello >= LIVELLO_ALBERGO) return 'Costruisci';
+  return `Costruisci ${livello === LIVELLO_ALBERGO - 1 ? 'l’albergo' : 'una casa'} per ${euro(costo)}`;
 }
 
 /** Pulsante a icona sulla scheda della proprietà: il suggerimento dice cosa fa e, se è spento, perché. */
@@ -514,16 +522,7 @@ export function Gioco({
       const costo = costoProssimoEdificio(tab, c, p.livello);
       edifici = (
         <>
-          <AzioneScheda
-            icona="su"
-            etichetta={
-              p.livello >= LIVELLO_ALBERGO
-                ? 'Costruisci'
-                : `Costruisci ${p.livello === LIVELLO_ALBERGO - 1 ? 'l’albergo' : 'una casa'} per ${euro(costo)}`
-            }
-            blocco={blocco(su)}
-            onClick={() => mossa(su)}
-          />
+          <AzioneScheda icona="su" etichetta={etichettaCostruisci(p.livello, costo)} blocco={blocco(su)} onClick={() => mossa(su)} />
           <AzioneScheda
             icona="giu"
             etichetta={
@@ -625,6 +624,17 @@ export function Gioco({
     // Si chiede solo a chi è ancora in gioco, e non a se stessi.
     return di && di !== giocoIo && vivo.giocatori.some((g) => g.id === di && !g.eliminato) ? di : null;
   })();
+  // Costruzione di squadra: sulla città di un compagno, aperta dal tabellone, si costruisce pagando di tasca propria.
+  const costruisciDelCompagno = (() => {
+    if (popoverBordo === null || !giocoIo || !cittaDelCompagno(partita, giocoIo, popoverBordo)) return null;
+    const c = proprietabile(tab, popoverBordo);
+    const p = partita.proprieta[popoverBordo];
+    if (c?.tipo !== 'citta' || !p) return null;
+    const su: Mossa = { tipo: 'costruisci', casella: popoverBordo };
+    const blocco = scena.occupata || inviando ? 'Un attimo…' : motivo(partita, giocoIo, su);
+    const etichetta = `${etichettaCostruisci(p.livello, costoProssimoEdificio(tab, c, p.livello))}: paghi tu`;
+    return <AzioneScheda icona="su" etichetta={etichetta} blocco={blocco} onClick={() => mossa(su)} />;
+  })();
   const coloreDi = (id: IdGiocatore) => partita.giocatori.find((g) => g.id === id)?.colore ?? 1;
   const metaDadi = inCorso && scena.meta ? { n: scena.meta.casella, colore: coloreDi(scena.meta.giocatore) } : undefined;
   const cartaInScena = inCorso ? scena.carta : null;
@@ -693,6 +703,7 @@ export function Gioco({
                   );
                 })}
               </ul>
+              {partita.impostazioni.squadre && <ColoriDiSquadra />}
             </section>
             {chatRichiusa.chiusa ? (
               <ChatChiusa nuovi={chatRichiusa.nuovi} ultimo={chatRichiusa.ultimo} onApri={chatRichiusa.apri} />
@@ -746,6 +757,7 @@ export function Gioco({
                       mappa={partita.mappa}
                       partita={partita}
                       n={popoverBordo}
+                      azioni={costruisciDelCompagno}
                       onChiudi={() => setScheda(null)}
                       onChiedi={
                         proprietarioScheda ? () => chiedi(popoverBordo, proprietarioScheda) : undefined
@@ -873,6 +885,7 @@ export function Gioco({
                       <p>
                         Clicca una tua proprietà per costruire, vendere{partita.impostazioni.ipoteche ? ' o ipotecare' : ''}, durante il
                         tuo turno.
+                        {costruzioneDiSquadra(partita) && ' Sulle città dei compagni costruisci cliccandole sul tabellone.'}
                       </p>
                       <button type="button" className="consiglio__ok" onClick={() => setConsiglio(false)}>
                         <Icona nome="spunta" />

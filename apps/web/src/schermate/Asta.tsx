@@ -72,7 +72,9 @@ export function Asta({
             <span className="asta__cifra">
               {migliore ? <Soldi valore={attuale} /> : <span className="asta__vuota">Nessuna offerta</span>}
               {rilancio > 0 && (
-                <span key={asta.offerte.length} className="asta__bolla" aria-hidden="true">
+                // La chiave è l'offerta migliore, che sale a ogni rilancio: la bolla rinasce ogni volta. Non la lunghezza
+                // dell'elenco, che il server ferma a 20 offerte (dalla ventunesima la bolla non ripartiva più).
+                <span key={attuale} className="asta__bolla" aria-hidden="true">
                   +{euro(rilancio)}
                 </span>
               )}
@@ -125,10 +127,12 @@ export function Asta({
           )}
 
           <ol className="asta__elenco" aria-label="Offerte">
-            {asta.offerte.map((o, i) => {
+            {asta.offerte.map((o) => {
               const chi = nome(o.giocatore);
+              // Ogni offerta supera quella di prima, quindi nell'elenco gli importi sono tutti diversi: sono la chiave.
+              // Con la posizione, dalla ventunesima offerta (il server ne tiene 20) le righe non scorrevano più.
               return (
-                <motion.li key={asta.offerte.length - i} layout="position" transition={SCORRE} className="asta__offerta">
+                <motion.li key={o.importo} layout="position" transition={SCORRE} className="asta__offerta">
                   {chi && <Pedina colore={chi.colore} className="pedina--mini" />}
                   <b>{chi?.nome ?? '?'}</b> offre {euro(o.importo)}
                 </motion.li>

@@ -60,6 +60,7 @@ const CONTROLLI_IMPOSTAZIONI: { [K in keyof Impostazioni]: (v: unknown) => boole
   durataMassima: (v) => typeof v === 'boolean',
   ordineCasuale: (v) => typeof v === 'boolean',
   squadre: (v) => typeof v === 'boolean',
+  costruzioneDiSquadra: (v) => typeof v === 'boolean',
 };
 
 /** Modifiche parziali alle impostazioni. `null` se c'è un campo sconosciuto o un valore fuori dai limiti. */

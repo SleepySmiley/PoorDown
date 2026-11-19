@@ -4,7 +4,7 @@
  * Flusso del turno: docs/analisi/03-regole-turno.md §2.
  */
 
-import { tiraDadi } from './caso';
+import { mescola, tiraDadi } from './caso';
 import { caricaStella, effettoDadoCosmico, premioPartenza, prossimaLibera, tiraDadoCosmico } from './cosmo';
 import { accredita, errore, paga, pagaBanca, segnaTrasferimento, type Contesto } from './contesto';
 import {
@@ -17,6 +17,7 @@ import {
   possedute,
   prezzoAcquisto,
   proprietabile,
+  puoCostruireSu,
   regioneConEdifici,
   valoreVendita,
 } from './conti';
@@ -47,7 +48,7 @@ import {
   verificaVoto,
   vota,
 } from './moderazione';
-import { proponi, rispondi, verificaProposta, verificaRisposta } from './scambi';
+import { proponi, regaloDiSquadra, rispondi, verificaProposta, verificaRisposta } from './scambi';
 import { tabellone } from './tabelloni';
 import { ASSENZA_MS, GRAZIA_DEBITO_MS, scadenzaTurno, TURNI_AUTOMATICI_MAX } from './tempo';
 import { chiudiTurno, elimina, rientra } from './turni';
@@ -420,7 +421,9 @@ function mossaAutomatica(s: Stato, id: IdGiocatore): Azione {
 
 /**
  * Il tempo del turno è finito: il gioco tira i dadi e chiude il turno al posto di chi gioca.
- * In debito fa bancarotta. Con il timer, chi ha già avuto due turni di fila finiti così esce dalla partita.
+ * In debito fa bancarotta, a meno che un compagno di squadra gli abbia offerto un regalo di soldi che basta a uscire
+ * dal rosso: quello lo accetta (regalarlo non costa niente a chi lo riceve, e la squadra conserva i suoi beni).
+ * Con il timer, chi ha già avuto due turni di fila finiti così esce dalla partita.
  * Se il gioco apre un'asta (o finisce sulla proprietà di un avversario, con la sfida a morra), il turno riprende
  * (e finisce) quando l'asta o la sfida si chiude.
  */
@@ -442,6 +445,13 @@ function giocaInAutomatico(ctx: Contesto): void {
     if (s.fase !== 'in_corso' || s.turno.giocatore !== id || s.turno.numero !== numero || s.asta || s.sfida) return;
     const io = giocatore(s, id)!;
     if (io.saldo < 0) {
+      const regalo = s.scambi.find((x) => x.a === id && regaloDiSquadra(s, x) && x.dare.soldi >= -io.saldo);
+      const accettato = regalo && applica(s, { tipo: 'accetta', giocatore: id, scambio: regalo.id }, ctx.caso, ctx.adesso);
+      if (accettato && accettato.ok) {
+        ctx.s = accettato.stato;
+        ctx.eventi.push(...accettato.eventi);
+        continue;
+      }
       elimina(ctx, io, 'bancarotta', true);
       return;
     }
@@ -813,8 +823,11 @@ function esciDiPrigione(ctx: Contesto, g: Giocatore, modo: 'doppio' | 'cauzione'
 /* ------------------------------ Carte ------------------------------ */
 
 /**
- * La Carta Grazia resta nel mazzo, ma si salta finché qualcuno la tiene.
- * Con le carte rare può uscire una di loro al posto della carta del mazzo, che resta in cima per la prossima pescata.
+ * Pesca la prossima carta del mazzo. Quando esce l'ultima carta di un giro, il mazzo si rimescola tutto con il caso
+ * della partita (`crypto` sul server) e riparte dalla prima: così l'ordine non si ricostruisce dalle carte già uscite.
+ * La Carta Grazia resta nel mazzo, ma si salta finché qualcuno la tiene, anche dopo un rimescolamento.
+ * Con le carte rare può uscire una di loro al posto della carta del mazzo, che resta in cima per la prossima pescata
+ * (il mazzo non avanza, quindi nemmeno si rimescola).
  */
 function pesca(ctx: Contesto, g: Giocatore, nome: NomeMazzo): void {
   const rara = cartaRara(ctx, g);
@@ -827,9 +840,15 @@ function pesca(ctx: Contesto, g: Giocatore, nome: NomeMazzo): void {
   const mazzo = ctx.s.mazzi[nome];
   const carte = ctx.tab.mazzi[nome];
   const tenuta = ctx.s.giocatori.some((x) => x.carteGrazia.includes(nome));
-  for (;;) {
+  // Si salta al più la Grazia, quindi due giri bastano sempre: il limite evita un ciclo senza fine con un mazzo
+  // fatto solo di carte da saltare (oggi nessun tabellone ne ha uno).
+  for (let pescate = 0; pescate < 2 * carte.length; pescate++) {
     const id = mazzo.ordine[mazzo.prossima]!;
-    mazzo.prossima = (mazzo.prossima + 1) % mazzo.ordine.length;
+    mazzo.prossima++;
+    if (mazzo.prossima >= mazzo.ordine.length) {
+      mazzo.ordine = mescola([...carte.keys()], ctx.caso);
+      mazzo.prossima = 0;
+    }
     const carta = carte[id]!;
     if (carta.effetto.tipo === 'grazia' && tenuta) continue;
     ctx.eventi.push({ tipo: 'carta', giocatore: g.id, mazzo: nome, carta: id, testo: carta.testo });
@@ -1064,6 +1083,10 @@ export function azioniPossibili(stato: Stato, id: IdGiocatore): Azione[] {
     ...RILANCI.map((r): Azione => ({ tipo: 'offri', giocatore: id, importo: offerta + r })),
     ...possedute(stato, id).flatMap((casella): Azione[] =>
       (['costruisci', 'demolisci', 'ipoteca', 'riscatta', 'vendi'] as const).map((tipo) => ({ tipo, giocatore: id, casella })),
+    ),
+    // Con la costruzione di squadra si costruisce anche sulle città dei compagni (e così fanno i bot).
+    ...stato.proprieta.flatMap((p, casella): Azione[] =>
+      p?.proprietario && p.proprietario !== id && puoCostruireSu(stato, id, casella) ? [{ tipo: 'costruisci', giocatore: id, casella }] : [],
     ),
     { tipo: 'bancarotta', giocatore: id },
   ];

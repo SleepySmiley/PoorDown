@@ -17,12 +17,15 @@ import {
   type Regione,
   type Stato,
 } from '@poordown/engine';
+import { useColoriDiSquadra } from '../rete/coloriSquadra';
 import { caselleVista, type CasellaVista } from '../ui/caselle';
 import { Pedina, SfondoBandiera, Soldi, Stemma } from '../ui/comuni';
 import { CORNICE, FASCIA_VISITA, FUGA, geometria, righeAffitto, type Geometria } from '../ui/geometria';
 import { Icona, IconaCasella } from '../ui/icone';
 import { COMPARSA, CURVA, DURATA } from '../ui/movimento';
+import { tintaProprietario } from '../ui/squadre';
 import { iniziali, variabili } from '../ui/utili';
+import { Binario } from './Colonne';
 
 /**
  * Quando è comparso il tabellone. Blocchi e case che nascono insieme a lui (chi apre la pagina a metà partita)
@@ -257,6 +260,14 @@ export function SchedaProprieta({
                 className="pedina--scheda"
               />
               {p.proprietario.nome}
+              {/* A squadre, anche la sua squadra: il numero nel colore che la proprietà ha sul tabellone. */}
+              {partita?.impostazioni.squadre && p.proprietario.squadra !== null && (
+                <Binario
+                  indice={p.proprietario.squadra}
+                  nome={partita.squadre[p.proprietario.squadra] ?? `Squadra ${p.proprietario.squadra + 1}`}
+                  className="binario--riga"
+                />
+              )}
             </strong>
           ) : (
             <strong className="scheda__libera">Libera</strong>
@@ -340,6 +351,8 @@ function classeNome(nome: string): string {
 /** Come si mostra la casella in questo momento. */
 interface StatoCasella {
   p?: Possesso;
+  /** Il colore del blocco del proprietario: quello della sua pedina o, a squadre, della sua squadra (ui/squadre.ts). */
+  tinta?: string;
   iniziale?: string;
   selezionata: boolean;
   arrivo?: 'normale' | 'affitto';
@@ -396,7 +409,7 @@ function CasellaTabellone({
   const stile = {
     gridRow: riga,
     gridColumn: colonna,
-    ...(p ? variabili({ '--proprietario': `var(--p${p.proprietario.colore})` }) : {}),
+    ...(p ? variabili({ '--proprietario': stato.tinta ?? `var(--p${p.proprietario.colore})` }) : {}),
     ...(stato.meta !== undefined ? variabili({ '--meta': `var(--p${stato.meta})` }) : {}),
     ...(stato.sfila !== undefined ? variabili({ '--i': String(stato.sfila) }) : {}),
   };
@@ -697,6 +710,8 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
  * Il tabellone: una lastra con le caselle smaltate attorno al centro incassato.
  * - `arrivo`: la casella dove si è fermato chi gioca, con il contorno ambra (rosso se lì si paga l'affitto), fino a fine turno.
  * - `lampeggia`: caselle che pulsano nel colore del proprietario (per esempio quelle di uno scambio).
+ * Nelle partite a squadre il colore del proprietario è quello della sua squadra, salvo che chi guarda scelga i colori
+ * dei giocatori (rete/coloriSquadra.ts): l'iniziale sul blocco dice comunque chi la possiede.
  */
 export function Tabellone({
   mappa,
@@ -737,6 +752,8 @@ export function Tabellone({
 }): ReactNode {
   const [regioneAccesa, setRegioneAccesa] = useState<number | null>(null);
   const [natoIl] = useState(() => performance.now());
+  // A squadre le proprietà prendono il colore della squadra, se chi guarda non ha scelto quello dei giocatori.
+  const perSquadra = useColoriDiSquadra();
   const tab = tabellone(mappa);
   const caselle = caselleVista(mappa);
   const geo = geometria(caselle.length);
@@ -799,6 +816,7 @@ export function Tabellone({
               regione={c.gruppo ? tab.regioni[c.gruppo - 1] : undefined}
               stato={{
                 p,
+                tinta: p && partita ? tintaProprietario(partita, p.proprietario, perSquadra) : undefined,
                 iniziale: p ? (sigle?.get(p.proprietario.id) ?? p.proprietario.nome.slice(0, 1).toUpperCase()) : undefined,
                 selezionata: selezionata === c.n,
                 arrivo: arrivo?.n === c.n ? arrivo.tono : undefined,

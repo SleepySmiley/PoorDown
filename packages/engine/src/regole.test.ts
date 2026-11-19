@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { casoDaSeme } from './caso';
 import { applica, verifica } from './regole';
-import { assegna, dadi, esegui, g, partitaDiProva, primaCarta, problemi } from './prove';
+import { assegna, dadi, dadiPoi, esegui, g, partitaDiProva, primaCarta, problemi } from './prove';
 import type { Azione, Stato } from './tipi';
 
 const lancia = (giocatore = 'a'): Azione => ({ tipo: 'lancia', giocatore });
@@ -278,11 +279,16 @@ describe('carte', () => {
     expect(g(stato, 'a').saldo).toBe(1500 - (2 * 40 + 115));
   });
 
-  it('il mazzo ricomincia dalla prima carta quando finisce', () => {
+  it('quando il mazzo finisce si rimescola e riparte dalla prima carta', () => {
     const s = conAIn(12);
     s.mazzi.busta.prossima = 16;
-    const { stato } = esegui(s, lancia(), dadi([2, 3]));
-    expect(stato.mazzi.busta.prossima).toBeLessThan(2);
+    const ultima = s.mazzi.busta.ordine[16];
+    // Dopo i dadi il rimescolamento chiede altri numeri a caso.
+    const { stato, eventi } = esegui(s, lancia(), dadiPoi(casoDaSeme(7), [2, 3]));
+    expect(eventi).toContainEqual(expect.objectContaining({ tipo: 'carta', mazzo: 'busta', carta: ultima }));
+    expect(stato.mazzi.busta.prossima).toBe(0);
+    expect([...stato.mazzi.busta.ordine].sort((x, y) => x - y)).toEqual([...Array(17).keys()]);
+    expect(stato.mazzi.busta.ordine).not.toEqual(s.mazzi.busta.ordine);
   });
 });
 

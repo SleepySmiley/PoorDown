@@ -27,7 +27,7 @@ Pubblicità, captcha, login e account, store e monete, karma, profili pubblici, 
 
 ### Cosa cambiamo apposta
 - **Tutto sbloccato:** 7–8 giocatori, modalità squadre e tutti i tabelloni sono gratis.
-- **Mazzi nascosti:** l'ordine delle carte non viene mai inviato ai giocatori (richup lo manda a tutti).
+- **Mazzi nascosti e rimescolati:** l'ordine delle carte non viene mai inviato ai giocatori (richup lo manda a tutti), e ogni mazzo si rimescola quando esce la sua ultima carta: l'ordine non si ricostruisce dalle carte già uscite.
 - **Ricaricare non fa perdere il posto,** né in lobby né in partita (su richup l'host che ricarica in lobby perde ruolo e posto).
 - **Timer disattivabile:** si aggiunge un'impostazione "Timer di turno" (default ON, stesso comportamento di richup).
 - **Durata massima:** impostazione in più (default ON): dopo 100 turni a testa vince il patrimonio più alto, così anche le partite senza scambi finiscono.
@@ -222,6 +222,16 @@ Scelta del 2026-11-15: un tabellone diverso apposta dal Monopoly classico, pieno
 - [x] Dado cosmico (2026-11-17): a ogni lancio, con i due dadi, un terzo dado con sei facce tutte diverse (Razzo, Saldi, Bandiera, Scudo, Faro, Iperspazio), truccato perché il Razzo esca una volta su tre, per vendere prima il tabellone. Nel browser il terzo dado che rotola con gli altri, il riquadro della faccia uscita, il Faro nel pannello del cosmo. Bot: a fine giro 6 venduto il 65% invece del 45% in quattro, il 36% invece del 26% in due; partite più lunghe (308 turni contro 276)
 - [ ] Estensione: la Supernova più ricca e il dado cosmico vanno in una versione nuova (0.2.1) quando si decide di pubblicarla
 
+### Correzioni e squadre (2026-11-19) · M
+Interventi chiesti dopo un'analisi del codice. Verificati con lint, tipi, 606 test (79 nuovi), build, e con 60 partite a squadre di soli bot su tutti i tabelloni (Giro del mondo compreso) con la costruzione di squadra e l'aiuto dei bot accesi insieme: finiscono tutte, senza mosse rifiutate né stati incoerenti.
+- [x] cloudflared con versione fissata (2026.11.1) e impronte SHA-256 nel codice: la copia scaricata si avvia solo se l'impronta coincide, quella già scaricata si ricontrolla a ogni accensione, quella installata sul PC si usa solo se è almeno la versione fissata
+- [x] Mazzi rimescolati a ogni giro: quando esce l'ultima carta il mazzo si rimescola con il caso della partita, Carta Grazia compresa
+- [x] Asta: i rilanci suonano anche dopo la ventesima offerta (il browser contava le offerte in elenco, che il server tiene al massimo 20); anche la bolla del rilancio e l'elenco delle offerte si animano sempre
+- [x] Squadre: colori di squadra (arancio, azzurro, giallo, viola) sulle proprietà, sul numero della squadra e nel grafico del patrimonio, con l'interruttore per tornare ai colori dei giocatori; regola facoltativa «Costruzione di squadra», spenta di base e modificabile anche dal pannello di controllo
+- [x] Squadre con i bot: il bot offre al compagno in rosso i soldi che gli servono quando conviene alla squadra, accetta le sue richieste d'aiuto entro un limite, e il gioco automatico accetta il regalo invece della bancarotta
+- [ ] Da provare dal vivo nel browser: leggibilità dei colori di squadra (soprattutto il giallo) e dell'interruttore a 1440 px, pulsante «Costruisci…: paghi tu» sulle città dei compagni, offerta d'aiuto di un bot in una partita vera
+- [ ] Estensione: queste correzioni vanno nella prossima versione, insieme alla Supernova più ricca e al dado cosmico
+
 ---
 
 ## 4. Punti non verificati su richup e come li trattiamo
@@ -283,6 +293,11 @@ Scelta del 2026-11-15: un tabellone diverso apposta dal Monopoly classico, pieno
 | Affitti dei tabelloni alternativi | Ricavati dal prezzo con la scala del Classico, così l’economia resta la stessa |
 | Durata massima | 100 turni per ogni giocatore seduto all’inizio (contano tutti i turni, anche quelli di chi poi esce). Vince il patrimonio più alto tra chi è in gioco (soldi, carte grazia, proprietà non ipotecate e edifici al prezzo pieno); a squadre la squadra con la somma più alta; a pari merito chi viene prima nei turni. In classifica chi è ancora in gioco sta davanti per patrimonio. Le partite cominciate prima della regola continuano senza limite |
 | Bonus di partenza | 5% dei soldi iniziali per ogni posto dopo il primo nell’ordine dei turni, arrotondato ai 5 € (2,5% in due): con 1500 € e quattro giocatori 0, +75, +150, +225. Vale anche a squadre e con «Un’altra partita» |
+| Mazzo finito | Quando esce l’ultima carta si rimescola tutto, Carta Grazia compresa (che si salta finché qualcuno la tiene), e si riparte dalla prima carta del nuovo ordine |
+| cloudflared | Versione fissata (2026.11.1) con le impronte SHA-256 nel codice; la copia già scaricata si ricontrolla a ogni accensione e, se è diversa, si cancella e si riscarica; quello installato sul PC si usa solo se è almeno la versione fissata e si cerca solo nelle cartelle del PATH (mai in quella corrente); dopo 3 scaricamenti non validi il gioco online resta spento fino alla prossima accensione |
+| Colori delle proprietà a squadre | Il colore della squadra di chi le possiede, con la sua iniziale sul blocco; è una preferenza di chi guarda, salvata nel browser (l’interruttore torna ai colori delle pedine). Il pannello di controllo mostra sempre i colori dei giocatori |
+| Costruzione di squadra | Facoltativa, solo a squadre: chiunque della squadra costruisce sulle città dei compagni e paga lui; valgono regione completa della squadra, niente ipoteche nella regione e costruzione uniforme sull’intera regione. Gli edifici li vende solo chi possiede la città |
+| Aiuto dei bot ai compagni in rosso | Il bot regala tutto il rosso se gli resta la sua scorta: intera se il compagno potrebbe rientrare da solo vendendo e ipotecando, metà se fallirebbe. Dà una parte solo se il resto il compagno lo copre da solo, e solo se quello che la squadra salverebbe (proprietà, edifici, edifici dei compagni nelle regioni che si romperebbero, più il posto in partita valutato due passaggi dalla Partenza) vale più del regalo. Aiuta un solo bot, al più una volta per compagno a turno, con una nota; ritira il regalo se non serve più. Alle richieste di soldi del compagno in rosso dà fino al rosso arrotondato alle centinaia; oltre decide la regola di sempre tra compagni. Il gioco automatico accetta un regalo di un compagno che copre tutto il rosso invece della bancarotta |
 
 ---
 

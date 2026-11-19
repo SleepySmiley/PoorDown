@@ -3,13 +3,15 @@
  * I colori delle pedine sono scelti dai giocatori e possono somigliarsi: per questo ogni linea finisce con la pedina
  * e l'iniziale, c'è sempre la legenda, il passaggio del mouse mostra i valori di tutti e c'è una tabella nascosta
  * per chi usa un lettore di schermo.
- * A squadre un interruttore mostra anche il patrimonio di ogni squadra (la somma dei suoi giocatori ancora in gioco).
+ * A squadre un interruttore mostra anche il patrimonio di ogni squadra (la somma dei suoi giocatori ancora in gioco),
+ * nel colore della squadra.
  */
 
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { euro, type IdGiocatore, type Stato } from '@poordown/engine';
 import { Pedina } from '../ui/comuni';
 import { Icona } from '../ui/icone';
+import { colorePedina, coloreSquadra } from '../ui/squadre';
 import { iniziale } from '../ui/utili';
 
 const L = 560;
@@ -35,6 +37,8 @@ interface Serie {
   id: string;
   nome: string;
   colore: number;
+  /** Il colore della linea e della sua pedina: quello del giocatore, o della squadra. */
+  tinta: string;
   /** Cosa c'è scritto sulla pedina in fondo alla linea: l'iniziale del giocatore o il numero della squadra. */
   segno: string;
   /** Ha vinto (il giocatore, o la squadra): la sua linea è più spessa. */
@@ -49,13 +53,14 @@ function serieGiocatori(partita: Stato): Serie[] {
     id: g.id,
     nome: g.nome,
     colore: g.colore,
+    tinta: colorePedina(g.colore),
     segno: iniziale(g.nome),
     vincente: partita.squadraVincitrice === null ? partita.vincitore === g.id : g.squadra === partita.squadraVincitrice,
     punti: dati.flatMap((p) => (p.valori[i] == null ? [] : [{ turno: p.turno, valore: p.valori[i]! }])),
   }));
 }
 
-/** Le linee delle squadre: la somma dei giocatori ancora in gioco, nel colore del primo giocatore della squadra. */
+/** Le linee delle squadre: la somma dei giocatori ancora in gioco, nel colore della squadra. */
 function serieSquadre(partita: Stato): Serie[] {
   const dati = partita.statistiche.patrimonio;
   const squadre = [...new Set(partita.giocatori.map((g) => g.squadra).filter((x): x is number => x !== null))].sort();
@@ -65,6 +70,7 @@ function serieSquadre(partita: Stato): Serie[] {
       id: `squadra-${t}`,
       nome: partita.squadre[t] ?? `Squadra ${t + 1}`,
       colore: partita.giocatori[membri[0]!]!.colore,
+      tinta: coloreSquadra(t),
       segno: String(t + 1),
       vincente: partita.squadraVincitrice === t,
       punti: dati.flatMap((p) => {
@@ -188,7 +194,7 @@ export function GraficoPatrimonio({ partita }: { partita: Stato }): ReactNode {
               .filter(Boolean)
               .join(' ');
             return (
-              <g key={s.id} className={classi} style={{ color: `var(--p${s.colore})` }}>
+              <g key={s.id} className={classi} style={{ color: s.tinta }}>
                 <path className="grafico__linea" d={tracciato(s)} />
                 {fine && (
                   <g transform={`translate(${x(fine.turno)} ${y(fine.valore)})`}>
@@ -206,7 +212,7 @@ export function GraficoPatrimonio({ partita }: { partita: Stato }): ReactNode {
             serie.map((s) => {
               const v = valoreAl(s, scelto.turno);
               if (v === null) return null;
-              return <circle key={s.id} className="grafico__punto" style={{ color: `var(--p${s.colore})` }} cx={x(scelto.turno)} cy={y(v)} r="4.5" />;
+              return <circle key={s.id} className="grafico__punto" style={{ color: s.tinta }} cx={x(scelto.turno)} cy={y(v)} r="4.5" />;
             })}
 
           <rect
@@ -233,7 +239,7 @@ export function GraficoPatrimonio({ partita }: { partita: Stato }): ReactNode {
             <ul>
               {righeSuggerimento.map(({ s, valore }) => (
                 <li key={s.id} className={valore === null ? 'grafico__fuori' : undefined}>
-                  <Pedina colore={s.colore} className="pedina--mini" />
+                  <Pedina colore={s.colore} tinta={s.tinta} className="pedina--mini" />
                   <span className="grafico__nome">{s.nome}</span>
                   <b>{valore === null ? 'fuori' : euro(valore)}</b>
                 </li>
@@ -254,7 +260,7 @@ export function GraficoPatrimonio({ partita }: { partita: Stato }): ReactNode {
               onFocus={() => setEvidenziato(s.id)}
               onBlur={() => setEvidenziato(null)}
             >
-              <Pedina colore={s.colore} iniziale={s.segno} className="pedina--legenda" />
+              <Pedina colore={s.colore} tinta={s.tinta} iniziale={s.segno} className="pedina--legenda" />
               {s.nome}
             </button>
           </li>

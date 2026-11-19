@@ -13,6 +13,7 @@ const REGOLE: Record<RegolaModificabile, { nome: string; descrizione: string }> 
   nienteAffittoInPrigione: { nome: 'Prigione senza affitti', descrizione: 'Chi è in prigione non incassa' },
   ipoteche: { nome: 'Ipoteche', descrizione: 'Metà prezzo dalla banca' },
   costruzioneUniforme: { nome: 'Costruzione uniforme', descrizione: 'Case alla pari nella regione' },
+  costruzioneDiSquadra: { nome: 'Costruzione di squadra', descrizione: 'Case anche sulle città dei compagni' },
   timerTurno: { nome: 'Timer del turno', descrizione: 'Riaccendendolo, il tempo del turno riparte da adesso' },
   durataMassima: { nome: 'Durata massima', descrizione: '100 turni a testa, poi vince il patrimonio più alto' },
 };
@@ -29,7 +30,8 @@ export function Partita({ partita, esegui }: { partita: Stato; esegui: Esegui })
       <section className="pc-riquadro">
         <h3 className="pc-riquadro__titolo">Regole</h3>
         <ul className="pc-regole">
-          {REGOLE_MODIFICABILI.map((chiave) => (
+          {/* La costruzione di squadra conta solo nelle partite a squadre. */}
+          {REGOLE_MODIFICABILI.filter((chiave) => chiave !== 'costruzioneDiSquadra' || partita.impostazioni.squadre).map((chiave) => (
             <li key={chiave} className="pc-regola">
               <span>
                 <span className="pc-regola__nome">{REGOLE[chiave].nome}</span>

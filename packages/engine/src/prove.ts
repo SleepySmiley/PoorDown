@@ -76,6 +76,22 @@ export function dadi(...tiri: [number, number][]): Caso {
   };
 }
 
+/**
+ * Come `dadi`, ma finiti i tiri continua con `poi` invece di fallire: serve quando dopo i dadi il motore chiede altri
+ * numeri a caso (per esempio per rimescolare il mazzo finito).
+ */
+export function dadiPoi(poi: Caso, ...tiri: [number, number][]): Caso {
+  const valori = tiri.flat();
+  return {
+    intero(n) {
+      const v = valori.shift();
+      if (v === undefined) return poi.intero(n);
+      if (n !== 6) throw new Error(`Atteso un tiro di dado, chiesto un intero su ${n}.`);
+      return v - 1;
+    },
+  };
+}
+
 /** Esegue l'azione e fallisce se il motore la rifiuta. `adesso` serve alle aste. */
 export function esegui(stato: Stato, azione: Azione, caso: Caso = dadi(), adesso = 0): { stato: Stato; eventi: Evento[] } {
   const esito = applica(stato, azione, caso, adesso);

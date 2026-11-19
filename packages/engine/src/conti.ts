@@ -72,6 +72,24 @@ export function possiedeRegione(stato: Stato, id: IdGiocatore, regione: number):
   });
 }
 
+/**
+ * Costruzione di squadra: a squadre, con la regola attiva, i compagni costruiscono anche sulle città degli altri
+ * giocatori della squadra. `=== true`: nelle partite salvate prima della regola la chiave può mancare.
+ */
+export function costruzioneDiSquadra(stato: Stato): boolean {
+  return stato.impostazioni.squadre && stato.impostazioni.costruzioneDiSquadra === true;
+}
+
+/**
+ * Il giocatore può costruire su questa casella perché è sua o, con la costruzione di squadra, di un compagno.
+ * Guarda solo di chi è: regione completa, ipoteche, costruzione uniforme e soldi li controlla `verifica`.
+ */
+export function puoCostruireSu(stato: Stato, id: IdGiocatore, casella: number): boolean {
+  const proprietario = stato.proprieta[casella]?.proprietario;
+  if (proprietario == null) return false;
+  return proprietario === id || (costruzioneDiSquadra(stato) && compagni(stato, id, proprietario));
+}
+
 /** Nella regione c'è almeno una casa o un albergo. */
 export function regioneConEdifici(stato: Stato, regione: number): boolean {
   return caselleDellaRegione(tabellone(stato.mappa), regione).some((i) => (stato.proprieta[i]?.livello ?? 0) > 0);
