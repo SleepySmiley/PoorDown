@@ -206,6 +206,16 @@
   line-height: 1.2;
 }
 
+/* Testi lunghi (carte folli e rare): un corpo più piccolo, così stanno sopra la tasca della Busta e dentro la Cartolina. */
+.carta--busta.carta--lunga .carta__testo {
+  font-size: calc(var(--u) * 15);
+  line-height: 1.2;
+}
+
+.carta--cartolina.carta--lunga .carta__testo {
+  font-size: calc(var(--u) * 14.5);
+}
+
 .cartolina__indirizzo {
   position: relative;
 }
@@ -350,4 +360,51 @@
 .cartolina__saluti small {
   font: 600 calc(var(--u) * 14) / 1.2 var(--stretto);
   letter-spacing: 0.14em;
+}
+
+/* ---------- Carta rara (Giro del mondo): il timbro ambra e il bordo che la distingue ---------- */
+
+.carta--rara .carta__faccia {
+  box-shadow:
+    0 0 0 calc(var(--u) * 2.5) var(--ambra),
+    0 0 calc(var(--u) * 34) rgb(255 184 28 / 0.4),
+    0 calc(var(--u) * 18) calc(var(--u) * 40) rgb(0 0 0 / 0.55),
+    0 calc(var(--u) * 2) calc(var(--u) * 4) rgb(0 0 0 / 0.3);
+}
+
+/* Inchiostro ambra scuro, come la ceralacca: sulla carta crema si legge. */
+.carta__rara {
+  --inchiostro-raro: color-mix(in srgb, var(--ambra) 62%, #6b3a00);
+
+  position: absolute;
+  top: calc(var(--u) * 12);
+  right: calc(var(--u) * 12);
+  z-index: 2;
+  padding: calc(var(--u) * 4) calc(var(--u) * 9);
+  border: calc(var(--u) * 2) solid var(--inchiostro-raro);
+  border-radius: calc(var(--u) * 4);
+  background: rgb(255 248 230 / 0.82);
+  color: var(--inchiostro-raro);
+  font: 800 calc(var(--u) * 14) / 1 var(--stretto);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  rotate: 8deg;
+}
+
+/* Il timbro si posa quando la carta ha finito di girarsi: dice subito che non è una carta come le altre. */
+@media (prefers-reduced-motion: no-preference) {
+  .carta--rara:not(.carta--dorso) .carta__rara {
+    animation: timbro-raro 260ms var(--c-arrivo) var(--d-lenta) both;
+  }
+}
+
+@keyframes timbro-raro {
+  from {
+    opacity: 0;
+    scale: 1.7;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
 }

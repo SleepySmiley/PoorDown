@@ -219,7 +219,14 @@ export type Effetto =
   /** Gravità invertita: fino alla fine del giro tutti tirano i dadi e camminano al contrario. */
   | { tipo: 'inverti' }
   /** Biglietto omaggio (Giro del mondo): si muove ancora, e se vola non paga il biglietto. */
-  | { tipo: 'volo_omaggio' };
+  | { tipo: 'volo_omaggio' }
+  /* Le carte rare (Giro del mondo): escono di rado, al posto della carta del mazzo. */
+  /** Chi pesca va in bancarotta ed esce dalla partita, come se fallisse. */
+  | { tipo: 'bancarotta' }
+  /** Uno a caso tra chi è uscito per bancarotta rientra: dalla Partenza, con i soldi iniziali, senza proprietà. */
+  | { tipo: 'vita_extra' }
+  /** Tutte le proprietà tornano alla banca, senza edifici né ipoteche. I soldi restano dove sono. */
+  | { tipo: 'reset' };
 
 /** Gli eventi cosmici del Sistema solare: uno per giro, dal secondo giro. */
 export type EventoCosmico = 'quiete' | 'allineamento' | 'eclissi' | 'tempesta' | 'meteoriti' | 'gravita' | 'collisione';
@@ -317,6 +324,27 @@ export interface Viaggi {
   passaporto: boolean;
 }
 
+/**
+ * Una carta rara: a ogni pescata, se può uscire, esce `su10000` volte su 10.000 al posto della carta del mazzo.
+ * Quando può uscire lo decide il suo effetto:
+ * - `bancarotta`: dal terzo giro, e solo se chi pesca non è l'ultimo rimasto in gioco;
+ * - `vita_extra`: solo se qualcuno è uscito per bancarotta;
+ * - `reset`: una volta a partita, quando almeno metà delle proprietà ha un padrone.
+ */
+export interface CartaRara {
+  carta: Carta & { effetto: { tipo: 'bancarotta' | 'vita_extra' | 'reset' } };
+  su10000: number;
+}
+
+/**
+ * Le carte rare del Giro del mondo e la regola dell'ultimo rimasto che va con loro: chi resta solo (a squadre, la
+ * squadra rimasta) vince dopo `ultimiTurni` turni a testa, se intanto nessuno rientra con la Vita extra.
+ */
+export interface CarteRare {
+  carte: readonly CartaRara[];
+  ultimiTurni: number;
+}
+
 export interface Tabellone {
   id: IdMappa;
   nome: string;
@@ -337,6 +365,8 @@ export interface Tabellone {
   follie?: Follie;
   /** Il biglietto aereo e la sfida a morra cinese (Giro del mondo). */
   viaggi?: Viaggi;
+  /** Bancarotta, Vita extra e Reset, con la regola dell'ultimo rimasto (Giro del mondo). */
+  rare?: CarteRare;
 }
 
 /* ------------------------------------------------------------------ */
@@ -608,6 +638,13 @@ export interface Stato {
   cosmo?: Cosmo;
   /** La sfida a morra cinese in corso (Giro del mondo). Manca nelle partite degli altri tabelloni. */
   sfida?: Sfida | null;
+  /**
+   * Carte rare (Giro del mondo): è rimasto un solo giocatore (o una sola squadra) ma chi è uscito per bancarotta può
+   * ancora rientrare. `turni`: quanti turni mancano alla vittoria. Manca (o è `null`) se non c'è il conto alla rovescia.
+   */
+  ultimoRimasto?: { turni: number } | null;
+  /** Carte rare: il Reset è già uscito (esce al massimo una volta a partita). */
+  resettata?: true;
 }
 
 /* ------------------------------------------------------------------ */
@@ -772,7 +809,8 @@ export type Evento =
   | { tipo: 'affitto'; da: IdGiocatore; a: IdGiocatore; casella: number; importo: number }
   | { tipo: 'tassa'; giocatore: IdGiocatore; casella: number; importo: number }
   | { tipo: 'premio'; giocatore: IdGiocatore; casella: number; importo: number }
-  | { tipo: 'carta'; giocatore: IdGiocatore; mazzo: NomeMazzo; carta: number; testo: string }
+  /** `carta`: indice in `Tabellone.mazzi[mazzo]`; con `rara`, indice in `Tabellone.rare.carte` (è uscita al posto di quella del mazzo). */
+  | { tipo: 'carta'; giocatore: IdGiocatore; mazzo: NomeMazzo; carta: number; testo: string; rara?: true }
   | { tipo: 'prigione'; giocatore: IdGiocatore; motivo: 'casella' | 'carta' | 'tre_doppi' }
   | { tipo: 'prigione_fallita'; giocatore: IdGiocatore; tentativi: number }
   | { tipo: 'uscita_prigione'; giocatore: IdGiocatore; modo: 'doppio' | 'cauzione' | 'grazia' | 'tentativi' }
@@ -836,6 +874,15 @@ export type Evento =
    * del compagno lì tornano alla banca. `importo`: metà del loro costo, che il compagno incassa.
    */
   | { tipo: 'edifici_venduti'; giocatore: IdGiocatore; caselle: number[]; importo: number }
+  /** Vita extra (carte rare): `giocatore` era uscito per bancarotta e rientra dalla Partenza con `soldi`. `da`: chi ha pescato. */
+  | { tipo: 'rientro'; giocatore: IdGiocatore; da: IdGiocatore; soldi: number }
+  /** Reset (carte rare): le proprietà in `caselle` sono tornate alla banca, senza edifici né ipoteche. `giocatore`: chi ha pescato. */
+  | { tipo: 'reset'; giocatore: IdGiocatore; caselle: number[] }
+  /**
+   * Carte rare: è rimasto solo `giocatore` (a squadre, la sua squadra). Vince quando la sua squadra avrà giocato
+   * altri `turni` turni, se intanto nessuno rientra con la Vita extra.
+   */
+  | { tipo: 'ultimo_rimasto'; giocatore: IdGiocatore; turni: number }
   /** Il tempo del turno è finito: da qui il gioco fa le mosse al posto suo. `assente`: non è collegato. */
   | { tipo: 'tempo_scaduto'; giocatore: IdGiocatore; assente: boolean }
   | { tipo: 'tempo_chiesto'; giocatore: IdGiocatore }

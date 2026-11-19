@@ -39,6 +39,12 @@ export const TEMPI = {
   cambioData: 700,
   /** La morra cinese: le due mani battono tre volte («sasso, carta, forbici!») e si aprono. */
   morra: 1800,
+  /** Vita extra: la pedina rinasce sulla Partenza e la riga del giocatore torna accesa. */
+  rientro: 1300,
+  /** Reset: tutti i blocchi dei proprietari si sfilano dal tabellone. */
+  reset: 1600,
+  /** Resta un solo giocatore in gioco: l'avviso del conto alla rovescia. */
+  ultimoRimasto: 1200,
   /* Regole folli del Sistema solare. */
   /** Inizio di un giro: il riquadro dell'evento cosmico entra, si legge, poi si rimpicciolisce. */
   cosmo: 2600,
@@ -170,6 +176,12 @@ export function durataEvento(e: Evento, caselle: number): number {
       return TEMPI.cambioData;
     case 'morra':
       return TEMPI.morra;
+    case 'rientro':
+      return TEMPI.rientro;
+    case 'reset':
+      return TEMPI.reset;
+    case 'ultimo_rimasto':
+      return TEMPI.ultimoRimasto;
     case 'cosmo':
       return TEMPI.cosmo;
     case 'quantico':

@@ -631,7 +631,7 @@ export function Gioco({
   const chiPesca = cartaInScena ? partita.giocatori.find((g) => g.id === cartaInScena.giocatore) : undefined;
   // La Cartolina che manda in una città ha il francobollo del colore della sua regione.
   const regioneCarta = (() => {
-    if (!cartaInScena) return undefined;
+    if (!cartaInScena || cartaInScena.rara) return undefined;
     const effetto = tab.mazzi[cartaInScena.mazzo][cartaInScena.carta]?.effetto;
     const meta = effetto?.tipo === 'vai_a' ? tab.caselle[effetto.casella] : undefined;
     return meta?.tipo === 'citta' ? tab.regioni[meta.regione]?.colore : undefined;
@@ -706,7 +706,8 @@ export function Gioco({
             mappa={partita.mappa}
             partita={partita}
             pedine={partita.giocatori
-              .filter((g) => !g.eliminato)
+              // Chi rientra con la Vita extra è già sul tabellone mentre la partita mostrata lo ha ancora fuori.
+              .filter((g) => !g.eliminato || scena.rientri[g.id])
               .map((g) => {
                 const mostrata = scena.posizioni[g.id];
                 return {
@@ -730,7 +731,7 @@ export function Gioco({
             meta={metaDadi}
             lampeggia={scena.lampeggia}
             sbarre={scena.sbarre}
-            sfila={scena.bancarotta?.caselle}
+            sfila={scena.bancarotta?.caselle ?? scena.reset?.caselle}
             onApri={(n) => {
               setMia(null);
               setScheda((x) => (x === n ? null : n));
@@ -762,6 +763,7 @@ export function Gioco({
                       key={`carta-${cartaInScena.n}`}
                       mazzo={cartaInScena.mazzo}
                       testo={cartaInScena.testo}
+                      rara={cartaInScena.rara}
                       regione={regioneCarta}
                       da={geometria(tab.caselle.length).centro(cartaInScena.casella)}
                       didascalia={
@@ -769,6 +771,7 @@ export function Gioco({
                           <>
                             <Pedina colore={chiPesca.colore} className="pedina--mini" />
                             {chiPesca.id === io ? 'Peschi' : `${chiPesca.nome} pesca`} {cartaInScena.mazzo === 'busta' ? 'una Busta' : 'una Cartolina'}
+                            {cartaInScena.rara && ': è una carta rara!'}
                           </>
                         )
                       }

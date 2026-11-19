@@ -85,6 +85,14 @@ export function passaTurno(ctx: Contesto): void {
     chiudiPerDurata(ctx);
     return;
   }
+  // Carte rare: l'ultimo rimasto vince quando ha giocato i suoi turni senza che nessuno rientrasse.
+  if (s.ultimoRimasto) {
+    if (s.ultimoRimasto.turni <= 0) {
+      chiudiPartita(ctx, attivi(s)[0]);
+      return;
+    }
+    s.ultimoRimasto.turni--;
+  }
   segnaPatrimonio(s);
   const n = s.giocatori.length;
   let i = s.giocatori.findIndex((g) => g.id === s.turno.giocatore);
@@ -257,7 +265,12 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
   const rimasti = attivi(s);
   const squadre = new Set(rimasti.map((x) => x.squadra));
   if (rimasti.length <= 1 || (s.impostazioni.squadre && squadre.size <= 1)) {
-    chiudiPartita(ctx, rimasti[0]);
+    if (rimasti.length > 0 && aspettaUltimoRimasto(ctx, rimasti)) {
+      if (s.turno.giocatore === g.id) passaTurno(ctx);
+      return;
+    }
+    // Uscire tutti succede solo se l'ultimo rimasto fallisce durante il conto alla rovescia: vince lui, che è durato di più.
+    chiudiPartita(ctx, rimasti[0] ?? (s.ultimoRimasto ? g : undefined));
     return;
   }
   if (s.turno.giocatore === g.id) {
@@ -269,6 +282,42 @@ export function elimina(ctx: Contesto, g: Giocatore, motivo: MotivoUscita, autom
   if (voti > 0 && voti >= votiNecessari(s)) elimina(ctx, giocatore(s, s.turno.giocatore)!, 'voto');
 }
 
+/**
+ * Carte rare: chi è uscito per bancarotta può ancora rientrare con la Vita extra, quindi chi resta da solo (a squadre,
+ * la squadra rimasta) non vince subito ma dopo `ultimiTurni` turni a testa. Fa partire il conto alla rovescia, se
+ * non è già partito; `false` se la partita deve finire adesso (tabellone senza carte rare, o nessuno può rientrare).
+ */
+function aspettaUltimoRimasto(ctx: Contesto, rimasti: readonly Giocatore[]): boolean {
+  const { s } = ctx;
+  const turni = ctx.tab.rare?.ultimiTurni;
+  if (!turni || !s.giocatori.some((x) => x.eliminato?.motivo === 'bancarotta')) return false;
+  if (s.ultimoRimasto) return true;
+  s.ultimoRimasto = { turni: turni * rimasti.length };
+  ctx.eventi.push({ tipo: 'ultimo_rimasto', giocatore: rimasti[0]!.id, turni });
+  return true;
+}
+
+/**
+ * Vita extra (carte rare): `g`, uscito per bancarotta, torna in gioco come all'inizio della partita: dalla Partenza,
+ * con i soldi iniziali, senza proprietà né passaporto. Riprende il suo posto nell'ordine dei turni e nella sua squadra.
+ * Il conto alla rovescia dell'ultimo rimasto, se era partito, si ferma.
+ */
+export function rientra(ctx: Contesto, g: Giocatore, da: Giocatore): void {
+  const { s } = ctx;
+  const soldi = s.impostazioni.soldiIniziali;
+  g.eliminato = null;
+  g.posizione = 0;
+  g.saldo = soldi;
+  g.debiti = [];
+  g.prigione = null;
+  g.vacanza = false;
+  g.automatici = 0;
+  delete g.passaporto;
+  s.statistiche.uscite = s.statistiche.uscite.filter((id) => id !== g.id);
+  s.ultimoRimasto = null;
+  ctx.eventi.push({ tipo: 'rientro', giocatore: g.id, da: da.id, soldi });
+}
+
 /** La partita finisce: vince `vincitore` (a squadre, con tutta la sua squadra). `durata`: per la durata massima. */
 export function chiudiPartita(ctx: Contesto, vincitore: Giocatore | undefined, durata = false): void {
   const { s } = ctx;
@@ -277,6 +326,7 @@ export function chiudiPartita(ctx: Contesto, vincitore: Giocatore | undefined, d
   s.squadraVincitrice = s.impostazioni.squadre ? (vincitore?.squadra ?? null) : null;
   s.asta = null;
   if (s.sfida) s.sfida = null;
+  if (s.ultimoRimasto) s.ultimoRimasto = null;
   s.scambi = [];
   s.statistiche.fine = ctx.adesso;
   segnaPatrimonio(s);

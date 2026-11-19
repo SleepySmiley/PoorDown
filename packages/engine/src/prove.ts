@@ -135,7 +135,9 @@ export function problemi(s: Stato): string[] {
       if (rimasti.length > 1) out.push('Partita finita con più di un giocatore in gioco.');
       if (s.squadraVincitrice !== null) out.push('Squadra vincitrice senza squadre.');
     }
-    if (!aTempo && s.vincitore !== (rimasti[0]?.id ?? null)) out.push('Vincitore sbagliato.');
+    // Fuori tutti succede solo con le carte rare, se l'ultimo rimasto fallisce: vince lui, l'ultimo a uscire.
+    const atteso = rimasti[0]?.id ?? s.statistiche.uscite.at(-1) ?? null;
+    if (!aTempo && s.vincitore !== atteso) out.push('Vincitore sbagliato.');
   }
   if (s.impostazioni.squadre !== (s.squadre.length > 0)) out.push('Nomi delle squadre che non tornano con l’impostazione.');
 

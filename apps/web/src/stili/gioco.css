@@ -1077,3 +1077,10 @@ button.mie__voce--aperta:hover {
     inset 0 1px 0 rgb(255 255 255 / 0.5),
     0 6px 14px rgb(0 0 0 / 0.45);
 }
+
+/* Carta rara (Giro del mondo): il bordo ambra tutto intorno, come la carta al centro del tabellone. */
+.evento.evento--carta.evento--rara {
+  box-shadow:
+    inset 0 0 0 calc(var(--k) * 1.5) var(--ambra),
+    inset 0 calc(var(--k) * 3) 0 var(--ambra);
+}

@@ -11,9 +11,11 @@
  * - Servizi con il moltiplicatore doppio: chi vola li evita.
  * Equilibrio misurato con 800 partite di 4 bot: vittorie per posto 26 · 21 · 27 · 27%, come su Europa.
  * - Busta e Cartolina solo sue, con testi comici come sul Sistema solare.
+ * - Tre carte rare che escono al posto di Busta e Cartolina: Bancarotta, Vita extra e Reset. Con loro l'ultimo rimasto
+ *   non vince subito: deve giocare ancora qualche turno, perché chi è in bancarotta può rientrare.
  */
 
-import type { Affitti, Carta, Casella, Regione, Tabellone, Viaggi } from '../tipi';
+import type { Affitti, Carta, CarteRare, Casella, Regione, Tabellone, Viaggi } from '../tipi';
 import { viaggio } from './mazzi';
 import { affittiPerPrezzo } from './scala';
 
@@ -207,6 +209,37 @@ const VIAGGI: Viaggi = {
   passaporto: true,
 };
 
+/**
+ * Le carte rare, con quante volte escono su 10.000 pescate (quando possono uscire: vedi `CartaRara`).
+ * Tarate perché in una partita da 4 escano più o meno: Bancarotta 1 partita su 5, Vita extra 1 su 3, Reset 1 su 6.
+ */
+const RARE: CarteRare = {
+  carte: [
+    {
+      carta: {
+        testo: 'Bancarotta! Hai puntato tutto in un casinò di Macao e hai perso. Sei fuori dalla partita.',
+        effetto: { tipo: 'bancarotta' },
+      },
+      su10000: 35,
+    },
+    {
+      carta: {
+        testo: 'Vita extra! Un monaco tibetano insegna la reincarnazione: uno a caso tra chi è in bancarotta torna in partita.',
+        effetto: { tipo: 'vita_extra' },
+      },
+      su10000: 120,
+    },
+    {
+      carta: {
+        testo: 'Reset! Il catasto mondiale va in tilt: tutte le proprietà tornano alla banca. I soldi restano a chi li ha.',
+        effetto: { tipo: 'reset' },
+      },
+      su10000: 40,
+    },
+  ],
+  ultimiTurni: 3,
+};
+
 export const GIRO_DEL_MONDO: Tabellone = {
   id: 'giro_del_mondo',
   nome: 'Giro del mondo',
@@ -222,4 +255,5 @@ export const GIRO_DEL_MONDO: Tabellone = {
   moltiplicatoriServizi: [8, 20],
   mazzi: { busta: BUSTA, cartolina: CARTOLINA },
   viaggi: VIAGGI,
+  rare: RARE,
 };

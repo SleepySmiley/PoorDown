@@ -495,6 +495,35 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
         ),
         dettaglio: maiuscolaIniziale(MOTIVO_RIMOZIONE[e.motivo]),
       };
+    case 'rientro':
+      return {
+        icona: 'partenza',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> rientra in partita
+          </>
+        ),
+        dettaglio: 'Dalla Partenza, senza proprietà',
+        importo: { valore: e.soldi, tono: tono(io, null, e.giocatore) },
+      };
+    case 'reset':
+      return {
+        icona: 'banca',
+        titolo: 'Tutte le proprietà tornano alla banca',
+        dettaglio: `${e.caselle.length} proprietà di nuovo in vendita; i soldi restano`,
+      };
+    case 'ultimo_rimasto':
+      return {
+        icona: 'coppa',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> non ha più avversari
+          </>
+        ),
+        dettaglio: `Vince dopo altri ${e.turni} turni, se nessuno rientra con la Vita extra`,
+      };
     case 'scambio_accettato':
       return {
         coppia: [e.da, e.a],
@@ -543,14 +572,17 @@ export function EventoCorrente({
   const giocatore = (id: IdGiocatore) => partita.giocatori.find((g) => g.id === id);
   const classi = (extra: string) => ['evento', extra, evento.precedente ? 'evento--precedente' : ''].filter(Boolean).join(' ');
 
-  // La carta pescata: testata con il mazzo, il testo della carta per intero.
+  // La carta pescata: testata con il mazzo (o «Carta rara»), il testo della carta per intero.
   if (e.tipo === 'carta') {
     const g = giocatore(e.giocatore);
     return (
-      <article className={classi(`evento--carta evento--${e.mazzo}`)} aria-label={`Carta pescata: ${e.testo}`}>
+      <article
+        className={classi(`evento--carta evento--${e.mazzo}${e.rara ? ' evento--rara' : ''}`)}
+        aria-label={`${e.rara ? 'Carta rara' : 'Carta pescata'}: ${e.testo}`}
+      >
         <header className="evento__testata">
-          <Icona nome={e.mazzo} />
-          <span className="evento__mazzo">{NOME_MAZZO[e.mazzo]}</span>
+          <Icona nome={e.rara ? 'stella' : e.mazzo} />
+          <span className="evento__mazzo">{e.rara ? 'Carta rara' : NOME_MAZZO[e.mazzo]}</span>
           {g && (
             <span className="evento__chi">
               <Pedina colore={g.colore} className="pedina--mini" />

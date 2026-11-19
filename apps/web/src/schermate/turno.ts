@@ -150,7 +150,7 @@ export function fraseTurno({
   }
 
   const scambio = mio ? null : cosaFa(attivita);
-  if (t.fase === 'lancio') return scambio ?? (mio ? 'Tira i dadi' : 'deve tirare i dadi');
+  if (t.fase === 'lancio') return scambio ?? (partita.ultimoRimasto ? fraseUltimoRimasto(partita, mio) : mio ? 'Tira i dadi' : 'deve tirare i dadi');
 
   // Dopo il tiro: prima il debito, poi la decisione d'acquisto, poi il doppio.
   if (g.saldo < 0) {
@@ -175,6 +175,19 @@ export function fraseTurno({
   }
   if (g.vacanza) return mio ? 'Sei in vacanza: salterai il prossimo turno' : 'va in vacanza: salta il prossimo turno';
   return scambio ?? (mio ? 'Puoi costruire, scambiare o finire il turno' : 'può costruire, scambiare o finire il turno');
+}
+
+/**
+ * Carte rare: chi gioca non ha più avversari e vince tra qualche turno, se nessuno rientra con la Vita extra.
+ * Il conto comprende il turno in corso: «a fine turno» vuol dire che questo è l'ultimo.
+ */
+function fraseUltimoRimasto(partita: Stato, mio: boolean): string {
+  const n = (partita.ultimoRimasto?.turni ?? 0) + 1;
+  const quando = n === 1 ? 'a fine turno' : `tra ${n} turni`;
+  if (partita.impostazioni.squadre) {
+    return mio ? `Non avete più avversari: tira i dadi, vincete ${quando}` : `non ha più avversari: la squadra vince ${quando}`;
+  }
+  return mio ? `Non hai più avversari: tira i dadi, vinci ${quando}` : `non ha più avversari: vince ${quando}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -222,6 +235,9 @@ const IMPORTANTI = new Set<string>([
   'rimozione',
   'scambio_accettato',
   'tempo_scaduto',
+  'rientro',
+  'reset',
+  'ultimo_rimasto',
 ]);
 
 export interface EventoInVista {

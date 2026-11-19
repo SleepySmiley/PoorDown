@@ -73,6 +73,8 @@ export interface CartaInScena {
   testo: string;
   /** La casella da cui esce. */
   casella: number;
+  /** Carta rara (Giro del mondo): `carta` è l'indice in `Tabellone.rare.carte`, non nel mazzo. */
+  rara?: true;
 }
 
 /** L'esito di uno scambio, timbrato sul tabellone. */
@@ -129,6 +131,10 @@ export interface Scena {
   sbarre: { n: number; verso: 'giu' | 'su' } | null;
   /** Chi sta facendo bancarotta, con le caselle che perde. */
   bancarotta: { giocatore: IdGiocatore; caselle: number[] } | null;
+  /** Carte rare: le pedine di chi rientra con la Vita extra, già sul tabellone mentre la partita mostrata li ha ancora fuori. */
+  rientri: Readonly<Record<IdGiocatore, true>>;
+  /** Carte rare: il Reset, con le caselle che tornano alla banca (i blocchi si sfilano come in una bancarotta). */
+  reset: { caselle: number[] } | null;
   gettoni: readonly Gettone[];
   /** Caselle che lampeggiano nel colore del nuovo proprietario (scambio fatto). */
   lampeggia: readonly number[];
@@ -391,6 +397,8 @@ export class Regia {
       dadoCosmico: null,
       sbarre: null,
       bancarotta: null,
+      rientri: {},
+      reset: null,
       gettoni: [],
       lampeggia: [],
       timbro: null,
@@ -513,6 +521,8 @@ export class Regia {
       cosmico: partita?.cosmo ? ultimaFacciaCosmica(s.registro) : null,
       dadoCosmico: null,
       bancarotta: null,
+      rientri: {},
+      reset: null,
       dadi: partita?.turno.dadi ?? ultimoLancio(s.registro) ?? this.scena.dadi,
     });
   }
@@ -681,7 +691,8 @@ export class Regia {
       }
       case 'carta': {
         const casella = this.scena.posizioni[e.giocatore]?.casella ?? partita.giocatori.find((g) => g.id === e.giocatore)?.posizione ?? 0;
-        this.cambia({ carta: { n: voce.n, giocatore: e.giocatore, mazzo: e.mazzo, carta: e.carta, testo: e.testo, casella } });
+        const rara = e.rara ? { rara: true as const } : {};
+        this.cambia({ carta: { n: voce.n, giocatore: e.giocatore, mazzo: e.mazzo, carta: e.carta, testo: e.testo, casella, ...rara } });
         suona('carta', { forza: this.forza(e.giocatore) });
         await this.attendi(durataCarta(e.testo) - TEMPI.cartaEsce);
         if (gen !== this.generazione) return;
@@ -697,6 +708,30 @@ export class Regia {
         this.cambia({ bancarotta: { giocatore: e.giocatore, caselle }, meta: null, arrivo: null });
         suona('bancarotta', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.bancarotta);
+        return;
+      }
+      case 'rientro': {
+        // Vita extra: la pedina ricompare con un lampo sulla Partenza e manda l'onda. Resta in scena fino allo stato
+        // nuovo, che la riporta in gioco (e riaccende la sua riga).
+        this.cambia({
+          rientri: { ...this.scena.rientri, [e.giocatore]: true },
+          teletrasporti: { ...this.scena.teletrasporti, [e.giocatore]: true },
+        });
+        this.muovi(e.giocatore, { casella: 0, prigione: false });
+        suona('teletrasporto', { forza: this.forza(e.giocatore) });
+        await this.attendi(TEMPI.rientro);
+        if (gen !== this.generazione) return;
+        this.cambia({
+          teletrasporti: senza(this.scena.teletrasporti, e.giocatore),
+          arrivi: { ...this.scena.arrivi, [e.giocatore]: (this.scena.arrivi[e.giocatore] ?? 0) + 1 },
+        });
+        return;
+      }
+      case 'reset': {
+        // Tutti i blocchi dei proprietari si sfilano dal tabellone, uno dopo l'altro, come in una bancarotta.
+        this.cambia({ reset: { caselle: e.caselle }, meta: null, arrivo: null });
+        suona('smonta');
+        await this.attendi(TEMPI.reset);
         return;
       }
       default: {

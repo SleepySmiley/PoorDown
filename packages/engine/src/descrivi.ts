@@ -189,7 +189,9 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
     case 'premio':
       return `${nome(evento.giocatore)} si ferma sul ${casella(evento.casella)} e riceve ${euro(evento.importo)}.`;
     case 'carta':
-      return `${nome(evento.giocatore)} pesca una ${NOME_MAZZO[evento.mazzo]}: «${evento.testo}»`;
+      return evento.rara
+        ? `${nome(evento.giocatore)} pesca una carta rara: «${evento.testo}»`
+        : `${nome(evento.giocatore)} pesca una ${NOME_MAZZO[evento.mazzo]}: «${evento.testo}»`;
     case 'prigione':
       return evento.motivo === 'tre_doppi'
         ? `${nome(evento.giocatore)} fa tre doppi di fila e va in prigione.`
@@ -278,6 +280,20 @@ export function descrivi(evento: Evento, stato: Stato): string | null {
       const citta = evento.caselle.map(casella);
       const elenco = citta.length === 1 ? citta[0]! : `${citta.slice(0, -1).join(', ')} e ${citta.at(-1)!}`;
       return `La regione non è più tutta della squadra: ${nome(evento.giocatore)} vende alla banca gli edifici di ${elenco} per ${euro(evento.importo)}.`;
+    }
+    case 'rientro':
+      return `${nome(evento.giocatore)} rientra in partita dalla Partenza con ${euro(evento.soldi)}.`;
+    case 'reset':
+      return evento.caselle.length === 1
+        ? 'Reset: la proprietà torna alla banca.'
+        : `Reset: ${evento.caselle.length} proprietà tornano alla banca, senza case né ipoteche.`;
+    case 'ultimo_rimasto': {
+      const g = giocatore(stato, evento.giocatore);
+      const squadra = g?.squadra === null || g?.squadra === undefined ? undefined : stato.squadre[g.squadra];
+      // «Resta in gioco solo Squadra 1», ma «Resta in gioco solo la squadra Volpi».
+      const chi = squadra === undefined ? nome(evento.giocatore) : /^squadra\b/i.test(squadra) ? squadra : `la squadra ${squadra}`;
+      const testa = squadra === undefined ? '' : ' a testa';
+      return `Resta in gioco solo ${chi}: vince dopo altri ${evento.turni} turni${testa}, se intanto nessuno rientra con la Vita extra.`;
     }
     case 'tempo_scaduto':
       return evento.assente

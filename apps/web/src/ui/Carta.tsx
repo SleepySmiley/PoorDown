@@ -11,12 +11,14 @@ import { variabili } from './utili';
  * - Cartolina: davanti il lato del messaggio (testo a sinistra, francobollo e annullo a destra); dietro il lato della «foto».
  * Le misure sono in --carta-u (di serie una k del tabellone, 1 px fuori): 260 × 170. Cambiando `lato` la carta si gira (transizione CSS);
  * per un volo o un giro diverso basta animare l'elemento esterno o .carta__giro.
+ * Le carte rare (Giro del mondo) hanno sul davanti il timbro «Carta rara», che si posa appena la carta è girata.
  */
 export function Carta({
   mazzo,
   testo,
   regione,
   lato = 'fronte',
+  rara = false,
   className,
   style,
 }: {
@@ -26,18 +28,25 @@ export function Carta({
   regione?: number;
   /** 'fronte' mostra il testo, 'dorso' la carta chiusa. */
   lato?: 'fronte' | 'dorso';
+  /** Carta rara: al posto di quella del mazzo (Bancarotta, Vita extra, Reset). */
+  rara?: boolean;
   className?: string;
   style?: CSSProperties;
 }): ReactNode {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
-  const classi = ['carta', `carta--${mazzo}`, lato === 'dorso' ? 'carta--dorso' : '', className ?? ''].filter(Boolean).join(' ');
+  // I testi lunghi (carte folli e rare) hanno un corpo più piccolo, se no finiscono sotto la tasca della Busta o fuori dalla Cartolina.
+  const lunga = testo.length > LUNGA[mazzo];
+  const classi = ['carta', `carta--${mazzo}`, lato === 'dorso' ? 'carta--dorso' : '', rara ? 'carta--rara' : '', lunga ? 'carta--lunga' : '', className ?? '']
+    .filter(Boolean)
+    .join(' ');
   const stile = { ...(regione ? variabili({ '--francobollo': `var(--g${regione})` }) : {}), ...style };
   const nome = mazzo === 'busta' ? 'Busta' : 'Cartolina';
   return (
-    <div className={classi} style={stile} role="img" aria-label={`${nome}: ${testo}`}>
+    <div className={classi} style={stile} role="img" aria-label={`${rara ? 'Carta rara' : nome}: ${testo}`}>
       <div className="carta__giro">
         <div className="carta__faccia carta__fronte" aria-hidden="true">
           {mazzo === 'busta' ? <FronteBusta testo={testo} /> : <FronteCartolina testo={testo} id={id} />}
+          {rara && <span className="carta__rara">Carta rara</span>}
         </div>
         <div className="carta__faccia carta__dorso" aria-hidden="true">
           {mazzo === 'busta' ? <DorsoBusta /> : <DorsoCartolina id={id} />}
@@ -46,6 +55,9 @@ export function Carta({
     </div>
   );
 }
+
+/** Oltre questi caratteri il testo non sta più con il corpo normale (misurato su tutte le carte dei tabelloni). */
+const LUNGA = { busta: 70, cartolina: 90 } as const;
 
 /** Il sigillo di ceralacca con la P di PoorDown. */
 function Sigillo({ className }: { className: string }): ReactNode {
@@ -162,12 +174,14 @@ export function CartaPescata({
   mazzo,
   testo,
   regione,
+  rara,
   da,
   didascalia,
 }: {
   mazzo: 'busta' | 'cartolina';
   testo: string;
   regione?: number;
+  rara?: boolean;
   da: { x: number; y: number };
   /** Sotto la carta: chi l'ha pescata. */
   didascalia?: ReactNode;
@@ -192,7 +206,7 @@ export function CartaPescata({
       }}
       exit={{ top: '80%', scale: 0.32, opacity: 0, transition: { duration: TEMPI.cartaEsce / 1000, ease: CURVA.partenza } }}
     >
-      <Carta mazzo={mazzo} testo={testo} regione={regione} lato={lato} />
+      <Carta mazzo={mazzo} testo={testo} regione={regione} rara={rara} lato={lato} />
       {didascalia && <p className="carta-pescata__chi">{didascalia}</p>}
     </motion.div>
   );

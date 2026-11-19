@@ -50,8 +50,20 @@ import {
 import { proponi, rispondi, verificaProposta, verificaRisposta } from './scambi';
 import { tabellone } from './tabelloni';
 import { ASSENZA_MS, GRAZIA_DEBITO_MS, scadenzaTurno, TURNI_AUTOMATICI_MAX } from './tempo';
-import { chiudiTurno, elimina } from './turni';
-import type { Azione, Caso, Effetto, Errore, Esito, Evento, Giocatore, IdGiocatore, NomeMazzo, Stato } from './tipi';
+import { chiudiTurno, elimina, rientra } from './turni';
+import type {
+  Azione,
+  CartaRara,
+  Caso,
+  Effetto,
+  Errore,
+  Esito,
+  Evento,
+  Giocatore,
+  IdGiocatore,
+  NomeMazzo,
+  Stato,
+} from './tipi';
 import {
   apriSfida,
   biglietto,
@@ -481,7 +493,15 @@ function lancia(ctx: Contesto, g: Giocatore): void {
       if (doppio && !ctx.turnoFinito) t.rilancio = true;
     }
   }
-  if (ctx.turnoFinito) chiudiTurno(ctx);
+  if (ctx.turnoFinito && !uscitoNelTiro(ctx, g)) chiudiTurno(ctx);
+}
+
+/**
+ * La carta Bancarotta toglie chi gioca a metà del tiro: il turno è già passato al prossimo (o la partita è finita),
+ * quindi il resto del tiro non deve più toccarlo.
+ */
+function uscitoNelTiro(ctx: Contesto, g: Giocatore): boolean {
+  return g.eliminato !== null || ctx.s.fase !== 'in_corso';
 }
 
 /**
@@ -501,7 +521,7 @@ function vola(ctx: Contesto, g: Giocatore, casella: number): void {
   else pagaBanca(ctx, g, b.prezzo, true);
   g.posizione = casella;
   arriva(ctx, g);
-  if (ctx.turnoFinito) chiudiTurno(ctx);
+  if (ctx.turnoFinito && !uscitoNelTiro(ctx, g)) chiudiTurno(ctx);
 }
 
 /**
@@ -792,8 +812,18 @@ function esciDiPrigione(ctx: Contesto, g: Giocatore, modo: 'doppio' | 'cauzione'
 
 /* ------------------------------ Carte ------------------------------ */
 
-/** La Carta Grazia resta nel mazzo, ma si salta finché qualcuno la tiene. */
+/**
+ * La Carta Grazia resta nel mazzo, ma si salta finché qualcuno la tiene.
+ * Con le carte rare può uscire una di loro al posto della carta del mazzo, che resta in cima per la prossima pescata.
+ */
 function pesca(ctx: Contesto, g: Giocatore, nome: NomeMazzo): void {
+  const rara = cartaRara(ctx, g);
+  if (rara) {
+    const { carta } = ctx.tab.rare!.carte[rara.indice]!;
+    ctx.eventi.push({ tipo: 'carta', giocatore: g.id, mazzo: nome, carta: rara.indice, testo: carta.testo, rara: true });
+    eseguiEffetto(ctx, g, carta.effetto, nome);
+    return;
+  }
   const mazzo = ctx.s.mazzi[nome];
   const carte = ctx.tab.mazzi[nome];
   const tenuta = ctx.s.giocatori.some((x) => x.carteGrazia.includes(nome));
@@ -805,6 +835,39 @@ function pesca(ctx: Contesto, g: Giocatore, nome: NomeMazzo): void {
     ctx.eventi.push({ tipo: 'carta', giocatore: g.id, mazzo: nome, carta: id, testo: carta.testo });
     eseguiEffetto(ctx, g, carta.effetto, nome);
     return;
+  }
+}
+
+/**
+ * Carte rare: tra quelle che adesso possono uscire, un solo tiro su 10.000 decide se ne esce una al posto della carta
+ * del mazzo. Se non ce n'è nessuna che può uscire non si tira nemmeno. `null` se esce la carta del mazzo.
+ */
+function cartaRara(ctx: Contesto, g: Giocatore): { indice: number } | null {
+  const candidate = (ctx.tab.rare?.carte ?? []).flatMap((r, indice) => (puoUscire(ctx, g, r) ? [{ indice, r }] : []));
+  if (candidate.length === 0) return null;
+  const tiro = ctx.caso.intero(10_000);
+  let soglia = 0;
+  for (const { indice, r } of candidate) {
+    soglia += r.su10000;
+    if (tiro < soglia) return { indice };
+  }
+  return null;
+}
+
+function puoUscire(ctx: Contesto, g: Giocatore, rara: CartaRara): boolean {
+  const { s } = ctx;
+  switch (rara.carta.effetto.tipo) {
+    // Mai nei primi due giri, e mai a chi è rimasto da solo: non resterebbe nessuno.
+    case 'bancarotta':
+      return s.turno.numero > 2 * s.giocatori.length && attivi(s).some((x) => x.id !== g.id);
+    case 'vita_extra':
+      return s.giocatori.some((x) => x.eliminato?.motivo === 'bancarotta');
+    // Una volta a partita, quando c'è qualcosa da azzerare: almeno metà delle proprietà ha un padrone.
+    case 'reset': {
+      if (s.resettata) return false;
+      const proprieta = s.proprieta.filter((p) => p !== null);
+      return 2 * proprieta.filter((p) => p.proprietario !== null).length >= proprieta.length;
+    }
   }
 }
 
@@ -941,6 +1004,24 @@ function eseguiEffetto(ctx: Contesto, g: Giocatore, effetto: Effetto, mazzo: Nom
       s.turno.voloOmaggio = true;
       daiPassaporto(ctx, g);
       return;
+    // Le carte rare. La Bancarotta toglie chi gioca a metà del tiro: vedi `uscitoNelTiro`.
+    case 'bancarotta':
+      elimina(ctx, g, 'bancarotta');
+      return;
+    case 'vita_extra': {
+      const fuori = s.giocatori.filter((x) => x.eliminato?.motivo === 'bancarotta');
+      if (fuori.length > 0) rientra(ctx, fuori[ctx.caso.intero(fuori.length)]!, g);
+      return;
+    }
+    case 'reset': {
+      const caselle = s.proprieta.flatMap((p, i) => (p?.proprietario ? [i] : []));
+      for (const i of caselle) s.proprieta[i] = { proprietario: null, livello: 0, ipotecata: false };
+      s.resettata = true;
+      // Gli scambi aperti con delle proprietà dentro non hanno più senso; quelli di soli soldi e Carte Grazia restano.
+      s.scambi = s.scambi.filter((x) => x.dare.caselle.length + x.avere.caselle.length === 0);
+      ctx.eventi.push({ tipo: 'reset', giocatore: g.id, caselle });
+      return;
+    }
   }
 }
 
