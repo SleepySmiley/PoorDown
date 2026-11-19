@@ -15,6 +15,34 @@ Durante la partita:
 - Se chiudi la pagina per sbaglio, riapri lo stesso link: ritrovi il tuo posto. Hai **2 minuti** per tornare, poi perdi il posto; intanto i tuoi turni passano da soli.
 - A squadre, se finisci in rosso un bot della tua squadra può offrirti i soldi che servono: si apre una proposta di scambio, premi **Accetta**.
 
+## Il tabellone Giro del mondo
+
+Sul Giro del mondo ci sono regole che valgono solo lì. Le città di un paese stanno su lati diversi del tabellone e i prezzi sono a casaccio: Å costa 1 €, Hell 666 €.
+
+**Volare.** Invece di tirare i dadi puoi premere **Vola**: sul tabellone si accendono le caselle dove puoi atterrare, ne clicchi una e sulla carta d’imbarco premi di nuovo **Vola**.
+
+- Il biglietto costa 50, 100 o 150 € secondo la distanza: i prezzi sono scritti sul tabellone e sulla carta d’imbarco.
+- Lo paghi a chi possiede l’aeroporto del lato dove sei, o alla banca se è libero. Se l’aeroporto è tuo (o della tua squadra) paghi metà.
+- Puoi volare solo dopo essere passato almeno una volta dalla Partenza: lì ritiri il passaporto.
+- In volo non passi dalla Partenza, quindi niente 200 €. Non si atterra sulla Partenza né su Vai in prigione, e dalla prigione non si vola.
+- La Cartolina **Biglietto omaggio** ti fa muovere ancora, e se voli il biglietto è gratis.
+
+**La morra cinese.** Se finisci su una proprietà di un avversario puoi pagare l’affitto oppure sfidarlo a morra cinese: scegli sasso, carta o forbici, poi lui sceglie il suo segno senza vedere il tuo. Se vinci non paghi niente, se perdi paghi il doppio, se pareggiate paghi l’affitto normale. Hai 15 secondi per decidere, se no paghi; lui ne ha 10 per rispondere, se no il suo segno è a caso.
+
+**Le caselle strane.**
+
+- **Triangolo delle Bermuda:** sparisci e ricompari su una casella a caso, che vale come se ci fossi arrivato (anche Vai in prigione).
+- **Linea del cambio di data:** guadagni un giorno e ti muovi ancora, ma solo se ci arrivi con i dadi: in volo la sorvoli.
+- **Buca per l’altra parte del mondo:** sbuchi dall’altra parte del tabellone, a Batman.
+
+**Le carte rare.** Ogni tanto, al posto di una Busta o di una Cartolina, esce una carta rara:
+
+- **Bancarotta:** sei fuori dalla partita. Non esce mai nei primi due giri.
+- **Vita extra:** uno a caso tra chi è uscito per bancarotta torna in gioco, dalla Partenza, con i soldi iniziali e senza proprietà (e deve ritirare di nuovo il passaporto).
+- **Reset:** tutte le proprietà tornano alla banca, case comprese; i soldi restano a chi li ha. Esce al massimo una volta a partita.
+
+**L’ultimo rimasto.** Se qualcuno è uscito per bancarotta, chi resta da solo non vince subito: deve giocare ancora 3 turni (a squadre, 3 a testa), perché intanto una Vita extra può far rientrare qualcuno. In quei turni la Vita extra esce molto più spesso, una carta su quattro.
+
 ## Se accendi tu il gioco
 
 Serve un PC con Windows. La prima volta:

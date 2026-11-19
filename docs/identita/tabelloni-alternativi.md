@@ -1,14 +1,16 @@
 # Tabelloni alternativi di PoorDown
 
-Tre tabelloni oltre al Classico ([tabellone-e-carte.md](tabellone-e-carte.md)), uno per tema (scelta della Fase 8). Stessa struttura delle mappe premium di richup ([05 §1](../analisi/05-tabellone-mappe.md)), ma nomi, temi e numeri sono nostri.
+Cinque tabelloni oltre al Classico ([tabellone-e-carte.md](tabellone-e-carte.md)): tre a tema (scelta della Fase 8) e due con regole loro, il Sistema solare (Fase 12) e il Giro del mondo (Fase 13). Stessa struttura delle mappe premium di richup ([05 §1](../analisi/05-tabellone-mappe.md)), ma nomi, temi e numeri sono nostri.
 
 | Tabellone | Caselle | Tema | Cosa cambia nel gioco |
 |---|---|---|---|
 | **Europa** | 48 (12 per lato) | Città europee, un gruppo per paese (Italia esclusa) | Giro più lungo: si passa meno spesso dalla Partenza. Tre servizi (luce, gas, acqua): con tre il moltiplicatore è ×20 |
 | **Grandi aree** | 40 | Quattro regioni italiane, una per lato: Sicilia, Puglia, Toscana, Veneto | Un solo gruppo per lato, da 5 o 6 città: completarlo è difficile, ma vale un lato intero |
 | **Colpo di fortuna** | 40 | Località turistiche italiane, un gruppo per zona | Città solo sui lati 1 e 3; i lati 2 e 4 sono carte, tasse e un **Rimborso** (+50 €). Niente servizi, Cartolina da 20 carte con più mete |
+| **Sistema solare** | 48 | Pianeti, lune e asteroidi veri | Il tabellone folle: caselle e regole folli, dado cosmico, equilibrio sballato apposta ([sotto](#sistema-solare)) |
+| **Giro del mondo** | 48 | Posti veri e assurdi, paesi sparpagliati, prezzi a casaccio | Biglietto aereo al posto dei dadi, sfida a morra cinese invece dell'affitto, tre caselle strane, carte rare ([sotto](#giro-del-mondo)) |
 
-Regole comuni:
+Regole comuni ai tre tabelloni a tema (Sistema solare e Giro del mondo hanno anche regole e mazzi loro, descritti nelle loro sezioni):
 - Angoli sempre a 0, ¼, ½ e ¾ del giro (Prigione alla casella 12 su Europa, 10 sugli altri). Partenza +200 passando, +300 fermandosi.
 - **Affitti dalla scala del Classico**: per ogni prezzo gli affitti si interpolano tra le due città del Classico più vicine per prezzo (base all'euro, case e albergo ai 5 €). Codice: `packages/engine/src/tabelloni/scala.ts`. Ribilanciati nella Fase 9 con 1000 partite di bot per tabellone: casa e albergo della Polonia (Europa) da 150 a 200 €, del Sud (Grandi aree) da 100 a 125 €, del Nord (Grandi aree) da 200 a 150 €; stazioni di Colpo di fortuna 40 / 80 / 160 / 280 €.
 - **Busta** uguale su tutti i tabelloni (17 carte). La **Cartolina** cambia perché le sue mete sono caselle di quel tabellone; "Vai al servizio più vicino" c'è solo dove ci sono servizi.
@@ -330,3 +332,71 @@ Il tabellone folle (Fase 12): diverso apposta dal Monopoly classico, pieno di ca
 In due: durata 73 giri nel Classico, 63 oggi; venduto a fine giro 6 30% contro 35%; prima regione completa al giro 16 contro 6; affitto medio 124 € contro 495 €; chi è primo al giro 10 vince il 55% contro il 57%. In sintesi: la partita dura come una classica, ma si vende prima, si costruisce prima e ogni affitto pesa circa tre volte tanto; la fortuna non conta più che nel Classico.
 
 Con il Razzo più frequente gli arrivi su proprietà libere salgono da 0,65 a 0,75 per turno in quattro (0,71 con il dado alla pari). Le partite intere (300 di 4 bot) finiscono tutte ma durano di più, 308 turni contro 276 senza dado (315 con il dado alla pari), e il tetto della Supernova scatta in metà dei colpi.
+
+## Giro del mondo
+
+Il sesto tabellone (Fase 13): posti veri ma assurdi, scelti per il nome o per una stranezza, con i paesi sparpagliati e i prezzi a casaccio. Ha regole sue, che valgono solo qui: il biglietto aereo, la sfida a morra cinese, tre caselle strane, il passaporto, le carte rare e l'ultimo rimasto. L'idea di decidere dove andare invece di tirare i dadi, e di sfidare chi chiede l'affitto, è dell'utente. Dati in `packages/engine/src/tabelloni/giro-del-mondo.ts` (`viaggi` e `rare` nel tabellone), regole in `packages/engine/src/viaggi.ts` (volo e sfida), `regole.ts` (caselle strane e carte rare) e `turni.ts` (ultimo rimasto e rientro).
+
+**Caselle (48, 12 per lato):** 23 città in 11 paesi da 1 a 4, 4 aeroporti, 2 servizi (Adattatore universale e Rete Wi-Fi di bordo, 150 €), 5 Busta, 5 Cartolina, 2 tasse (Imposta sul reddito, 10% del contante; Supplemento bagaglio, 75 €), 3 caselle strane e i 4 angoli (Prigione alla casella 12). Partenza +200 € passando, +300 € fermandosi.
+
+Ogni paese con più di una città ne ha su almeno due lati: per completarlo conviene volare. Gli Stati Uniti sono l'Italia d'America, quattro cittadine vere con il nome di una città italiana, una per lato. Le due capitali della Bolivia stanno una di fronte all'altra, a 24 caselle.
+
+| Paese | Sigla | Città e prezzi | Caselle | Casa e albergo |
+|---|---|---|---|---|
+| Nauru | NRU | Yaren 10 (da sola) | 45 | 10 |
+| Norvegia | NOR | Å 1, Hell 666, Longyearbyen 150 | 3, 35, 37 | 150 |
+| Canada | CAN | Saint-Louis-du-Ha! Ha! 120, Flin Flon 100, Moose Jaw 140 | 13, 20, 28 | 50 |
+| Stati Uniti | USA | Italy 100, Rome 140, Venice 160, Milan 180 | 5, 14, 34, 41 | 100 |
+| Australia | AUS | Wagga Wagga 160, Woolloomooloo 200, Coober Pedy 220 | 10, 23, 39 | 100 |
+| Thailandia | THA | Bangkok 168 (da sola) | 19 | 100 |
+| Bolivia | BOL | Sucre 220, La Paz 220 | 7, 31 | 150 |
+| Turchia | TUR | Batman 280, Istanbul 260 | 9, 25 | 150 |
+| Russia | RUS | Ojmjakon 300, Kaliningrad 320 | 16, 29 | 200 |
+| Argentina | ARG | Ushuaia 400 (da sola) | 47 | 200 |
+| Vaticano | VAT | Città del Vaticano 500 (da sola) | 1 | 300 |
+
+**Prezzi assurdi.** Gli affitti seguono la scala del Classico, tranne quattro scritti a mano:
+- **Å**, 1 €: il nome più corto del mondo, una lettera. Affitti da 1 a 80 €.
+- **Yaren**, 10 €: la capitale di Nauru, che per legge una capitale non ce l'ha. Affitti da 1 a 100 €.
+- **Bangkok**, 168 €: un euro per ognuna delle 168 lettere del nome cerimoniale, il nome di città più lungo del mondo (Krung Thep Maha Nakhon…).
+- **Città del Vaticano**, 500 €: lo Stato più piccolo del mondo, subito dopo la Partenza e carissimo. Affitti da 60 a 2.550 €.
+- **Hell**, 666 €: l'inferno, subito prima di Vai in prigione. Affitti da 66 a 2.066 €.
+
+Le altre stranezze: Batman esiste davvero, in Turchia; Ojmjakon è il paese abitato più freddo del mondo; Istanbul sta su due continenti; Kaliningrad è il pezzo di Russia fuori dalla Russia; a Longyearbyen è vietato morire (nel permafrost non si seppellisce nessuno); Coober Pedy è costruita sottoterra; Ushuaia, la fine del mondo, è l'ultima casella prima della Partenza. Le bandiere sono quelle vere dei paesi, semplificate (`apps/web/src/ui/bandiere-mondo.tsx`).
+
+**Aeroporti e servizi:** Barra (6), Lukla (18), Gibilterra (30) e Saba (42), uno per lato, a 200 € con gli affitti delle stazioni (25 / 50 / 100 / 200 €). Oltre all'affitto incassano i biglietti di chi vola dal loro lato. I servizi rendono ×8 e ×20, il doppio del solito: chi vola li evita.
+
+**Caselle strane:**
+- **Triangolo delle Bermuda** (11): si sparisce e si ricompare su una casella a caso tra le altre 47. La casella d'arrivo vale (anche Vai in prigione); dalla Partenza non si passa.
+- **Linea del cambio di data** (21): si guadagna un giorno e ci si muove ancora, con i dadi o in volo, come dopo un doppio. Solo arrivandoci con i dadi: in volo la linea si sorvola e basta, se no diventa un parcheggio sicuro con la mossa in regalo.
+- **Buca per l'altra parte del mondo** (33): si sbuca sul lato opposto, 24 caselle più avanti, a Batman. Non si passa dalla Partenza, e la casella d'arrivo vale.
+
+**Regole speciali** (`viaggi` nel tabellone):
+- **Biglietto aereo:** invece di tirare i dadi si compra un biglietto e si vola sulla casella che si vuole, tranne la Partenza e Vai in prigione. Il prezzo va a fasce di distanza, contata in avanti: fino a 12 caselle 50 €, fino a 24 100 €, oltre 150 €. Il volo parte dall'aeroporto del lato dove si trova la pedina: se è di un avversario il biglietto lo incassa lui, se è proprio (o di un compagno) costa la metà, altrimenti va alla banca. In volo non si passa dalla Partenza; la casella d'arrivo vale come con i dadi (sui servizi i dadi contano 7). Si vola quando si potrebbe tirare, anche dopo un doppio, ma non dalla prigione né in rosso.
+- **Passaporto:** si vola solo dopo essere passati dalla Partenza, dove si ritira il passaporto (o con il Biglietto omaggio). Il primo giro si fa con i dadi, così al primo turno nessuno fa la corsa ai paesi da una città sola.
+- **Sfida a morra cinese:** chi cade sulla proprietà di un avversario può pagare o sfidarlo, scegliendo sasso, carta o forbici; il proprietario risponde con il suo segno senza vedere l'altro. Vince chi sfida: niente affitto. Perde: affitto doppio. Pareggio: affitto normale. Di media pagare e sfidare si equivalgono. Chi sfida ha 15 s per decidere (allo scadere paga), il proprietario 10 s per rispondere (allo scadere il suo segno è a caso); intanto l'orologio del turno è fermo.
+- **Ultimo rimasto:** se qualcuno è uscito per bancarotta, chi resta da solo (a squadre, la squadra rimasta) non vince subito: gioca altri 3 turni a testa, perché con la Vita extra qualcuno può rientrare. Se rientra, il conto si ferma; se nessuno è uscito per bancarotta, vince subito.
+
+Le scelte di dettaglio (chi incassa un biglietto con l'aeroporto ipotecato, cosa succede se uno esce durante la sfida, il Reset sugli scambi aperti…) sono nella tabella del [§4 della roadmap](../../ROADMAP.md#4-punti-non-verificati-su-richup-e-come-li-trattiamo).
+
+**Carte:** Busta (17 carte) e Cartolina (18) solo sue, con testi comici come sul Sistema solare: la valigia finita in Nuova Zelanda, il selfie con un canguro, il roaming acceso in Antartide, il cane antidroga che trova il salame in valigia. La Busta porta soprattutto soldi, con Robin Hood del jet lag, testa o croce con il pilota e la morra persa contro un monaco di Bangkok. La Cartolina porta soprattutto in giro: al Vaticano, a Batman, a Hell, a Coober Pedy, a Ushuaia, all'Aeroporto di Lukla, all'aeroporto o al servizio più vicino, su una casella a caso, al posto di un avversario a caso. Solo qui c'è il **Biglietto omaggio**: ci si muove ancora, e se si vola il biglietto è gratis (con il biglietto arriva anche il passaporto).
+
+**Carte rare** (`rare` nel tabellone): escono di rado al posto della carta di Busta o Cartolina, che resta in cima al mazzo per la prossima pescata. A ogni pescata un solo tiro su 10.000 decide tra quelle che possono uscire.
+
+| Carta | Cosa fa | Quando può uscire | Su 10.000 pescate |
+|---|---|---|---|
+| **Bancarotta** | «Hai puntato tutto in un casinò di Macao e hai perso»: chi pesca esce dalla partita | Dal terzo giro, e mai a chi è rimasto solo in gioco | 35 |
+| **Vita extra** | «Un monaco tibetano insegna la reincarnazione»: uno a caso tra chi è uscito per bancarotta rientra dalla Partenza, con i soldi iniziali, senza proprietà né passaporto | Se qualcuno è uscito per bancarotta | 120; 2.500 nei turni d'attesa dell'ultimo rimasto |
+| **Reset** | «Il catasto mondiale va in tilt»: tutte le proprietà tornano alla banca, senza case né ipoteche; i soldi restano a chi li ha | Una volta a partita, con almeno metà delle proprietà vendute | 40 |
+
+Tarate perché in una partita da 4 escano più o meno così: la Bancarotta in 1 partita su 5, la Vita extra in 1 su 3, il Reset in 1 su 6.
+
+**Bot:** volano quando la meta migliore, tolto il biglietto, vale almeno 40 € più del tiro medio dei dadi; sfidano gli affitti da almeno 100 € e un terzo del contante, gli altri li pagano; alla morra giocano un segno a caso. L'equilibrio si cura con le regole della mappa, pensate per le persone, non ritoccando i bot.
+
+**Bilanciamento** (partite di 4 bot che giocano come persone, cioè volano subito a completare i paesi):
+- Prima del passaporto, al primo turno si faceva la corsa ai paesi da una città sola e l'ordine di gioco decideva tutto: vittorie per posto 16 · 22 · 40 · 23% (chi giocava per terzo prendeva Bangkok). Con il passaporto, su 800 partite, 26 · 21 · 27 · 27%, come Europa (24 · 22 · 26 · 28%).
+- La Linea del cambio di data dava il giorno in più anche in volo ed era il parcheggio preferito, 22 volte a partita: ora vale solo con i dadi.
+- Gli Stati Uniti avevano 6 città e si completavano nel 6% delle partite; con 4, una per lato, nel 20%. Al posto di Florence e Naples una Cartolina e una Busta.
+- Con ×4 e ×10 i servizi non rendevano quasi niente, perché chi vola li evita: ora ×8 e ×20.
+- Carte rare, 800 partite: la Bancarotta esce nel 20% delle partite, la Vita extra nel 34%, il Reset nel 15%; vittorie per posto 24 · 23 · 27 · 26%.
+- Ultimo rimasto: con la Vita extra alla frequenza normale chi era fuori rientrava solo in 4 attese su 721. Con 2.500 su 10.000 nei turni d'attesa (una carta su quattro), su 800 partite si rientra in 119 attese su 815 (15%); vittorie per posto 25 · 25 · 26 · 25%, misurate dopo l'unione della PR #1.
