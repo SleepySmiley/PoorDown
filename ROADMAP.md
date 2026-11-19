@@ -223,7 +223,7 @@ Scelta del 2026-11-15: un tabellone diverso apposta dal Monopoly classico, pieno
 - [ ] Estensione: la Supernova più ricca e il dado cosmico vanno in una versione nuova (0.2.1) quando si decide di pubblicarla
 
 ### Correzioni e squadre (2026-11-19) · M
-Interventi chiesti dopo un'analisi del codice. Verificati con lint, tipi, 606 test (79 nuovi), build, e con 60 partite a squadre di soli bot su tutti i tabelloni (Giro del mondo compreso) con la costruzione di squadra e l'aiuto dei bot accesi insieme: finiscono tutte, senza mosse rifiutate né stati incoerenti.
+Pull request #1 di ilkebabbaro, rivista e unita il 2026-11-19 (79 test nuovi). Due correzioni all'unione: il bot aiuta il compagno in rosso anche se un altro compagno gli ha offerto un regalo troppo piccolo o che non può più pagare; allo scadere del tempo il gioco prova tutti i regali che coprono il rosso, dal più grande, prima della bancarotta.
 - [x] cloudflared con versione fissata (2026.11.1) e impronte SHA-256 nel codice: la copia scaricata si avvia solo se l'impronta coincide, quella già scaricata si ricontrolla a ogni accensione, quella installata sul PC si usa solo se è almeno la versione fissata
 - [x] Mazzi rimescolati a ogni giro: quando esce l'ultima carta il mazzo si rimescola con il caso della partita, Carta Grazia compresa
 - [x] Asta: i rilanci suonano anche dopo la ventesima offerta (il browser contava le offerte in elenco, che il server tiene al massimo 20); anche la bolla del rilancio e l'elenco delle offerte si animano sempre

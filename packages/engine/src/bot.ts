@@ -571,13 +571,15 @@ function sceltaSfida(g: Giocatore, sf: Sfida): Azione {
 
 /**
  * L'aiuto a un compagno in rosso (anche fuori dal turno del bot): il regalo dei soldi che gli servono, con una nota,
- * se la stanza lo permette adesso (`aiutare`) e conviene (`valutaAiuto`). Se un compagno gli ha già offerto un regalo,
- * il bot non ne aggiunge un altro.
+ * se la stanza lo permette adesso (`aiutare`) e conviene (`valutaAiuto`). Non ne aggiunge un altro se gliene ha già
+ * offerto uno lui, o se un compagno gli ha già offerto un regalo ancora valido che copre tutto il rosso: un regalo
+ * troppo piccolo, o che chi lo offre non può più pagare, non basta a salvarlo.
  */
 function propostaDiAiuto(s: Stato, g: Giocatore, aiutare: (compagno: IdGiocatore) => boolean): Azione | null {
   for (const lui of attivi(s)) {
     if (lui.saldo >= 0 || !compagni(s, g.id, lui.id) || !aiutare(lui.id)) continue;
-    if (s.scambi.some((x) => x.a === lui.id && regaloDiSquadra(s, x))) continue;
+    const regali = s.scambi.filter((x) => x.a === lui.id && regaloDiSquadra(s, x));
+    if (regali.some((x) => x.da === g.id || (x.dare.soldi >= -lui.saldo && problemiScambio(s, x).length === 0))) continue;
     const aiuto = valutaAiuto(s, g.id, lui.id);
     if (!aiuto) continue;
     const azione: Azione = {

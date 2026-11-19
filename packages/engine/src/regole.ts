@@ -445,9 +445,17 @@ function giocaInAutomatico(ctx: Contesto): void {
     if (s.fase !== 'in_corso' || s.turno.giocatore !== id || s.turno.numero !== numero || s.asta || s.sfida) return;
     const io = giocatore(s, id)!;
     if (io.saldo < 0) {
-      const regalo = s.scambi.find((x) => x.a === id && regaloDiSquadra(s, x) && x.dare.soldi >= -io.saldo);
-      const accettato = regalo && applica(s, { tipo: 'accetta', giocatore: id, scambio: regalo.id }, ctx.caso, ctx.adesso);
-      if (accettato && accettato.ok) {
+      // Prima della bancarotta si prova ogni regalo di un compagno che copre il rosso, dal più grande: uno può non
+      // valere più (chi l'ha offerto ha speso quei soldi) mentre un altro sì.
+      const regali = s.scambi
+        .filter((x) => x.a === id && regaloDiSquadra(s, x) && x.dare.soldi >= -io.saldo)
+        .sort((x, y) => y.dare.soldi - x.dare.soldi);
+      let accettato: Esito | undefined;
+      for (const x of regali) {
+        accettato = applica(s, { tipo: 'accetta', giocatore: id, scambio: x.id }, ctx.caso, ctx.adesso);
+        if (accettato.ok) break;
+      }
+      if (accettato?.ok) {
         ctx.s = accettato.stato;
         ctx.eventi.push(...accettato.eventi);
         continue;

@@ -158,6 +158,18 @@ describe('il bot offre aiuto al compagno in rosso', () => {
     expect(mossaBot(s, 'b', { aiutare: tutti })).toEqual({ tipo: 'annulla', giocatore: 'b', scambio: 1 });
   });
 
+  it('aiuta lo stesso se il regalo di un compagno è troppo piccolo o chi l’ha offerto non può più pagarlo', () => {
+    // a, b e c in squadra contro d: a è in rosso di 300 €.
+    const base = () => inRosso(assegna(partitaASquadre([0, 0, 0, 1]), 'a', 6, 7), 'a', 300, 'd');
+    // c gli ha offerto solo 50 €.
+    const piccolo = esegui(base(), regalo('c', 'a', 50)).stato;
+    expect(mossaBot(piccolo, 'b', { aiutare: tutti })).toMatchObject({ tipo: 'proponi', giocatore: 'b', a: 'a' });
+    // c gli ha offerto 300 €, ma poi li ha spesi.
+    const speso = esegui(base(), regalo('c', 'a', 300)).stato;
+    g(speso, 'c').saldo = 100;
+    expect(mossaBot(speso, 'b', { aiutare: tutti })).toMatchObject({ tipo: 'proponi', giocatore: 'b', a: 'a' });
+  });
+
   it('chi riceve l’aiuto di un altro bot aspetta il regalo prima di vendere o fallire', () => {
     // Tocca a 'b', che è in rosso di 150 € e ha solo Olbia: senza aiuto la venderebbe.
     const s = inRosso(assegna(partitaASquadre([0, 0, 1, 1]), 'b', 6), 'b', 150, 'c');
@@ -246,6 +258,19 @@ describe('gioco automatico in rosso', () => {
     expect(stato.turno.giocatore).toBe('c');
     expect(eventi.map((e) => e.tipo)).toEqual(expect.arrayContaining(['tempo_scaduto', 'scambio_accettato', 'turno']));
     expect(problemi(stato)).toEqual([]);
+  });
+
+  it('se il regalo più grande non vale più, accetta un altro regalo che basta', () => {
+    // a, b e c in squadra contro d. A 'a' mancano 300 €: b gli ha offerto 400 € ma poi li ha spesi, c gliene offre 300.
+    let s = inRosso(assegna(partitaASquadre([0, 0, 0, 1]), 'a', 6, 7), 'a', 300, 'd');
+    s.turno.fase = 'dopo_lancio';
+    s = esegui(esegui(s, regalo('b', 'a', 400)).stato, regalo('c', 'a', 300)).stato;
+    g(s, 'b').saldo = 100;
+    const esito = applicaScadenze(s, dadi(), prossimaScadenza(s)!);
+    if (!esito?.ok) throw new Error('Nessuna scadenza applicata.');
+    expect(g(esito.stato, 'a')).toMatchObject({ eliminato: null, saldo: 0 });
+    expect(esito.eventi).toContainEqual(expect.objectContaining({ tipo: 'scambio_accettato', da: 'c', a: 'a' }));
+    expect(g(esito.stato, 'c').saldo).toBe(1200);
   });
 
   it('senza un regalo che basti, o se viene da un avversario, fa bancarotta come prima', () => {
