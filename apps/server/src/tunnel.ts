@@ -1,25 +1,36 @@
 /*
  * Gioco online con un «tunnel rapido» di Cloudflare: gratis e senza account, porta il server di questo PC su
  * internet con un indirizzo https://<parole-a-caso>.trycloudflare.com, nuovo a ogni accensione.
- * - Il tunnel lo apre il programma cloudflared: si usa quello installato sul PC, se c'è, altrimenti PoorDown lo
- *   scarica una volta sola dalle pubblicazioni ufficiali di Cloudflare su GitHub, nella sua cartella dei dati.
+ * - Il tunnel lo apre il programma cloudflared: si usa quello installato sul PC, se è almeno la versione fissata,
+ *   altrimenti PoorDown scarica quella versione una volta sola dalle pubblicazioni ufficiali di Cloudflare su GitHub,
+ *   nella sua cartella dei dati, e la avvia solo se la sua impronta SHA-256 è quella attesa (tunnel-verifica.ts).
  * - Il link si annuncia solo quando risponde davvero. Aperto troppo presto darebbe «sito non trovato», e il computer
  *   di chi lo apre se lo ricorderebbe per un po': per questo il controllo chiede il nome a un DNS pubblico
  *   (quello del sistema terrebbe a mente la risposta negativa).
  * - Se il tunnel non parte o cade, il gioco resta acceso per la rete di casa e si riprova da soli.
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { lookup, Resolver } from 'node:dns/promises';
-import { chmodSync, createWriteStream, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { request } from 'node:https';
 import path from 'node:path';
 import readline from 'node:readline';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import type { ReadableStream } from 'node:stream/web';
+import {
+  CLOUDFLARED,
+  cercaNelPath,
+  confrontaVersioni,
+  fileDaScaricare,
+  improntaFile,
+  improntaProgramma,
+  ImprontaSbagliata,
+  indirizzoScaricamento,
+  scaricaVerificato,
+  versioneDa,
+} from './tunnel-verifica';
 
-const PUBBLICAZIONI = 'https://github.com/cloudflare/cloudflared/releases/latest/download';
+export { fileDaScaricare } from './tunnel-verifica';
+
 /** Quanto si aspetta che il tunnel risponda prima di rinunciare (e riprovare più tardi). */
 const AVVIO_MAX_MS = 60_000;
 /** Attese tra un tentativo e l'altro quando il tunnel non parte o cade: poi si resta sull'ultima. */
@@ -28,25 +39,8 @@ const RIPROVE_MS = [5_000, 15_000, 30_000, 60_000];
 const DNS_SISTEMA_DOPO_MS = 20_000;
 /** La pagina che il controllo chiede attraverso il tunnel. */
 const PAGINA_DI_PROVA = '/api/info';
-
-/** Il file di cloudflared per ogni sistema, tra quelli pubblicati da Cloudflare. */
-const FILE_PER_SISTEMA: Record<string, string> = {
-  'win32-x64': 'cloudflared-windows-amd64.exe',
-  // Windows su ARM esegue i programmi x64.
-  'win32-arm64': 'cloudflared-windows-amd64.exe',
-  'win32-ia32': 'cloudflared-windows-386.exe',
-  'linux-x64': 'cloudflared-linux-amd64',
-  'linux-arm64': 'cloudflared-linux-arm64',
-  'linux-arm': 'cloudflared-linux-arm',
-  'linux-ia32': 'cloudflared-linux-386',
-  'darwin-x64': 'cloudflared-darwin-amd64.tgz',
-  'darwin-arm64': 'cloudflared-darwin-arm64.tgz',
-};
-
-/** Il file da scaricare per questo sistema; `null` se Cloudflare non ne pubblica uno. */
-export function fileDaScaricare(sistema: string, architettura: string): string | null {
-  return FILE_PER_SISTEMA[`${sistema}-${architettura}`] ?? null;
-}
+/** Scaricamenti di cloudflared con l'impronta sbagliata dopo i quali, in questa accensione, il gioco online si spegne. */
+const SCARICAMENTI_SBAGLIATI_MAX = 3;
 
 /** Almeno due parole con il trattino: così non si confonde con api.trycloudflare.com, che compare negli errori. */
 const INDIRIZZO_TUNNEL = /https:\/\/[a-z0-9]+(?:-[a-z0-9]+)+\.trycloudflare\.com/;
@@ -81,16 +75,13 @@ function funziona(programma: string): Promise<boolean> {
   });
 }
 
-async function scarica(indirizzo: string, destinazione: string): Promise<void> {
-  const risposta = await fetch(indirizzo, { signal: AbortSignal.timeout(10 * 60_000) });
-  if (!risposta.ok || !risposta.body) throw new Error(`lo scaricamento di cloudflared non è riuscito (HTTP ${risposta.status})`);
-  const parziale = `${destinazione}.parziale`;
-  try {
-    await pipeline(Readable.fromWeb(risposta.body as ReadableStream<Uint8Array>), createWriteStream(parziale));
-    renameSync(parziale, destinazione);
-  } finally {
-    rmSync(parziale, { force: true });
-  }
+/** La versione che il programma dichiara con `--version`; `null` se non parte o non la dice. */
+function versioneDi(programma: string): Promise<string | null> {
+  return new Promise((esito) => {
+    execFile(programma, ['--version'], { timeout: 15_000, windowsHide: true }, (errore, uscita, errori) => {
+      esito(errore ? null : versioneDa(`${uscita}\n${errori}`));
+    });
+  });
 }
 
 function estrai(archivio: string, cartella: string): Promise<void> {
@@ -101,27 +92,61 @@ function estrai(archivio: string, cartella: string): Promise<void> {
   });
 }
 
-/** cloudflared già installato sul PC, la copia scaricata in passato, oppure una nuova copia da scaricare adesso. */
+/**
+ * Il cloudflared da avviare, nell'ordine:
+ * 1. quello installato sul PC, se è almeno la versione fissata. Di un programma installato non si conosce l'impronta,
+ *    quindi si controlla la versione; lo si cerca solo nelle cartelle del PATH, mai in quella corrente;
+ * 2. la copia scaricata in passato nella cartella dei dati, se la sua impronta è quella attesa. Una copia diversa
+ *    (presa quando PoorDown scaricava sempre l'ultima versione, rovinata o cambiata da qualcuno) si cancella;
+ * 3. una copia nuova della versione fissata, che prende il suo posto solo con l'impronta giusta.
+ */
 async function trovaProgramma(cartella: string, nota: (testo: string) => void): Promise<string> {
-  if (await funziona('cloudflared')) return 'cloudflared';
-  const copia = path.join(cartella, process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared');
-  if (existsSync(copia) && (await funziona(copia))) return copia;
+  const { versione } = CLOUDFLARED;
+  const installato = cercaNelPath('cloudflared', process.env.PATH);
+  const versioneInstallata = installato ? await versioneDi(installato) : null;
+  if (installato && versioneInstallata && confrontaVersioni(versioneInstallata, versione) >= 0) return installato;
 
   const file = fileDaScaricare(process.platform, process.arch);
   if (!file) throw new Error(`Cloudflare non pubblica cloudflared per questo sistema (${process.platform} ${process.arch})`);
+  const atteso = CLOUDFLARED.file[file];
+  if (!atteso) throw new Error(`manca l’impronta di ${file}: non lo scarico`);
+  const copia = path.join(cartella, process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared');
+  const giaScaricata = existsSync(copia);
+  if (giaScaricata) {
+    if ((await improntaFile(copia)) === improntaProgramma(atteso)) return copia;
+    rmSync(copia, { force: true });
+  }
+
   mkdirSync(cartella, { recursive: true });
-  nota('Scarico cloudflared, il programma del gioco online: circa 50 MB, solo la prima volta.');
+  nota(
+    giaScaricata
+      ? `Riscarico cloudflared ${versione}: la copia nella cartella dei dati non è quella attesa (circa 50 MB).`
+      : `Scarico cloudflared ${versione}, il programma del gioco online: circa 50 MB, solo la prima volta.`,
+  );
   if (file.endsWith('.tgz')) {
-    const archivio = path.join(cartella, file);
-    await scarica(`${PUBBLICAZIONI}/${file}`, archivio);
-    await estrai(archivio, cartella);
-    rmSync(archivio, { force: true });
+    // L'archivio si verifica prima di aprirlo e si apre in una cartella a parte (in quella dei dati ci sono anche le
+    // partite salvate): il programma passa al suo posto solo se anche la sua impronta è quella attesa.
+    const estrazione = path.join(cartella, 'cloudflared-estrazione');
+    rmSync(estrazione, { recursive: true, force: true });
+    mkdirSync(estrazione);
+    try {
+      const archivio = path.join(estrazione, file);
+      await scaricaVerificato(indirizzoScaricamento(file), archivio, atteso.sha256);
+      await estrai(archivio, estrazione);
+      const estratto = path.join(estrazione, 'cloudflared');
+      if (!existsSync(estratto) || (await improntaFile(estratto)) !== improntaProgramma(atteso)) {
+        throw new ImprontaSbagliata('il cloudflared dentro l’archivio scaricato non è quello atteso: non l’ho avviato');
+      }
+      renameSync(estratto, copia);
+    } finally {
+      rmSync(estrazione, { recursive: true, force: true });
+    }
   } else {
-    await scarica(`${PUBBLICAZIONI}/${file}`, copia);
+    await scaricaVerificato(indirizzoScaricamento(file), copia, atteso.sha256);
   }
   if (process.platform !== 'win32') chmodSync(copia, 0o755);
-  if (!(await funziona(copia))) throw new Error('la copia scaricata di cloudflared non funziona');
-  nota('cloudflared è pronto.');
+  if (!(await funziona(copia))) throw new Error('la copia scaricata di cloudflared non parte su questo PC');
+  nota(`cloudflared ${versione} è pronto: è proprio quello pubblicato da Cloudflare.`);
   return copia;
 }
 
@@ -191,6 +216,8 @@ export class Tunnel {
   private fermo = false;
   private tentativi = 0;
   private problemaDetto = false;
+  /** Copie di cloudflared scaricate in questa accensione e scartate perché l'impronta non era quella attesa. */
+  private scaricamentiSbagliati = 0;
   private sveglia: NodeJS.Timeout | undefined;
 
   /**
@@ -220,6 +247,16 @@ export class Tunnel {
       this.programma ??= await trovaProgramma(this.cartella, (t) => this.avvisi.nota(t));
       if (!this.fermo) this.lancia(this.programma);
     } catch (errore) {
+      // Un cloudflared che non è quello atteso non si riscarica all'infinito (50 MB a ogni tentativo): dopo qualche
+      // volta il gioco online resta spento fino alla prossima accensione, e la rete di casa funziona come sempre.
+      if (errore instanceof ImprontaSbagliata && ++this.scaricamentiSbagliati >= SCARICAMENTI_SBAGLIATI_MAX) {
+        this.fermo = true;
+        this.avvisi.nota(
+          `Gioco online spento: per ${SCARICAMENTI_SBAGLIATI_MAX} volte cloudflared scaricato non era quello atteso e non l’ho avviato. ` +
+            'Riaccendi PoorDown per riprovare.',
+        );
+        return;
+      }
       this.riprova(errore instanceof Error ? errore.message : String(errore));
     }
   }
