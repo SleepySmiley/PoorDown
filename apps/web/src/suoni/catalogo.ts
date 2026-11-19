@@ -7,6 +7,8 @@
 
 import { TEMPI } from '@poordown/engine';
 import { fischio, fruscio, legno, metallo, nota, tintinnio, tonfo, tono, varia, type Uscita } from './sintesi';
+import { DESCRIZIONI_MORRA, SUONI_MORRA } from './morra';
+import { DESCRIZIONI_VIAGGI, SUONI_VIAGGI } from './viaggi';
 
 type Ricetta = (u: Uscita, t: number, k: number) => void;
 
@@ -379,6 +381,12 @@ export const CATALOGO = {
 
   /** Chi gioca chiede tempo agli altri. */
   tempoChiesto: (u, t, k) => nota(u, t, { f: NOTE.A5, durata: 0.6, volume: 0.08 * k }),
+
+  /* ---------------- Giro del mondo: la sfida a morra (morra.ts) ---------------- */
+  ...SUONI_MORRA,
+
+  /* ---------------- Giro del mondo: volo, caselle strane, passaporto, carte rare (viaggi.ts) ---------------- */
+  ...SUONI_VIAGGI,
 } satisfies Record<string, Ricetta>;
 
 export type NomeSuono = keyof typeof CATALOGO;
@@ -433,4 +441,6 @@ export const DESCRIZIONI: Record<NomeSuono, string> = {
   voto: 'Voto contro un altro',
   tempoRicevuto: 'Mi regalano un minuto',
   tempoChiesto: 'Chi gioca chiede tempo',
+  ...DESCRIZIONI_MORRA,
+  ...DESCRIZIONI_VIAGGI,
 };

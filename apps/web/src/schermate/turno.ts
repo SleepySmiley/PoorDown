@@ -51,18 +51,26 @@ export type Momento =
   | { tipo: 'prigione' }
   | { tipo: 'teletrasporto' }
   | { tipo: 'roulette' }
-  | { tipo: 'volo'; casella: number };
+  | { tipo: 'volo'; casella: number }
+  /** Giro del mondo: le mani della morra cinese contro il proprietario della città. */
+  | { tipo: 'morra'; avversario: IdGiocatore }
+  /** Giro del mondo: le caselle strane (caselleStrane.ts). */
+  | { tipo: 'bermuda' }
+  | { tipo: 'antipodi' }
+  | { tipo: 'cambio_data' };
 
 /** Il momento della scena di chi gioca, dal più vistoso: carta, volo in prigione, teletrasporto, dadi, viaggio, arrivo. */
 export function momentoScena(
   scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'> &
-    Partial<Pick<Scena, 'teletrasporti' | 'roulette' | 'aerei' | 'posizioni'>>,
+    Partial<Pick<Scena, 'teletrasporti' | 'roulette' | 'aerei' | 'posizioni' | 'morra' | 'strana'>>,
   giocatore: IdGiocatore,
 ): Momento | null {
+  if (scena.morra?.da === giocatore) return { tipo: 'morra', avversario: scena.morra.a };
   if (scena.carta?.giocatore === giocatore) return { tipo: 'carta', mazzo: scena.carta.mazzo };
   if (scena.roulette?.giocatore === giocatore) return { tipo: 'roulette' };
   if (scena.voli[giocatore]) return { tipo: 'prigione' };
   if (scena.teletrasporti?.[giocatore]) return { tipo: 'teletrasporto' };
+  if (scena.strana?.giocatore === giocatore) return { tipo: scena.strana.tipo };
   const inAereo = scena.aerei?.[giocatore] ? scena.posizioni?.[giocatore] : undefined;
   if (inAereo) return { tipo: 'volo', casella: inAereo.casella };
   if (scena.rotola) return { tipo: 'dadi' };
@@ -72,7 +80,13 @@ export function momentoScena(
 }
 
 /** La frase del momento in scena; `null` se non c'è niente da dire (resta la frase della fase). */
-function fraseMomento(partita: Stato, mio: boolean, momento: Momento, fase: Stato['turno']['fase']): string | null {
+function fraseMomento(
+  partita: Stato,
+  mio: boolean,
+  momento: Momento,
+  fase: Stato['turno']['fase'],
+  io: IdGiocatore | null = null,
+): string | null {
   const tab = tabellone(partita.mappa);
   switch (momento.tipo) {
     case 'carta': {
@@ -85,10 +99,22 @@ function fraseMomento(partita: Stato, mio: boolean, momento: Momento, fase: Stat
       return mio ? 'Ti teletrasporti…' : 'si teletrasporta…';
     case 'roulette':
       return mio ? 'Giri la Roulette cosmica…' : 'gira la Roulette cosmica…';
+    case 'morra': {
+      if (momento.avversario === io) return 'gioca a morra con te…';
+      const chi = partita.giocatori.find((g) => g.id === momento.avversario)?.nome;
+      if (!chi) return null;
+      return mio ? `Morra cinese con ${chi}…` : `gioca a morra con ${chi}…`;
+    }
     case 'volo': {
       const c = tab.caselle[momento.casella];
       return c ? (mio ? `Voli ${destinazione(c)}…` : `vola ${destinazione(c)}…`) : null;
     }
+    case 'bermuda':
+      return mio ? 'Sparisci nel Triangolo delle Bermuda…' : 'sparisce nel Triangolo delle Bermuda…';
+    case 'antipodi':
+      return mio ? 'Sbuchi dall’altra parte del mondo…' : 'sbuca dall’altra parte del mondo…';
+    case 'cambio_data':
+      return mio ? 'Guadagni un giorno: ti muovi ancora' : 'guadagna un giorno: si muove ancora';
     case 'dadi':
       return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
     case 'viaggio': {
@@ -145,7 +171,7 @@ export function fraseTurno({
   const mio = g.id === io;
   if (assente && !mio) return 'ha perso il collegamento: il turno passa da solo';
   if (occupata && momento) {
-    const frase = fraseMomento(partita, mio, momento, t.fase);
+    const frase = fraseMomento(partita, mio, momento, t.fase, io);
     if (frase) return frase;
   }
   if (occupata && (t.fase === 'lancio' || t.fase === 'prigione')) return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
@@ -159,6 +185,10 @@ export function fraseTurno({
 
   const scambio = mio ? null : cosaFa(attivita);
   if (t.fase === 'lancio') return scambio ?? (partita.ultimoRimasto ? fraseUltimoRimasto(partita, mio) : mio ? 'Tira i dadi' : 'deve tirare i dadi');
+
+  // Giro del mondo: sulla città di un avversario, prima di tutto si paga o si sfida a morra.
+  const sfida = partita.sfida;
+  if (sfida && sfida.sfidante === g.id) return fraseSfida(partita, sfida, mio, io);
 
   // Dopo il tiro: prima il debito, poi la decisione d'acquisto, poi il doppio.
   if (g.saldo < 0) {
@@ -183,6 +213,22 @@ export function fraseTurno({
   }
   if (g.vacanza) return mio ? 'Sei in vacanza: salterai il prossimo turno' : 'va in vacanza: salta il prossimo turno';
   return scambio ?? (mio ? 'Puoi costruire, scambiare o finire il turno' : 'può costruire, scambiare o finire il turno');
+}
+
+/**
+ * Giro del mondo, la sfida a morra: chi è caduto sulla città decide se pagare o sfidare, poi aspetta il segno del
+ * proprietario. Allo sfidato parla in seconda persona («ti sfida»).
+ */
+function fraseSfida(partita: Stato, sfida: NonNullable<Stato['sfida']>, mio: boolean, io: IdGiocatore | null): string {
+  const padrone = partita.giocatori.find((x) => x.id === sfida.proprietario)?.nome ?? '?';
+  const affitto = euro(sfida.importo);
+  const sfidato = io !== null && io === sfida.proprietario;
+  if (sfida.fase === 'scelta') {
+    if (mio) return `Paga ${affitto} o sfida ${padrone} a morra`;
+    return sfidato ? `decide se pagarti ${affitto} o sfidarti a morra` : `decide se pagare ${affitto} o sfidare ${padrone} a morra`;
+  }
+  if (mio) return `Hai sfidato ${padrone}: aspetta il suo segno`;
+  return sfidato ? 'ti sfida a morra cinese: scegli il segno' : `sfida ${padrone} a morra cinese`;
 }
 
 /**
@@ -248,6 +294,11 @@ const IMPORTANTI = new Set<string>([
   'ultimo_rimasto',
   'volo',
   'passaporto',
+  'bermuda',
+  'antipodi',
+  'cambio_data',
+  'sfida',
+  'morra',
 ]);
 
 export interface EventoInVista {
@@ -272,6 +323,8 @@ export function eventoCorrente(registro: readonly VoceRegistro[], fino = Infinit
       if (turni > 1) return null;
       continue;
     }
+    // L'affitto che chiude una morra (doppio o normale) lo racconta già la scheda della morra, con l'importo.
+    if (tipo === 'affitto' && registro[i - 1]?.evento.tipo === 'morra') continue;
     if (IMPORTANTI.has(tipo)) return { voce: v, precedente: turni > 0 };
   }
   return null;

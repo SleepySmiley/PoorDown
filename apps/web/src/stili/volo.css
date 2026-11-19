@@ -41,42 +41,54 @@
     0 0 0 calc(var(--k) * 4.5) var(--ambra);
 }
 
-/* Il prezzo, sulla prima casella di ogni fascia e su quella scelta: un cartellino sul bordo verso il centro. */
+/* Il prezzo, dove comincia ogni fascia: un cartellino sul bordo verso il centro, a cavallo del confine con la casella
+   prima (le caselle vanno in senso orario). Sta tra due bandiere, non sopra una: le bandiere dicono il paese, e per
+   completare un paese si vola. */
 .casella .casella__biglietto {
   position: absolute;
   z-index: 5;
-  padding: calc(var(--k) * 3) calc(var(--k) * 7);
+  padding: calc(var(--k) * 3) calc(var(--k) * 6);
   border-radius: var(--r-tondo);
   background: var(--ambra);
   color: var(--su-ambra);
   font: 700 calc(var(--k) * 13) / 1 var(--stretto);
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 calc(var(--k) * 2) calc(var(--k) * 5) rgb(10 14 22 / 0.45);
+  box-shadow:
+    0 0 0 calc(var(--k) * 1.5) var(--tab-fondo, #14161a),
+    0 calc(var(--k) * 2) calc(var(--k) * 5) rgb(10 14 22 / 0.45);
 }
 
-.casella--basso .casella__biglietto {
-  top: 0;
-  left: 50%;
-  translate: -50% -50%;
-}
-
-.casella--alto .casella__biglietto {
+/* In alto si va verso destra: il confine è a sinistra, il bordo interno in basso (anche per la Prigione, l'angolo dopo). */
+.casella--alto .casella__biglietto,
+.casella--angolo-1 .casella__biglietto {
   bottom: 0;
-  left: 50%;
+  left: 0;
   translate: -50% 50%;
 }
 
-.casella--sinistra .casella__biglietto {
-  top: 50%;
+/* A destra si scende: confine in alto, bordo interno a sinistra (anche per la Vacanza). */
+.casella--destra .casella__biglietto,
+.casella--angolo-2 .casella__biglietto {
+  top: 0;
+  left: 0;
+  translate: -50% -50%;
+}
+
+/* In basso si va verso sinistra: confine a destra, bordo interno in alto. */
+.casella--basso .casella__biglietto,
+.casella--angolo-3 .casella__biglietto {
+  top: 0;
   right: 0;
   translate: 50% -50%;
 }
 
-.casella--destra .casella__biglietto {
-  top: 50%;
-  left: 0;
-  translate: -50% -50%;
+/* A sinistra si sale: confine in basso, bordo interno a destra. */
+.casella--sinistra .casella__biglietto,
+.casella--angolo-0 .casella__biglietto {
+  right: 0;
+  bottom: 0;
+  translate: 50% 50%;
 }
 
 /* ---------- La carta d'imbarco ---------- */

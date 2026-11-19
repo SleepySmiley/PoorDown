@@ -39,6 +39,8 @@ import {
 import type { Collegamento } from '../rete/collegamento';
 import { suona } from '../suoni/audio';
 import { DURATA } from '../ui/movimento';
+import { suonoEsitoMorra, tempiMorra } from './sfida';
+import type { CasellaStrana } from './caselleStrane';
 
 export interface PosizioneMostrata {
   casella: number;
@@ -77,6 +79,9 @@ export interface CartaInScena {
   rara?: true;
 }
 
+/** Giro del mondo: la morra cinese in scena (Morra.tsx), con i segni, l'esito per chi ha sfidato e quanto paga. */
+export type MorraInScena = Omit<Extract<Evento, { tipo: 'morra' }>, 'tipo'> & { n: number };
+
 /** L'esito di uno scambio, timbrato sul tabellone. */
 export interface TimbroScambio {
   n: number;
@@ -106,6 +111,8 @@ export interface Scena {
   teletrasporti: Readonly<Record<IdGiocatore, true>>;
   /** Giro del mondo: pedine in aereo, con la casella di partenza e la meta del biglietto (per la rotta dell'aereo). */
   aerei: Readonly<Record<IdGiocatore, { da: number; a: number }>>;
+  /** Giro del mondo: la casella strana in scena (vortice delle Bermuda, buca degli Antipodi, calendario del cambio di data). */
+  strana: CasellaStrana | null;
   /** Dove sta andando la pedina: la casella si accende appena i dadi si fermano. */
   meta: { giocatore: IdGiocatore; casella: number } | null;
   /** Dove si è fermato chi gioca, fino a fine turno. */
@@ -137,6 +144,8 @@ export interface Scena {
   rientri: Readonly<Record<IdGiocatore, true>>;
   /** Carte rare: il Reset, con le caselle che tornano alla banca (i blocchi si sfilano come in una bancarotta). */
   reset: { caselle: number[] } | null;
+  /** Giro del mondo: le mani della morra cinese che battono e si aprono, nel riquadro sopra il tabellone. */
+  morra: MorraInScena | null;
   gettoni: readonly Gettone[];
   /** Caselle che lampeggiano nel colore del nuovo proprietario (scambio fatto). */
   lampeggia: readonly number[];
@@ -287,6 +296,8 @@ export function arrivoDelTurno(registro: readonly VoceRegistro[], fino = Infinit
       case 'movimento':
       case 'teletrasporto':
       case 'volo':
+      case 'bermuda':
+      case 'antipodi':
         if (altro(e.giocatore)) break;
         return { casella: e.a, tono: affitti.has(`${e.giocatore}:${e.a}`) ? 'affitto' : 'normale' };
       case 'prigione':
@@ -346,6 +357,14 @@ function senza<T>(mappa: Readonly<Record<IdGiocatore, T>>, id: IdGiocatore): Rec
   return Object.fromEntries(Object.entries(mappa).filter(([k]) => k !== id));
 }
 
+/** Le voci messe in scena mentre la pedina cammina (vedi `daAnticipare`). */
+interface Anticipate {
+  partenza?: VoceRegistro;
+  tempesta?: VoceRegistro;
+  polvere: VoceRegistro[];
+  passaporto?: VoceRegistro;
+}
+
 /** Un credito in viaggio: il saldo di chi incassa sale solo quando il gettone arriva. */
 interface Credito {
   a: IdGiocatore;
@@ -389,6 +408,7 @@ export class Regia {
       voli: {},
       teletrasporti: {},
       aerei: {},
+      strana: null,
       meta: null,
       arrivo: arrivoDelTurno(s.registro),
       dadi: partita?.turno.dadi ?? [5, 2],
@@ -406,6 +426,7 @@ export class Regia {
       bancarotta: null,
       rientri: {},
       reset: null,
+      morra: null,
       gettoni: [],
       lampeggia: [],
       timbro: null,
@@ -517,6 +538,7 @@ export class Regia {
       voli: {},
       teletrasporti: {},
       aerei: {},
+      strana: null,
       meta: null,
       arrivo: arrivoDelTurno(s.registro, this.ultimaVista),
       rotola: false,
@@ -531,6 +553,7 @@ export class Regia {
       bancarotta: null,
       rientri: {},
       reset: null,
+      morra: null,
       dadi: partita?.turno.dadi ?? ultimoLancio(s.registro) ?? this.scena.dadi,
     });
   }
@@ -591,7 +614,7 @@ export class Regia {
         const n = tab.caselle.length;
         const { passi, verso } = percorso(e, n);
         const tempi = passiPedina(passi);
-        const { partenza, tempesta, polvere } = this.daAnticipare(e.giocatore);
+        const { partenza, tempesta, polvere, passaporto } = this.daAnticipare(e.giocatore);
         const stella = tab.caselle.findIndex((c) => c.tipo === 'supernova');
         this.cambia({ meta: { giocatore: e.giocatore, casella: e.a }, arrivo: null });
         let casella = e.da;
@@ -602,7 +625,7 @@ export class Regia {
           suona('passo', { forza: this.forza(e.giocatore) });
           // Passando dalla Partenza il gettone parte subito, mentre la pedina continua a camminare
           // (con la tempesta solare vola invece verso la Supernova); passando sopra la Supernova, la polvere di stelle.
-          if (casella === 0 && verso === 1) [partenza, tempesta].forEach((v) => this.anticipa(v));
+          if (casella === 0 && verso === 1) [partenza, tempesta, passaporto].forEach((v) => this.anticipa(v));
           if (casella === stella && i < passi - 1) this.anticipa(polvere.shift());
           await this.attendi(tempi[i]!);
         }
@@ -697,6 +720,7 @@ export class Regia {
         const diChiGioca = partita.turno.giocatore === e.giocatore;
         this.cambia({ meta: null, arrivo: null, aerei: { ...this.scena.aerei, [e.giocatore]: { da: e.da, a: e.a } } });
         this.muovi(e.giocatore, { casella: e.a, prigione: false });
+        suona('decollo', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.volo);
         if (gen !== this.generazione) return;
         this.cambia({
@@ -704,7 +728,33 @@ export class Regia {
           arrivo: diChiGioca ? { casella: e.a, tono: 'normale' } : this.scena.arrivo,
           arrivi: { ...this.scena.arrivi, [e.giocatore]: (this.scena.arrivi[e.giocatore] ?? 0) + 1 },
         });
-        suona('arrivo', { forza: this.forza(e.giocatore) });
+        suona('atterraggio', { forza: this.forza(e.giocatore) });
+        return;
+      }
+      case 'bermuda':
+      case 'antipodi': {
+        // Giro del mondo (caselleStrane.ts): la pedina gira nel vortice e ricompare a caso, o cade nella buca e sbuca
+        // sul lato opposto. La posizione salta (o scorre sotto il tabellone) mentre non si vede: lo decide il CSS.
+        const diChiGioca = partita.turno.giocatore === e.giocatore;
+        this.cambia({ meta: null, arrivo: null, strana: { n: voce.n, tipo: e.tipo, giocatore: e.giocatore } });
+        this.muovi(e.giocatore, { casella: e.a, prigione: false });
+        suona(e.tipo === 'bermuda' ? 'vortice' : 'buca', { forza: this.forza(e.giocatore) });
+        await this.attendi(e.tipo === 'bermuda' ? TEMPI.bermuda : TEMPI.antipodi);
+        if (gen !== this.generazione) return;
+        this.cambia({
+          strana: null,
+          arrivo: diChiGioca ? { casella: e.a, tono: 'normale' } : this.scena.arrivo,
+          arrivi: { ...this.scena.arrivi, [e.giocatore]: (this.scena.arrivi[e.giocatore] ?? 0) + 1 },
+        });
+        return;
+      }
+      case 'cambio_data': {
+        // Giro del mondo: sopra la pedina il calendario gira di un giorno; poi si muove ancora (lo dice il turno).
+        this.cambia({ strana: { n: voce.n, tipo: 'cambio_data', giocatore: e.giocatore } });
+        suona('calendario', { forza: this.forza(e.giocatore) });
+        await this.attendi(TEMPI.cambioData);
+        if (gen !== this.generazione) return;
+        this.cambia({ strana: null });
         return;
       }
       case 'uscita_prigione': {
@@ -741,7 +791,7 @@ export class Regia {
           teletrasporti: { ...this.scena.teletrasporti, [e.giocatore]: true },
         });
         this.muovi(e.giocatore, { casella: 0, prigione: false });
-        suona('teletrasporto', { forza: this.forza(e.giocatore) });
+        suona('rientro', { forza: this.forza(e.giocatore) });
         await this.attendi(TEMPI.rientro);
         if (gen !== this.generazione) return;
         this.cambia({
@@ -753,8 +803,24 @@ export class Regia {
       case 'reset': {
         // Tutti i blocchi dei proprietari si sfilano dal tabellone, uno dopo l'altro, come in una bancarotta.
         this.cambia({ reset: { caselle: e.caselle }, meta: null, arrivo: null });
-        suona('smonta');
+        suona('reset');
         await this.attendi(TEMPI.reset);
+        return;
+      }
+      case 'morra': {
+        // Giro del mondo: le due mani battono tre volte («sasso, carta, forbici!»), si aprono sui segni e arriva
+        // l'esito (Morra.tsx). I colpi suonano insieme alle mani; l'affitto, se c'è, parte dopo con il suo gettone.
+        this.cambia({
+          morra: { n: voce.n, da: e.da, a: e.a, casella: e.casella, segni: e.segni, esito: e.esito, importo: e.importo, ...(e.aCaso ? { aCaso: e.aCaso } : {}) },
+        });
+        const tempi = tempiMorra();
+        const forza = this.mio(e.da) || this.mio(e.a) ? 1 : PIANO;
+        for (const ms of tempi.battute) this.dopo(ms, () => suona('morraColpo', { forza }));
+        this.dopo(tempi.apertura, () => suona('morraApre', { forza }));
+        this.dopo(tempi.esito, () => suona(suonoEsitoMorra(e.esito, this.mio(e.da), this.mio(e.a)), { forza }));
+        await this.attendi(TEMPI.morra);
+        if (gen !== this.generazione) return;
+        this.cambia({ morra: null });
         return;
       }
       default: {
@@ -788,12 +854,15 @@ export class Regia {
    * Le voci che seguono questo spostamento e vanno in scena durante i passi: la Partenza (passandoci sopra, non
    * fermandocisi) con il premio che la tempesta solare manda alla Supernova, e la polvere di stelle (regole folli).
    */
-  private daAnticipare(id: IdGiocatore): { partenza?: VoceRegistro; tempesta?: VoceRegistro; polvere: VoceRegistro[] } {
-    const trovate: { partenza?: VoceRegistro; tempesta?: VoceRegistro; polvere: VoceRegistro[] } = { polvere: [] };
+  private daAnticipare(id: IdGiocatore): Anticipate {
+    const trovate: Anticipate = { polvere: [] };
     for (const v of this.coda) {
       const e = v.evento;
       if (e.tipo === 'movimento' || e.tipo === 'teletrasporto' || e.tipo === 'volo' || e.tipo === 'dadi' || e.tipo === 'turno') break;
+      if (e.tipo === 'bermuda' || e.tipo === 'antipodi') break;
       if (e.tipo === 'partenza' && e.giocatore === id && !e.arrivo) trovate.partenza = v;
+      // Giro del mondo: il passaporto si timbra mentre la pedina passa dalla Partenza, insieme al premio.
+      if (e.tipo === 'passaporto' && e.giocatore === id && trovate.partenza) trovate.passaporto = v;
       if (e.tipo === 'malloppo' && e.giocatore === id && e.motivo === 'tempesta' && trovate.partenza) trovate.tempesta = v;
       if (e.tipo === 'malloppo' && e.giocatore === id && e.motivo === 'polvere') trovate.polvere.push(v);
     }
@@ -890,6 +959,14 @@ export class Regia {
       case 'gravita_invertita':
         if (!inBase) this.ritoccaCosmo((c) => ({ ...c, verso: -1 }));
         return;
+      // Giro del mondo: il passaporto compare nella riga del giocatore (con il timbro) quando lo ritira, non a fine scena.
+      case 'passaporto': {
+        const p = this.scena.partita;
+        if (!inBase && p) {
+          this.cambia({ partita: { ...p, giocatori: p.giocatori.map((g) => (g.id === e.giocatore ? { ...g, passaporto: true as const } : g)) } });
+        }
+        return;
+      }
       case 'meteorite':
         ritocca(e.casella, (p) => ({ ...p, livello: e.livello }));
         this.mostraPerUnPo({ lampeggia: [e.casella] }, { lampeggia: [] }, LAMPO_SCAMBIO_MS);
@@ -956,6 +1033,10 @@ export class Regia {
       case 'robin_hood':
         if (this.mio(e.da)) suona('pagamento');
         return;
+      // Giro del mondo: la sfida a morra è lanciata, la campanella la annuncia (piena a chi è sfidato).
+      case 'sfida':
+        suona('sfida', { forza: this.mio(e.a) || this.mio(e.da) ? 1 : PIANO });
+        return;
       case 'moneta':
         if (!e.testa && this.mio(e.giocatore)) suona('pagamento');
         return;
@@ -983,6 +1064,13 @@ export class Regia {
         return;
       case 'gravita_invertita':
         suona('gravita', { forza: this.forza(e.giocatore) });
+        return;
+      // Giro del mondo: il timbro della dogana sul passaporto; resta un solo giocatore, la campana d'annuncio.
+      case 'passaporto':
+        suona('passaporto', { forza: this.forza(e.giocatore) });
+        return;
+      case 'ultimo_rimasto':
+        suona('ultimoRimasto');
         return;
       case 'tassa':
         if (this.mio(e.giocatore)) suona('pagamento');

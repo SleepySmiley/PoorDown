@@ -20,6 +20,7 @@ import {
   type EventoStanza,
   type Giocatore,
   type IdGiocatore,
+  type Segno,
   type Stato,
 } from '@poordown/engine';
 import { Pedina, Stemma, type RigaRegistro } from '../ui/comuni';
@@ -27,7 +28,8 @@ import { ICONA_FACCIA } from '../ui/facce-cosmiche';
 import { RiquadroTabellone } from '../ui/Finestra';
 import { Icona, type NomeIcona } from '../ui/icone';
 import { SCORRE } from '../ui/movimento';
-import { iniziale } from '../ui/utili';
+import { iniziale, variabili } from '../ui/utili';
+import { NOME_SEGNO, vincitore } from './sfida';
 import type { EventoInVista } from './turno';
 
 type Tono = 'paga' | 'incassa' | 'neutro';
@@ -37,6 +39,10 @@ interface Contenuto {
   icona?: NomeIcona;
   /** Due pedine con la freccia: chi paga → chi incassa. */
   coppia?: [IdGiocatore, IdGiocatore];
+  /** Giro del mondo: due pedine faccia a faccia, chi sfida e chi è sfidato a morra. */
+  duello?: [IdGiocatore, IdGiocatore];
+  /** Giro del mondo: le due mani della morra con i segni giocati, ognuna nel colore del suo giocatore. */
+  mani?: { da: IdGiocatore; a: IdGiocatore; segni: [Segno, Segno]; vince: IdGiocatore | null };
   /** Indice della regione per lo stemma (acquisti e costruzioni di città). */
   regione?: number;
   /** Il giocatore protagonista (pallino del colore prima del nome). */
@@ -79,11 +85,16 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
   const tab = tabellone(partita.mappa);
   const nome = (id: IdGiocatore) => partita.giocatori.find((g) => g.id === id)?.nome ?? '?';
   const casella = (n: number) => tab.caselle[n];
-  const nomeCasella = (n: number) => casella(n)?.nome ?? '?';
+  // Il nome intero; quello breve solo se l'intero non sta nella scheda (Bangkok e i suoi 168 caratteri), come nel volo.
+  const nomeCasella = (n: number) => {
+    const c = casella(n);
+    if (!c) return '?';
+    return c.breve && c.nome.length > 24 ? c.breve : c.nome;
+  };
   // «a Hell», «all’Aeroporto di Lukla», «alla casella Busta».
   const verso = (n: number) => {
     const c = casella(n);
-    return c ? destinazione(c) : '?';
+    return c ? destinazione({ ...c, nome: nomeCasella(n) }) : '?';
   };
   const regione = (n: number) => {
     const c = casella(n);
@@ -521,7 +532,7 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
       };
     case 'passaporto':
       return {
-        icona: 'aereo',
+        icona: 'passaporto',
         chi: e.giocatore,
         titolo: (
           <>
@@ -530,6 +541,68 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
         ),
         dettaglio: 'Da adesso può volare',
       };
+    // Le caselle strane: le icone sono quelle delle caselle (ui/caselle.ts).
+    case 'bermuda':
+      return {
+        icona: 'spirale',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> sparisce nelle Bermuda
+          </>
+        ),
+        dettaglio: `Ricompare ${verso(e.a)}`,
+      };
+    case 'antipodi':
+      return {
+        icona: 'antipodi',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> cade nella buca
+          </>
+        ),
+        dettaglio: `Sbuca dall’altra parte del mondo, ${verso(e.a)}`,
+      };
+    case 'cambio_data':
+      return {
+        icona: 'calendario',
+        chi: e.giocatore,
+        titolo: (
+          <>
+            <b>{nome(e.giocatore)}</b> guadagna un giorno
+          </>
+        ),
+        dettaglio: 'Linea del cambio di data: si muove ancora',
+      };
+    case 'sfida':
+      return {
+        duello: [e.da, e.a],
+        titolo: (
+          <>
+            <b>{nome(e.da)}</b> sfida <b>{nome(e.a)}</b> a morra cinese
+          </>
+        ),
+        dettaglio: `Invece di pagare ${euro(e.importo)} per ${nomeCasella(e.casella)}`,
+      };
+    case 'morra': {
+      const vince = vincitore(e);
+      const [mio, suo] = e.segni;
+      const lento = e.aCaso ? ` (${nome(e.aCaso)} a caso)` : '';
+      const quanto = e.esito === 'vinta' ? 'niente affitto' : e.esito === 'persa' ? 'affitto doppio' : 'affitto normale';
+      return {
+        mani: { da: e.da, a: e.a, segni: e.segni, vince },
+        titolo: vince ? (
+          <>
+            <b>{nome(vince)}</b> vince a morra cinese
+          </>
+        ) : (
+          'Morra cinese: pari'
+        ),
+        dettaglio: `${NOME_SEGNO[mio]} contro ${NOME_SEGNO[suo].toLowerCase()}${lento}: ${quanto}`,
+        ...(e.importo > 0 ? { importo: { valore: e.importo, tono: tono(io, e.da, e.a) } } : {}),
+      };
+    }
     case 'rientro':
       return {
         icona: 'partenza',
@@ -634,7 +707,36 @@ export function EventoCorrente({
   if (!c) return null;
   const tab = tabellone(partita.mappa);
   let figura: ReactNode;
-  if (c.coppia) {
+  if (c.mani) {
+    const { da, a, segni, vince } = c.mani;
+    const mano = (id: IdGiocatore, segno: Segno, destra: boolean) => (
+      <span
+        className={[
+          'evento__mano',
+          destra ? 'evento__mano--destra' : '',
+          vince !== null && vince !== id ? 'evento__mano--perde' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        style={variabili({ '--colore': `var(--p${giocatore(id)?.colore ?? 1})` })}
+      >
+        <Icona nome={segno} />
+      </span>
+    );
+    figura = (
+      <span className="evento__mani">
+        {mano(da, segni[0], false)}
+        {mano(a, segni[1], true)}
+      </span>
+    );
+  } else if (c.duello) {
+    figura = (
+      <span className="evento__coppia evento__duello">
+        <PedinaDi g={giocatore(c.duello[0])} />
+        <PedinaDi g={giocatore(c.duello[1])} />
+      </span>
+    );
+  } else if (c.coppia) {
     figura = (
       <span className="evento__coppia">
         <PedinaDi g={giocatore(c.coppia[0])} />

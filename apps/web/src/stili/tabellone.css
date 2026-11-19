@@ -658,7 +658,7 @@ button.casella:hover .casella__sfondo {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--k) * 4);
+  gap: calc(var(--k) * 3.5);
   align-self: stretch;
   height: calc(var(--k) * 26);
   margin-top: auto;
@@ -685,7 +685,7 @@ button.casella:hover .casella__sfondo {
   flex: none;
   min-width: calc(var(--k) * 15);
   height: calc(var(--k) * 15);
-  padding: 0 calc(var(--k) * 3);
+  padding: 0 calc(var(--k) * 2.5);
   border-radius: var(--r-tondo);
   background: var(--inchiostro);
   color: color-mix(in srgb, var(--proprietario) 70%, #fff);
@@ -725,6 +725,21 @@ button.casella:hover .casella__sfondo {
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.3),
     0 1px 0 rgb(0 0 0 / 0.45);
+}
+
+/* Sul tabellone case e piastrina sono un filo più strette che nella scheda: la casella è larga 65 k e con la sigla
+   di due lettere («Co») e quattro case il blocco deve lasciare ancora respiro ai lati (circa 4 k per parte). */
+.casella__edifici.edifici {
+  gap: calc(var(--k) * 1.5);
+}
+
+.casella__edifici .edifici__casa {
+  width: calc(var(--k) * 8);
+}
+
+.casella__edifici.edifici--albergo {
+  padding: 0 calc(var(--k) * 3.5);
+  letter-spacing: 0.06em;
 }
 
 /* Il blocco cresce dal bordo esterno della casella (in alto per la fila in alto; nelle colonne il corpo è ruotato). */

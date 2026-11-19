@@ -9,7 +9,8 @@
  * - Il passaporto: si vola solo dopo essere passati dalla Partenza, così al primo turno nessuno fa la corsa ai paesi
  *   da una città sola (con la corsa, chi giocava per terzo prendeva Bangkok e vinceva il 40% delle partite).
  * - Servizi con il moltiplicatore doppio: chi vola li evita.
- * Equilibrio misurato con 800 partite di 4 bot: vittorie per posto 26 · 21 · 27 · 27%, come su Europa.
+ * Equilibrio misurato con le partite di 4 bot: vittorie per posto 26 · 21 · 27 · 27% su 800 partite con il passaporto,
+ *   25 · 25 · 26 · 25% con le carte rare.
  * - Busta e Cartolina solo sue, con testi comici come sul Sistema solare.
  * - Tre carte rare che escono al posto di Busta e Cartolina: Bancarotta, Vita extra e Reset. Con loro l'ultimo rimasto
  *   non vince subito: deve giocare ancora qualche turno, perché chi è in bancarotta può rientrare.
@@ -199,7 +200,7 @@ const CARTOLINA: Carta[] = [
 ];
 
 const VIAGGI: Viaggi = {
-  // Corto, medio e lungo raggio. Prezzi provvisori, da tarare con le partite dei bot.
+  // Corto, medio e lungo raggio.
   fasce: [
     { fino: 12, prezzo: 50 },
     { fino: 24, prezzo: 100 },

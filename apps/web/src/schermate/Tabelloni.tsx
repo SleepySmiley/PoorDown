@@ -84,10 +84,7 @@ export function SceltaTabellone({
           </p>
         )}
         <ul className="tabelloni__lista">
-          {Object.values(TABELLONI)
-            // Il Giro del mondo resta nascosto finché il browser non sa mostrare il volo e la morra (in lavorazione).
-            .filter((tab) => tab.id !== 'giro_del_mondo' || tab.id === attuale)
-            .map((tab) => {
+          {Object.values(TABELLONI).map((tab) => {
             const scelto = tab.id === attuale;
             return (
               <li key={tab.id} className={scelto ? 'tabelloni__voce tabelloni__voce--scelta' : 'tabelloni__voce'}>

@@ -48,6 +48,8 @@ import { Pannello } from '../ui/Pannello';
 import { Pulsante } from '../ui/Pulsante';
 import { cittaDelCompagno } from '../ui/squadre';
 import { Asta } from './Asta';
+import { Morra } from './Morra';
+import { quadroSfida } from './sfida';
 import { CartelloTurno } from './CartelloTurno';
 import { Chat, ChatChiusa } from './Chat';
 import { ColoriDiSquadra, RigaGiocatoreGioco, TestataGioco } from './ColonnaGioco';
@@ -370,8 +372,8 @@ export function Gioco({
   const altraFinestra = useRef(false);
   useEffect(() => {
     finestraAttuale.current = finestraAperta;
-    altraFinestra.current = cronologia || vivo.asta !== null;
-  }, [finestraAperta, cronologia, vivo.asta]);
+    altraFinestra.current = cronologia || vivo.asta !== null || Boolean(vivo.sfida);
+  }, [finestraAperta, cronologia, vivo.asta, vivo.sfida]);
   useEffect(
     () =>
       collegamento.ascoltaVoci((voci) => {
@@ -442,7 +444,8 @@ export function Gioco({
   // La scheda dell'evento compare quando il suo evento va in scena (l'affitto mentre il gettone vola), non dopo;
   // la carta no: è già grande al centro del tabellone.
   const voceInCorso = scena.inCorso !== null ? registro.find((v) => v.n === scena.inCorso) : undefined;
-  const subito = voceInCorso && !['carta', 'dadi', 'movimento'].includes(voceInCorso.evento.tipo);
+  // La morra no: la sua scheda dice già com'è finita, arriva quando le mani si sono aperte.
+  const subito = voceInCorso && !['carta', 'dadi', 'movimento', 'morra'].includes(voceInCorso.evento.tipo);
   const evento = inCorso ? eventoCorrente(registro, subito ? voceInCorso.n : scena.registroFino) : null;
   // Giro del mondo: dove posso volare adesso. La scelta della meta resta aperta solo nel turno in cui l'ho aperta.
   const mete = mioTurno && io && tab.viaggi && !scena.occupata ? meteVolo(partita, io) : null;
@@ -633,10 +636,14 @@ export function Gioco({
   /* ---------- Finestre sopra il tabellone ---------- */
 
   let finestraSopra: ReactNode = null;
+  // Giro del mondo: la sfida a morra, quando la pedina è arrivata (sfida.ts decide a chi e cosa mostrare).
+  const sfida = inCorso ? quadroSfida(vivo, partita, scena, giocoIo) : null;
   if (vivo.asta && inCorso) {
     finestraSopra = (
       <Asta key="asta" partita={vivo} io={giocoIo} inviando={inviando} onOffri={(importo) => mossa({ tipo: 'offri', importo })} />
     );
+  } else if (sfida) {
+    finestraSopra = <Morra key="morra" quadro={sfida} partita={vivo} io={giocoIo} inviando={inviando} onMossa={mossa} />;
   } else if (finestraScambio?.tipo === 'vedi' && scambioVisto) {
     finestraSopra = (
       <VediScambio
@@ -752,6 +759,8 @@ export function Gioco({
                         squadra: g.squadra === null ? undefined : { indice: g.squadra, nome: partita.squadre[g.squadra] ?? '' },
                         variazione: variazioni[g.id],
                         bancarotta: scena.bancarotta?.giocatore === g.id,
+                        // Giro del mondo: si vola solo con il passaporto, che la riga appunta alla pedina.
+                        passaporto: tab.viaggi?.passaporto ? g.passaporto === true : undefined,
                       }}
                       puoTogliere={puoTogliere}
                       bloccoTogli={
@@ -797,6 +806,7 @@ export function Gioco({
                   volo: scena.voli[g.id],
                   teletrasporto: scena.teletrasporti[g.id],
                   aereo: rottaAereo(scena.aerei[g.id]),
+                  strana: scena.strana?.giocatore === g.id ? scena.strana.tipo : undefined,
                   sprofonda: scena.bancarotta?.giocatore === g.id,
                   evidenziata: inCorso && g.id === corrente?.id,
                 };

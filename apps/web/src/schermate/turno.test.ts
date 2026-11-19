@@ -47,6 +47,14 @@ describe('momentoScena', () => {
       affitto: true,
     });
   });
+
+  it('Giro del mondo: la morra cinese di chi gioca, contro il padrone della città', () => {
+    const morra = { n: 4, da: 'a', a: 'b', casella: 5, segni: ['sasso', 'carta'] as ['sasso', 'carta'], esito: 'persa' as const, importo: 140 };
+    const scena = { ...vuota, arrivo: { casella: 5, tono: 'normale' as const }, morra };
+    expect(momentoScena(scena, 'a')).toEqual({ tipo: 'morra', avversario: 'b' });
+    // La morra non è di Bruno: per lui resta il resto della scena.
+    expect(momentoScena(scena, 'b')).toEqual({ tipo: 'arrivo', casella: 5, affitto: false });
+  });
 });
 
 describe('fraseTurno', () => {
@@ -98,6 +106,27 @@ describe('fraseTurno', () => {
     );
     // Fuori scena il momento non conta.
     expect(frase(s, 'a', { momento: { tipo: 'prigione' } })).toBe('Tira i dadi');
+  });
+
+  it('Giro del mondo: sulla città di un avversario si paga o si sfida, poi si aspetta il segno', () => {
+    const conSfida = (fase: 'scelta' | 'morra') =>
+      partita((x) => {
+        x.turno.fase = 'dopo_lancio';
+        x.sfida = { sfidante: 'a', proprietario: 'b', casella: 5, importo: 70, fase, segno: null, scadenza: 15_000 };
+      });
+    const scelta = conSfida('scelta');
+    expect(frase(scelta, 'a')).toBe('Paga 70 € o sfida Bruno a morra');
+    expect(frase(scelta, 'b')).toBe('decide se pagarti 70 € o sfidarti a morra');
+    expect(frase(scelta, null)).toBe('decide se pagare 70 € o sfidare Bruno a morra');
+    const morra = conSfida('morra');
+    expect(frase(morra, 'a')).toBe('Hai sfidato Bruno: aspetta il suo segno');
+    expect(frase(morra, 'b')).toBe('ti sfida a morra cinese: scegli il segno');
+    expect(frase(morra, null)).toBe('sfida Bruno a morra cinese');
+    // Mentre le mani battono il cartello racconta la morra; allo sfidato dice «con te».
+    const momento = { tipo: 'morra', avversario: 'b' } as const;
+    expect(frase(morra, 'a', { occupata: true, momento })).toBe('Morra cinese con Bruno…');
+    expect(frase(morra, 'b', { occupata: true, momento })).toBe('gioca a morra con te…');
+    expect(frase(morra, null, { occupata: true, momento })).toBe('gioca a morra con Bruno…');
   });
 
   it('l’arrivo parla solo finché la partita mostrata è quella di prima del tiro', () => {
@@ -202,6 +231,25 @@ describe('eventoCorrente', () => {
   it('aspetta le voci non ancora comparse sullo schermo e si ferma all’inizio della partita', () => {
     expect(eventoCorrente(registro, 3)).toBeNull();
   });
+
+  it('Giro del mondo: l’affitto che chiude una morra lo racconta la scheda della morra', () => {
+    const morra = voci([
+      { tipo: 'turno', giocatore: 'a', numero: 1 },
+      { tipo: 'movimento', giocatore: 'a', da: 0, a: 5, dadi: [2, 3] },
+      { tipo: 'sfida', da: 'a', a: 'b', casella: 5, importo: 70 },
+      { tipo: 'morra', da: 'a', a: 'b', casella: 5, segni: ['carta', 'forbici'], esito: 'persa', importo: 140 },
+      { tipo: 'affitto', da: 'a', a: 'b', casella: 5, importo: 140 },
+    ]);
+    expect(eventoCorrente(morra)?.voce.n).toBe(4);
+    // Prima che le mani si aprano resta la scheda della sfida.
+    expect(eventoCorrente(morra, 3)?.voce.n).toBe(3);
+    // Senza morra (ha pagato subito) l'affitto ha la sua scheda.
+    const pagato = voci([
+      { tipo: 'turno', giocatore: 'a', numero: 1 },
+      { tipo: 'affitto', da: 'a', a: 'b', casella: 5, importo: 70 },
+    ]);
+    expect(eventoCorrente(pagato)?.voce.n).toBe(2);
+  });
 });
 
 describe('variazioni dei saldi', () => {
@@ -225,5 +273,37 @@ describe('titoloScheda', () => {
     expect(titoloScheda(true, true, 0)).toBe('● Tocca a te — PoorDown');
     expect(titoloScheda(true, false, 2)).toBe('(2) PoorDown');
     expect(titoloScheda(false, true, 0)).toBe('PoorDown');
+  });
+});
+
+describe('Giro del mondo: le caselle strane nel cartello del turno', () => {
+  const vuota = { carta: null, voli: {}, rotola: false, meta: null, arrivo: null };
+
+  it('il momento è la casella strana di chi gioca, non quella degli altri', () => {
+    const strana = { n: 3, tipo: 'bermuda' as const, giocatore: 'a' };
+    const scena = { ...vuota, arrivo: { casella: 11, tono: 'normale' as const }, strana };
+    expect(momentoScena(scena, 'a')).toEqual({ tipo: 'bermuda' });
+    expect(momentoScena(scena, 'b')).toEqual({ tipo: 'arrivo', casella: 11, affitto: false });
+    expect(momentoScena({ ...vuota, strana: { ...strana, tipo: 'antipodi' as const } }, 'a')).toEqual({ tipo: 'antipodi' });
+    expect(momentoScena({ ...vuota, strana: { ...strana, tipo: 'cambio_data' as const } }, 'a')).toEqual({ tipo: 'cambio_data' });
+  });
+
+  it('racconta cosa succede, a me e agli altri', () => {
+    const s = partita();
+    const occupata = true;
+    expect(frase(s, 'a', { occupata, momento: { tipo: 'bermuda' } })).toBe('Sparisci nel Triangolo delle Bermuda…');
+    expect(frase(s, 'b', { occupata, momento: { tipo: 'bermuda' } })).toBe('sparisce nel Triangolo delle Bermuda…');
+    expect(frase(s, 'a', { occupata, momento: { tipo: 'antipodi' } })).toBe('Sbuchi dall’altra parte del mondo…');
+    expect(frase(s, 'b', { occupata, momento: { tipo: 'cambio_data' } })).toBe('guadagna un giorno: si muove ancora');
+  });
+
+  it('le caselle strane hanno la loro scheda', () => {
+    const registro: VoceRegistro[] = [
+      { n: 1, quando: 0, evento: { tipo: 'turno', giocatore: 'a', numero: 1 } },
+      { n: 2, quando: 0, evento: { tipo: 'cambio_data', giocatore: 'a' } },
+      { n: 3, quando: 0, evento: { tipo: 'antipodi', giocatore: 'a', da: 33, a: 9 } },
+    ];
+    expect(eventoCorrente(registro)?.voce.n).toBe(3);
+    expect(eventoCorrente(registro, 2)?.voce.n).toBe(2);
   });
 });

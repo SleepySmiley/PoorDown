@@ -13,6 +13,19 @@ const TRACCIATI = {
   aereo: (
     <path d="M12 2.5c.9 0 1.5.9 1.5 2.2v4.6l7 4.1v2l-7-2.1v4.4l2.2 1.7V21L12 20l-3.7 1v-1.6l2.2-1.7v-4.4l-7 2.1v-2l7-4.1V4.7c0-1.3.6-2.2 1.5-2.2z" />
   ),
+  /*
+   * Giro del mondo, i segni della morra cinese (i nomi sono quelli di `Segno`): la mano vista dal dorso, con il polso
+   * in basso. Sasso: il pugno, il pollice di traverso. Carta: la mano aperta. Forbici: indice e medio a V.
+   */
+  sasso: (
+    <path d="M5.5 12V8.75a1.75 1.75 0 0 1 3.5 0V12M9 8.75V8.2a1.75 1.75 0 0 1 3.5 0V12M12.5 8.75a1.75 1.75 0 0 1 3.5 0V12M16 10.1a1.5 1.5 0 0 1 3 0V15c0 3.3-2.7 6-6 6h-1.5c-3.3 0-6-2.7-6-6v-3M5.5 12h5.4a1.75 1.75 0 0 1 0 3.5H8.2" />
+  ),
+  carta: (
+    <path d="M7 12.5V6.8a1.5 1.5 0 0 1 3 0v5M10 11.5V5.2a1.5 1.5 0 0 1 3 0v6.3M13 11.5V6.2a1.5 1.5 0 0 1 3 0v5.8M16 12V8.7a1.4 1.4 0 0 1 2.8 0V15c0 3.4-2.4 6-5.8 6h-.9c-2 0-3.5-.8-4.6-2.4l-3.6-5.2a1.6 1.6 0 0 1 2.5-2l1.6 1.6" />
+  ),
+  forbici: (
+    <path d="M8.7 12.8 6.4 5.3a1.6 1.6 0 0 1 3.06-.94l2.1 7M11.6 11.2l1.9-6.9a1.6 1.6 0 0 1 3.08.84l-2 7.2M14.9 12.5a1.5 1.5 0 0 1 3 0v.6M17.9 13.4a1.35 1.35 0 0 1 2.7 0v1.4c0 3.4-2.6 6.2-6 6.2h-1.2c-3 0-5.5-2-6.2-4.9l-.6-2.5M6.6 13.6h6.6a1.6 1.6 0 0 1 0 3.2H9.8" />
+  ),
   busta: (
     <>
       <rect x="3" y="5" width="18" height="14" rx="1.5" />
@@ -239,6 +252,24 @@ const TRACCIATI = {
   fionda: <path d="M6.5 3.5v5a5.5 5.5 0 0 0 11 0v-5M12 14v7M6.5 6.5l5.5 4 5.5-4" />,
   spirale: (
     <path d="M12 12a1.4 1.4 0 1 1 1.4-1.4 3.2 3.2 0 0 1-3.2 3.2A4.8 4.8 0 0 1 5.4 9a6.2 6.2 0 0 1 6.2-6.2 7.8 7.8 0 0 1 7.8 7.8 9 9 0 0 1-9 9" />
+  ),
+  /* Giro del mondo: le caselle strane (le Bermuda usano la spirale) e il passaporto. */
+  /** La Linea del cambio di data: il calendario da tavolo con l'angolo del foglio che gira. */
+  calendario: <path d="M15.5 20.5h-10a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v8.5zM15.5 20.5v-3a2 2 0 0 1 2-2h3M3.5 9.5h17M8 3v4M16 3v4" />,
+  /** La Buca per l'altra parte del mondo: il globo trapassato da una freccia che sbuca sotto. */
+  antipodi: (
+    <>
+      <circle cx="12" cy="10" r="6.5" />
+      <path d="M5.5 10h13M12 1.8v19.7M8.8 18.3l3.2 3.2 3.2-3.2" />
+    </>
+  ),
+  /** Il passaporto: il libretto con il globo in copertina. */
+  passaporto: (
+    <>
+      <rect x="5" y="2.5" width="14" height="19" rx="1.8" />
+      <circle cx="12" cy="10" r="3.5" />
+      <path d="M8.5 10h7M9 17h6" />
+    </>
   ),
   buconero: (
     <>

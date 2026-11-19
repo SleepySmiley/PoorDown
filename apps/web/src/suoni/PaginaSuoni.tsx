@@ -9,6 +9,8 @@ import { vaiAllaHome } from '../navigazione';
 import { Icona } from '../ui/icone';
 import { suona, type NomeSuono } from './audio';
 import { DESCRIZIONI } from './catalogo';
+import { GRUPPO_MORRA } from './morra';
+import { GRUPPO_VIAGGI } from './viaggi';
 import { Volume } from './Volume';
 
 const GRUPPI: readonly { titolo: string; suoni: readonly NomeSuono[] }[] = [
@@ -20,6 +22,8 @@ const GRUPPI: readonly { titolo: string; suoni: readonly NomeSuono[] }[] = [
   { titolo: 'Aste', suoni: ['martelletto', 'offerta', 'miaOfferta', 'superato', 'aggiudicato'] },
   { titolo: 'Scambi', suoni: ['proposta', 'scambioFatto', 'scambioRifiutato', 'timbroLieve'] },
   { titolo: 'Stanza, tempo e voti', suoni: ['chat', 'ingresso', 'uscita', 'tempoChiesto', 'tempoRicevuto', 'votoContro', 'voto'] },
+  { titolo: 'Giro del mondo: viaggi', suoni: GRUPPO_VIAGGI },
+  { titolo: 'Giro del mondo: la morra', suoni: GRUPPO_MORRA },
 ];
 
 export default function PaginaSuoni(): ReactNode {

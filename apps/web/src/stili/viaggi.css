@@ -1,0 +1,464 @@
+/* Giro del mondo, le caselle strane sulla pedina (schermate/SegniStrani.tsx) e il passaporto nella lista dei giocatori
+   (schermate/Passaporto.tsx). Misure del tabellone in --k; le durate arrivano dal motore (--d-bermuda, --d-antipodi,
+   --d-cambio-data: TEMPI in tempi.ts, gli stessi tempi che aspettano i bot). Selettori a due classi: tabellone.css e
+   stanza.css si caricano dopo e vincerebbero.
+   Senza movimento (prefers-reduced-motion) la regia salta la scena e la pedina compare subito dove deve stare. */
+
+/* ---------- Triangolo delle Bermuda ---------- */
+
+/* Il vortice: due spirali, come quella della casella, che girano sotto la pedina. Acqua blu, la luce dall'alto. */
+.segnaposto .vortice-strano {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: calc(var(--k) * var(--s, 1) * 88);
+  height: calc(var(--k) * var(--s, 1) * 88);
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(10 14 22 / 0.75), rgb(20 66 127 / 0.45) 55%, transparent);
+  color: var(--link);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vortice-strano .icona {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  stroke-width: 1.6;
+}
+
+.vortice-strano .icona + .icona {
+  rotate: 180deg;
+  opacity: 0.7;
+}
+
+/* ---------- Buca per l'altra parte del mondo ---------- */
+
+/* La buca: un'apertura scura alla base della pedina, vista di scorcio, con il bordo di terra più chiaro verso la luce. */
+.segnaposto .buca-strana {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--k) * var(--s, 1) * 13);
+  z-index: -1;
+  width: calc(var(--k) * var(--s, 1) * 40);
+  height: calc(var(--k) * var(--s, 1) * 15);
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #050608 55%, #1b1e24 85%, transparent);
+  box-shadow:
+    inset 0 calc(var(--k) * 2) calc(var(--k) * 3) rgb(0 0 0 / 0.8),
+    0 calc(var(--k) * -1) 0 rgb(244 241 232 / 0.18);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Linea del cambio di data ---------- */
+
+/* Il calendario sopra la pedina: la fascia blu del mese e il giorno a palette, come il tabellone delle partenze. */
+.segnaposto .calendario-strano {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--k) * 10);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  min-width: calc(var(--k) * 64);
+  border-radius: calc(var(--k) * 6);
+  background: var(--quadro);
+  font-size: calc(var(--k) * 32);
+  box-shadow:
+    inset 0 0 0 1px var(--quadro-linea),
+    0 calc(var(--k) * 8) calc(var(--k) * 16) rgb(10 14 22 / 0.5),
+    0 calc(var(--k) * 2) calc(var(--k) * 3) rgb(10 14 22 / 0.35);
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.calendario-strano .calendario-strano__mese {
+  align-self: stretch;
+  padding: calc(var(--k) * 4) calc(var(--k) * 8) calc(var(--k) * 3);
+  background: var(--segnaletica);
+  color: #f4f6f9;
+  font: 700 calc(var(--k) * 15) / 1 var(--stretto);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.calendario-strano .calendario-strano__giorno {
+  padding: calc(var(--k) * 4) calc(var(--k) * 5) calc(var(--k) * 5);
+}
+
+/* Le palette compaiono già ferme su oggi: l'unico giro è quello del giorno guadagnato. */
+.calendario-strano.calendario-strano--fermo .paletta__lembo {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Bermuda: la posizione salta a metà scena, quando la pedina è sparita nel vortice. */
+  .segnaposto.segnaposto--bermuda {
+    transition:
+      left 0s linear calc(var(--d-bermuda) * 0.5),
+      top 0s linear calc(var(--d-bermuda) * 0.5);
+  }
+
+  .segnaposto--bermuda .segnaposto__salto {
+    animation: bermuda-pedina var(--d-bermuda) linear both;
+  }
+
+  .segnaposto--bermuda .segnaposto__ombra {
+    animation: bermuda-ombra var(--d-bermuda) linear both;
+  }
+
+  .segnaposto--bermuda .vortice-strano {
+    animation:
+      bermuda-vortice var(--d-bermuda) var(--c-viaggio) both,
+      bermuda-gira calc(var(--d-bermuda) * 0.4) linear infinite;
+  }
+
+  /* Antipodi: la pedina cade, la posizione scorre sotto il tabellone (passando dal centro, cioè dall'altra parte del
+     mondo) mentre la buca è chiusa, poi la pedina sbuca sul lato opposto. */
+  .segnaposto.segnaposto--antipodi {
+    transition:
+      left calc(var(--d-antipodi) * 0.24) var(--c-viaggio) calc(var(--d-antipodi) * 0.38),
+      top calc(var(--d-antipodi) * 0.24) var(--c-viaggio) calc(var(--d-antipodi) * 0.38);
+  }
+
+  .segnaposto--antipodi .segnaposto__salto {
+    animation: antipodi-pedina var(--d-antipodi) linear both;
+  }
+
+  /* Sotto il tabellone si vede solo l'ombra che passa, come una talpa. */
+  .segnaposto--antipodi .segnaposto__ombra {
+    animation: antipodi-ombra var(--d-antipodi) linear both;
+  }
+
+  .segnaposto--antipodi .buca-strana {
+    animation: antipodi-buca var(--d-antipodi) var(--c-viaggio) both;
+  }
+
+  /* Cambio di data: il calendario sale sopra la pedina, gira di un giorno e se ne va; la pedina fa un saltello,
+     perché adesso si muove ancora. */
+  .segnaposto--cambio-data .calendario-strano {
+    animation: calendario-strano var(--d-cambio-data) var(--c-arrivo) both;
+  }
+
+  .segnaposto--cambio-data .segnaposto__salto {
+    animation: cambio-data-pedina var(--d-cambio-data) var(--c-viaggio) both;
+  }
+}
+
+/* La pedina gira attorno al centro del vortice stringendo il giro, rimpicciolisce e sparisce; ricompare girando. */
+@keyframes bermuda-pedina {
+  0% {
+    opacity: 1;
+    transform: rotate(0deg) translateX(0) scale(1);
+    animation-timing-function: ease-in;
+  }
+
+  10% {
+    transform: rotate(80deg) translateX(18%) scale(1);
+  }
+
+  22% {
+    transform: rotate(330deg) translateX(26%) scale(0.86);
+  }
+
+  34% {
+    opacity: 1;
+    transform: rotate(650deg) translateX(15%) scale(0.55);
+  }
+
+  45% {
+    opacity: 0.5;
+    transform: rotate(960deg) translateX(3%) scale(0.12);
+  }
+
+  48%,
+  54% {
+    opacity: 0;
+    transform: rotate(1080deg) translateX(0) scale(0);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+
+  70% {
+    opacity: 1;
+    transform: rotate(1390deg) translateX(0) scale(1.14);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.4, 1);
+  }
+
+  84%,
+  100% {
+    opacity: 1;
+    transform: rotate(1440deg) translateX(0) scale(1);
+  }
+}
+
+@keyframes bermuda-ombra {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  30%,
+  66% {
+    opacity: 0;
+  }
+}
+
+/* Il vortice si apre, inghiotte la pedina e si richiude; si riapre dove ricompare, la risputa e svanisce. */
+@keyframes bermuda-vortice {
+  0% {
+    opacity: 0;
+    scale: 0.2;
+  }
+
+  12%,
+  40% {
+    opacity: 1;
+    scale: 1;
+  }
+
+  50% {
+    opacity: 0;
+    scale: 0.3;
+  }
+
+  56% {
+    opacity: 0.9;
+    scale: 0.7;
+  }
+
+  72% {
+    opacity: 0.8;
+    scale: 1;
+  }
+
+  92%,
+  100% {
+    opacity: 0;
+    scale: 1.25;
+  }
+}
+
+@keyframes bermuda-gira {
+  to {
+    rotate: -360deg;
+  }
+}
+
+/* La pedina prende lo slancio, cade nella buca (la parte sotto il bordo non si vede più) e sbuca dall'altra parte. */
+@keyframes antipodi-pedina {
+  0% {
+    transform: translateY(0);
+    clip-path: inset(-80% -80% 0 -80%);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.5, 1);
+  }
+
+  9% {
+    transform: translateY(-18%);
+    clip-path: inset(-80% -80% -18% -80%);
+    animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+  }
+
+  /* Più giù della sua altezza: anche l'alone del turno, che sporge dal disco, finisce sotto il bordo della buca. */
+  34%,
+  63% {
+    transform: translateY(135%);
+    clip-path: inset(-80% -80% 135% -80%);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+
+  79% {
+    transform: translateY(-30%);
+    clip-path: inset(-80% -80% -30% -80%);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1);
+  }
+
+  90% {
+    transform: translateY(4%);
+    clip-path: inset(-80% -80% 4% -80%);
+  }
+
+  100% {
+    transform: translateY(0);
+    clip-path: inset(-80% -80% 0 -80%);
+  }
+}
+
+@keyframes antipodi-ombra {
+  0% {
+    opacity: 0.8;
+  }
+
+  30% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+
+  38%,
+  62% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.25, 0.9);
+  }
+
+  70% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+
+  100% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes antipodi-buca {
+  0% {
+    opacity: 0;
+    scale: 0 0.4;
+  }
+
+  9%,
+  33% {
+    opacity: 1;
+    scale: 1;
+  }
+
+  40%,
+  59% {
+    opacity: 0;
+    scale: 0 0.4;
+  }
+
+  66%,
+  84% {
+    opacity: 1;
+    scale: 1;
+  }
+
+  97%,
+  100% {
+    opacity: 0;
+    scale: 0 0.4;
+  }
+}
+
+@keyframes calendario-strano {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--k) * 10)) scale(0.6);
+  }
+
+  18%,
+  80% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--k) * -8));
+  }
+}
+
+/* Il saltello quando il giorno gira (le palette girano a 170 ms, la scena dura 700). */
+@keyframes cambio-data-pedina {
+  0%,
+  30% {
+    transform: none;
+  }
+
+  45% {
+    transform: translateY(-30%) scale(1.08);
+  }
+
+  60%,
+  100% {
+    transform: none;
+  }
+}
+
+/* ---------- Il passaporto nella lista dei giocatori ---------- */
+
+/* Il libretto appuntato in alto a destra della pedina (la squadra sta in basso): stesso punto in ogni riga, così si vede
+   in un colpo d'occhio chi può volare. Un piccolo libretto blu segnaletica con il globo chiaro, staccato dal quadro. */
+.riga-giocatore .passaporto-riga {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--segnaletica);
+  color: #f4f6f9;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.35),
+    0 0 0 2px var(--quadro);
+}
+
+.passaporto-riga .icona {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+/* Il libretto è già la copertina: dell'icona restano il globo e la riga del nome. */
+.passaporto-riga .icona rect {
+  display: none;
+}
+
+/* L'impronta del timbro: un anello d'inchiostro che si allarga e sparisce. */
+.passaporto-riga .passaporto-riga__inchiostro {
+  position: absolute;
+  inset: -2px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px var(--link);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Quando lo ritira: il libretto cade dall'alto come un timbro sul banco, poi l'anello d'inchiostro. */
+  .riga-giocatore .passaporto-riga.passaporto-riga--timbro {
+    animation: passaporto-timbro var(--d-lenta) var(--c-timbro) both;
+  }
+
+  .passaporto-riga--timbro .passaporto-riga__inchiostro {
+    animation: passaporto-inchiostro var(--d-lenta) var(--c-arrivo) calc(var(--d-lenta) * 0.35) both;
+  }
+}
+
+@keyframes passaporto-timbro {
+  0% {
+    opacity: 0;
+    transform: scale(2.2) rotate(-14deg);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(0.88) rotate(4deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes passaporto-inchiostro {
+  from {
+    opacity: 0.9;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}

@@ -247,9 +247,14 @@ function Effetti({ partita, bozza, io }: { partita: Stato; bozza: BozzaScambio; 
 
 /* ---------------- Riepilogo ---------------- */
 
-/** «Dai 60 € più del prezzo di listino», «Alla pari»… */
+/** «Dai 60 € più del prezzo di listino», «Alla pari»… Con soli soldi in gioco il listino non c'entra: «Ricevi 430 €». */
 function bilancio(partita: Stato, dai: Pacchetto, ricevi: Pacchetto): string {
   const differenza = valorePacchetto(partita, dai) - valorePacchetto(partita, ricevi);
+  const soloSoldi = [dai, ricevi].every((p) => p.caselle.length === 0 && p.grazie.length === 0);
+  if (soloSoldi) {
+    if (differenza > 0) return `Dai ${euro(differenza)}`;
+    if (differenza < 0) return `Ricevi ${euro(-differenza)}`;
+  }
   if (differenza > 0) return `Dai ${euro(differenza)} più del prezzo di listino`;
   if (differenza < 0) return `Ricevi ${euro(-differenza)} più del prezzo di listino`;
   return 'Alla pari, a prezzo di listino';

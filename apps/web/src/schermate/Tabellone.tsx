@@ -26,6 +26,8 @@ import { COMPARSA, CURVA, DURATA } from '../ui/movimento';
 import { tintaProprietario } from '../ui/squadre';
 import { iniziali, variabili } from '../ui/utili';
 import { Binario } from './Colonne';
+import { classeStrana, type TipoStrano } from './caselleStrane';
+import { SegniStrani } from './SegniStrani';
 
 /**
  * Quando è comparso il tabellone. Blocchi e case che nascono insieme a lui (chi apre la pagina a metà partita)
@@ -474,13 +476,14 @@ function CasellaTabellone({
     );
   }
 
-  // Giro del mondo, scelta della meta: il velo della fascia di prezzo e, sulla prima casella della fascia, il prezzo.
+  // Giro del mondo, scelta della meta: il velo della fascia di prezzo e, dove la fascia comincia, il prezzo (volo.css).
+  // La meta scelta non ha il cartellino: il suo prezzo è grande sulla carta d'imbarco, e la sua bandiera resta libera.
   const volo = typeof stato.volo === 'object' ? stato.volo : null;
   const biglietto = volo ? (volo.prezzo === 0 ? 'Gratis' : euro(volo.prezzo)) : '';
   const segniVolo = volo && (
     <>
       <span className="casella__volo" />
-      {(volo.cartellino || volo.scelta) && <span className="casella__biglietto">{biglietto}</span>}
+      {volo.cartellino && <span className="casella__biglietto">{biglietto}</span>}
     </>
   );
 
@@ -546,6 +549,8 @@ export interface Segnaposto {
   teletrasporto?: boolean;
   /** Giro del mondo: in aereo verso la meta del biglietto (decolla, vola ad arco, atterra); è la rotta in gradi (0 = verso l'alto). */
   aereo?: number;
+  /** Giro del mondo: su una casella strana (vortice, buca, calendario: SegniStrani.tsx). */
+  strana?: TipoStrano;
   /** Bancarotta: sprofonda nel tabellone. */
   sprofonda?: boolean;
   evidenziata?: boolean;
@@ -708,6 +713,7 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
     p.volo ? 'segnaposto--volo' : '',
     p.teletrasporto ? 'segnaposto--teletrasporto' : '',
     p.aereo !== undefined ? 'segnaposto--aereo' : '',
+    p.strana ? classeStrana(p.strana) : '',
     p.sprofonda ? 'segnaposto--sprofonda' : '',
   ]
     .filter(Boolean)
@@ -724,9 +730,10 @@ function SegnapostoTabellone({ p, posa, sigla }: { p: Segnaposto; posa: Posa; si
           ...(p.passoMs !== undefined ? { '--passo': `${p.passoMs}ms` } : {}),
           ...(p.aereo !== undefined ? { '--rotta': `${Math.round(p.aereo)}deg` } : {}),
         }),
-        zIndex: p.evidenziata || p.volo || p.teletrasporto || p.aereo !== undefined ? 20 : posa.strato,
+        zIndex: p.evidenziata || p.volo || p.teletrasporto || p.aereo !== undefined || p.strana ? 20 : posa.strato,
       }}
     >
+      {p.strana && <SegniStrani tipo={p.strana} />}
       <span className="segnaposto__ombra" key={`ombra-${p.passo ?? 0}`} />
       {p.arrivi ? <span className="segnaposto__onda" key={`onda-${p.arrivi}`} /> : null}
       <span className="segnaposto__salto" key={p.passo ?? 0}>
@@ -866,6 +873,9 @@ export function Tabellone({
         '--d-prigione': `${TEMPI.prigione}ms`,
         '--d-teletrasporto': `${TEMPI.teletrasporto}ms`,
         '--d-volo': `${TEMPI.volo}ms`,
+        '--d-bermuda': `${TEMPI.bermuda}ms`,
+        '--d-antipodi': `${TEMPI.antipodi}ms`,
+        '--d-cambio-data': `${TEMPI.cambioData}ms`,
       })}
     >
       <div className={classiGriglia} style={{ gridTemplateColumns: geo.tracce, gridTemplateRows: geo.tracce }}>

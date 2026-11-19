@@ -1,0 +1,739 @@
+/* Giro del mondo, la sfida a morra cinese (schermate/Morra.tsx): il riquadro sopra il tabellone con la scelta
+   (paga o sfida), il palco con le due mani e la scena «sasso, carta, forbici!»; più le due figure delle schede
+   dell'evento (EventoCorrente.tsx). Selettori a due classi: tabellone.css e stanza.css si caricano dopo.
+   La luce viene dall'alto: il palco è più chiaro in alto e ogni mano ha la sua ombra sotto.
+   I tempi della scena arrivano da sfida.ts (MOMENTI_MORRA) come variabili: --morra-battuta, --morra-apertura,
+   --morra-esito. Così mani, parole e suoni battono insieme e la scena dura TEMPI.morra. */
+
+.sul-tabellone__riquadro.morra {
+  width: min(640px, 100%);
+}
+
+.morra .morra__corpo {
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+}
+
+/* ---------- La città ---------- */
+
+.morra .morra__citta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--testo-1);
+  font: 600 1.375rem/1.1 var(--stretto);
+}
+
+.morra .morra__citta b {
+  font-weight: 700;
+}
+
+.morra .morra__citta--breve {
+  gap: var(--s-2);
+  color: var(--testo-2);
+  font: 400 0.9375rem/1.3 var(--normale);
+}
+
+.morra .morra__citta--breve b {
+  color: var(--testo-1);
+  font-weight: 600;
+}
+
+.morra .morra__stemma {
+  flex: none;
+  width: 24px;
+  height: 28px;
+}
+
+.morra .morra__stemma.stemma--bandiera {
+  width: 33px;
+  height: 22px;
+}
+
+.morra .morra__citta--breve .morra__stemma {
+  width: 17px;
+  height: 20px;
+}
+
+.morra .morra__citta--breve .morra__stemma.stemma--bandiera {
+  width: 24px;
+  height: 16px;
+}
+
+.morra .morra__icona {
+  width: 24px;
+  height: 24px;
+}
+
+.morra .morra__padrone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: var(--s-1);
+  color: var(--testo-2);
+  font-weight: 500;
+}
+
+/* ---------- La scelta: paga oppure sfida ---------- */
+
+.morra .morra__scelte {
+  display: grid;
+  grid-template-columns: 172px auto minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: stretch;
+}
+
+.morra .morra__paga,
+.morra .morra__sfida {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--sup-2);
+  box-shadow: inset 0 0 0 1px var(--linea);
+}
+
+.morra .morra__paga {
+  justify-content: space-between;
+}
+
+.morra .morra__voce {
+  color: var(--testo-1);
+  font: var(--t-titolo-3);
+  text-align: center;
+}
+
+.morra .morra__affitto {
+  margin: auto 0;
+}
+
+.morra .con-suggerimento {
+  display: flex;
+}
+
+.pulsante.morra__pagamento {
+  width: 100%;
+}
+
+.pulsante.morra__pagamento .icona {
+  width: 18px;
+  height: 18px;
+}
+
+.morra .morra__oppure {
+  align-self: center;
+  color: var(--testo-3);
+  font: 600 1rem/1 var(--stretto);
+}
+
+/* I tre segni: tasti grandi, la mano è la protagonista. */
+.morra .morra__segni {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.pulsante.morra__segno {
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  height: 100px;
+  padding: 10px 6px 8px;
+  font-size: 1.0625rem;
+}
+
+.pulsante.morra__segno .icona {
+  width: 52px;
+  height: 52px;
+  stroke-width: 1.6;
+  transition: transform var(--d-rapida) var(--c-arrivo);
+}
+
+.pulsante.morra__segno:hover:not(:disabled) {
+  --pulsante-anello: var(--ambra);
+}
+
+.pulsante.morra__segno:hover:not(:disabled) .icona {
+  transform: translateY(-3px);
+}
+
+/* ---------- Cosa c'è in gioco ---------- */
+
+.morra .morra__poste {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.morra .morra__posta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px 6px 8px;
+  border-radius: var(--r-1);
+  background: var(--quadro);
+  box-shadow: inset 0 0 0 1px var(--quadro-linea);
+}
+
+.morra .morra__esito {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--testo-2);
+  font: var(--t-etichetta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.morra .morra__posta--bene .morra__esito {
+  color: var(--verde-testo);
+}
+
+.morra .morra__posta--male .morra__esito {
+  color: var(--rosso-testo);
+}
+
+/* ---------- Il tempo ---------- */
+
+.morra .morra__tempo {
+  display: grid;
+  gap: 6px;
+}
+
+.morra .morra__tempo--nascosto {
+  visibility: hidden;
+}
+
+.morra .morra__barra {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--r-tondo);
+  background: var(--sup-3);
+}
+
+.morra .morra__barra span {
+  display: block;
+  width: calc(var(--quota) * 100%);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--segnale);
+  transition: width 0.2s linear;
+}
+
+.morra .morra__scadenza {
+  min-height: 1.1em;
+  color: var(--testo-2);
+  font: 600 1.0625rem/1.1 var(--stretto);
+  text-align: right;
+}
+
+.morra .morra__scadenza--poco {
+  color: var(--ambra);
+}
+
+/* ---------- Il palco: chi sfida a sinistra, chi è sfidato a destra ---------- */
+
+.morra .morra__testata {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.morra .morra__titolo {
+  color: var(--testo-1);
+  font: var(--t-titolo-1);
+  font-size: 2.25rem;
+  text-wrap: balance;
+}
+
+.morra .morra-palco {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 230px) minmax(0, 1fr);
+  align-items: center;
+  padding: var(--s-5) var(--s-3) var(--s-4);
+  border-radius: var(--r-3);
+  /* La luce dall'alto: il centro in alto è il punto più chiaro. */
+  background: radial-gradient(120% 95% at 50% 0%, var(--sup-2) 0%, var(--quadro) 72%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    inset 0 0 0 1px var(--quadro-linea);
+}
+
+.morra .morra-palco__lato {
+  --giro: -1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.morra .morra-palco__lato--destra {
+  --giro: 1;
+}
+
+.morra .morra-mano {
+  position: relative;
+  display: grid;
+  width: 124px;
+  height: 124px;
+  color: var(--colore);
+}
+
+/* La luce su chi vince: un alone del suo colore dietro la mano, acceso all'esito. */
+.morra .morra-mano::before {
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--colore) 34%, transparent) 0%, transparent 68%);
+  opacity: 0;
+  content: '';
+}
+
+.morra .morra-palco--scena .morra-palco__lato--vince .morra-mano::before {
+  opacity: 1;
+}
+
+/* L'ombra sotto la mano: si stringe e sbiadisce quando la mano si alza. */
+.morra .morra-mano::after {
+  position: absolute;
+  bottom: -4px;
+  left: 18%;
+  width: 64%;
+  height: 12px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.55);
+  filter: blur(5px);
+  content: '';
+}
+
+/* Posizionati, così stanno sopra l'alone e l'ombra. */
+.morra .morra-mano__pugno,
+.morra .morra-mano__segno {
+  position: relative;
+  grid-area: 1 / 1;
+}
+
+.morra .morra-mano .icona {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.5;
+}
+
+.morra .morra-palco__lato--destra .morra-mano .icona {
+  transform: scaleX(-1);
+}
+
+.morra .morra-mano__segno {
+  opacity: 0;
+}
+
+.morra .morra-palco__chi {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  color: var(--testo-1);
+  font: var(--t-nome);
+  font-size: 1.1875rem;
+}
+
+.morra .morra-palco__chi > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.morra .morra-palco__segno {
+  min-height: 1.125rem;
+  margin-top: -2px;
+  color: var(--colore);
+  font: 700 1.125rem/1 var(--stretto);
+  opacity: 0;
+}
+
+.morra .morra-palco__centro {
+  display: grid;
+  place-items: center;
+  min-height: 124px;
+  text-align: center;
+}
+
+.morra .morra-palco__centro > * {
+  grid-area: 1 / 1;
+}
+
+.morra .morra-palco__contro {
+  color: var(--testo-3);
+  font: 600 1.25rem/1 var(--stretto);
+}
+
+.morra .morra-palco__parola,
+.morra .morra-palco__verdetto {
+  opacity: 0;
+}
+
+.morra .morra-palco__parola {
+  color: var(--testo-1);
+  font: 700 2.25rem/1 var(--stretto);
+}
+
+/* «Vince Valigia Loquace»: con i nomi lunghi va a capo invece di finire sotto le mani. */
+.morra .morra-palco__verdetto {
+  max-width: 230px;
+  color: var(--colore, var(--testo-1));
+  font: 700 2.75rem/1 var(--stretto);
+  text-wrap: balance;
+}
+
+/* Sotto il palco: i segni dello sfidato, il segno lanciato, l'attesa o i soldi dell'esito. Altezza fissa: non salta. */
+.morra .morra__sotto {
+  display: grid;
+  place-items: center;
+  min-height: 100px;
+}
+
+.morra .morra__stato {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--testo-2);
+  font: 500 1.0625rem/1.3 var(--normale);
+}
+
+.morra .morra__lanciato {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: var(--r-1);
+  background: var(--sup-3);
+  color: var(--testo-1);
+  font: 600 1.0625rem/1 var(--stretto);
+}
+
+.morra .morra__lanciato .icona {
+  width: 26px;
+  height: 26px;
+}
+
+.morra .morra__soldi {
+  color: var(--testo-1);
+  font: 700 1.625rem/1.1 var(--stretto);
+  opacity: 0;
+}
+
+/* Senza animazioni (o se la scena è già passata) si vede tutto subito. */
+.morra .morra-palco--scena .morra-mano__pugno {
+  opacity: 0;
+}
+
+.morra .morra-palco--scena .morra-mano__segno,
+.morra .morra-palco--scena .morra-palco__segno,
+.morra .morra-palco--scena .morra-palco__verdetto,
+.morra .morra-palco--scena ~ .morra__sotto .morra__soldi {
+  opacity: 1;
+}
+
+.morra .morra-palco--scena .morra-palco__lato--perde .morra-mano,
+.morra .morra__poste--esito .morra__posta:not(.morra__posta--uscita) {
+  opacity: 0.38;
+}
+
+/* L'esito uscito si accende: verde se a chi guarda va bene, rosso se va male, chiaro per chi non c'entra. */
+.morra .morra__posta--uscita {
+  --posta-fondo: var(--sup-3);
+  --posta-anello: var(--testo-1);
+}
+
+.morra .morra__posta--uscita.morra__posta--bene {
+  --posta-fondo: var(--verde-velo);
+  --posta-anello: var(--verde);
+}
+
+.morra .morra__posta--uscita.morra__posta--male {
+  --posta-fondo: var(--rosso-velo);
+  --posta-anello: var(--rosso);
+}
+
+.morra .morra__poste--esito .morra__posta--uscita {
+  background: var(--posta-fondo);
+  box-shadow: inset 0 0 0 2px var(--posta-anello);
+}
+
+/* ---------- La scena: tre colpi, le mani si aprono, l'esito ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .morra .morra-palco--scena .morra-mano {
+    animation: morra-batte var(--morra-battuta) var(--c-viaggio) 0ms 3 both;
+  }
+
+  .morra .morra-palco--scena .morra-mano::after {
+    animation: morra-ombra var(--morra-battuta) var(--c-viaggio) 0ms 3 both;
+  }
+
+  .morra .morra-palco--scena .morra-palco__lato--perde .morra-mano {
+    animation:
+      morra-batte var(--morra-battuta) var(--c-viaggio) 0ms 3 both,
+      morra-perde 260ms var(--c-arrivo) var(--morra-esito) both;
+  }
+
+  .morra .morra-palco--scena .morra-palco__lato--vince .morra-mano {
+    animation:
+      morra-batte var(--morra-battuta) var(--c-viaggio) 0ms 3 both,
+      morra-vince 360ms var(--c-arrivo) var(--morra-esito) both;
+  }
+
+  .morra .morra-palco--scena .morra-palco__lato--vince .morra-mano::before {
+    animation: morra-alone 420ms var(--c-arrivo) var(--morra-esito) both;
+  }
+
+  .morra .morra-palco--scena .morra-mano__pugno {
+    animation: morra-chiude 120ms var(--c-partenza) var(--morra-apertura) both reverse;
+  }
+
+  .morra .morra-palco--scena .morra-mano__segno {
+    animation: morra-apre 300ms var(--c-molla) var(--morra-apertura) both;
+  }
+
+  .morra .morra-palco--scena .morra-palco__segno {
+    animation: morra-compare 200ms var(--c-arrivo) var(--morra-apertura) both;
+  }
+
+  .morra .morra-palco--scena .morra-palco__contro {
+    display: none;
+  }
+
+  .morra .morra-palco--scena .morra-palco__parola {
+    animation: morra-parola var(--morra-battuta) var(--c-arrivo) both;
+  }
+
+  .morra .morra-palco--scena .morra-palco__parola--1 {
+    animation-delay: calc(var(--morra-battuta) * 0.7);
+  }
+
+  .morra .morra-palco--scena .morra-palco__parola--2 {
+    animation-delay: calc(var(--morra-battuta) * 1.7);
+  }
+
+  /* «Forbici!» resta finché le mani non si aprono. */
+  .morra .morra-palco--scena .morra-palco__parola--3 {
+    animation-duration: calc(var(--morra-apertura) - var(--morra-battuta) * 2.7);
+    animation-delay: calc(var(--morra-battuta) * 2.7);
+  }
+
+  .morra .morra-palco--scena .morra-palco__verdetto {
+    animation: morra-timbro 320ms var(--c-timbro) var(--morra-esito) both;
+  }
+
+  .morra .morra-palco--scena ~ .morra__sotto .morra__soldi {
+    animation: morra-compare 260ms var(--c-arrivo) var(--morra-esito) both;
+  }
+
+  .morra .morra__poste--esito .morra__posta {
+    animation: morra-perde 260ms var(--c-arrivo) var(--morra-esito) both;
+  }
+
+  .morra .morra__poste--esito .morra__posta--uscita {
+    animation: morra-posta 360ms var(--c-timbro) var(--morra-esito) both;
+  }
+}
+
+/* Il pugno si alza e ricade: il colpo è alla fine di ogni battuta. */
+@keyframes morra-batte {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  45% {
+    transform: translateY(-32px) rotate(calc(var(--giro) * 14deg));
+  }
+
+  88% {
+    transform: translateY(3px) rotate(0deg) scaleY(0.94);
+  }
+
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+@keyframes morra-ombra {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  45% {
+    transform: scale(0.72);
+    opacity: 0.45;
+  }
+}
+
+/* Il pugno sparisce (si gioca al contrario: da visibile a nascosto). */
+@keyframes morra-chiude {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes morra-apre {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes morra-compare {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes morra-parola {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  25%,
+  75% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes morra-timbro {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes morra-perde {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.38;
+  }
+}
+
+@keyframes morra-alone {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Chi vince: la mano si illumina nel suo colore. */
+@keyframes morra-vince {
+  from {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+
+  to {
+    filter: drop-shadow(0 0 16px color-mix(in srgb, var(--colore) 70%, transparent));
+  }
+}
+
+/* Fino all'esito la posta resta com'era; poi si accende con un piccolo colpo. */
+@keyframes morra-posta {
+  0% {
+    background: var(--quadro);
+    box-shadow: inset 0 0 0 1px var(--quadro-linea);
+    transform: scale(1);
+  }
+
+  45% {
+    background: var(--posta-fondo);
+    box-shadow: inset 0 0 0 2px var(--posta-anello);
+    transform: scale(1.08);
+  }
+
+  100% {
+    background: var(--posta-fondo);
+    box-shadow: inset 0 0 0 2px var(--posta-anello);
+    transform: scale(1);
+  }
+}
+
+/* ---------- Le schede dell'evento (EventoCorrente.tsx) ---------- */
+
+/* La sfida: le due pedine faccia a faccia, una sopra l'altra di poco. */
+.evento__coppia.evento__duello {
+  gap: 0;
+}
+
+.evento__duello .evento__pedina + .evento__pedina {
+  margin-left: calc(var(--k) * -7);
+}
+
+/* La morra: le due mani con i segni giocati, ognuna nel colore del suo giocatore; chi perde sbiadisce. */
+.evento .evento__mani {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--k) * 2);
+}
+
+.evento .evento__mano {
+  display: grid;
+  color: var(--colore);
+}
+
+.evento .evento__mano .icona {
+  width: calc(var(--k) * 34);
+  height: calc(var(--k) * 34);
+}
+
+.evento .evento__mano--destra .icona {
+  transform: scaleX(-1);
+}
+
+.evento .evento__mano--perde {
+  opacity: 0.4;
+}

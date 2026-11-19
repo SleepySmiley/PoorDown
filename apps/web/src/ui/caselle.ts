@@ -38,8 +38,9 @@ const ICONE_SPECIALI: Record<Speciale['tipo'], NomeIcona> = {
   supernova: 'stella',
   roulette: 'ruota',
   bermuda: 'spirale',
-  cambio_data: 'orologio',
-  antipodi: 'pianeta',
+  // Icone proprie: l'orologio è già il timer del turno, il pianeta è del Sistema solare (un oggetto, un solo compito).
+  cambio_data: 'calendario',
+  antipodi: 'antipodi',
 };
 
 const ICONE_SERVIZI: NomeIcona[] = ['fulmine', 'fiamma', 'goccia'];

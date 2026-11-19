@@ -1,6 +1,6 @@
 import { isValidElement, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
-import { IMPOSTAZIONI_PREDEFINITE, type VistaStanza, type VoceRegistro } from '@poordown/engine';
+import { casoDaSeme, creaPartita, IMPOSTAZIONI_PREDEFINITE, type VistaStanza, type VoceRegistro } from '@poordown/engine';
 import { durataInParole, righeRegistro, volte } from './testi';
 
 /** Il testo di una riga e i pezzi in grassetto. */
@@ -56,6 +56,34 @@ describe('righeRegistro', () => {
   it('mostra solo le voci già accadute sullo schermo', () => {
     expect(righeRegistro(REGISTRO, STANZA, 2)).toHaveLength(2);
   });
+
+  it('Giro del mondo: la sfida e la morra hanno il colore di chi sfida e i due nomi in grassetto', () => {
+    const creata = creaPartita(
+      [
+        { id: 'a', nome: 'Anna', colore: 3 },
+        { id: 'b', nome: 'Bruno', colore: 5 },
+      ],
+      { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, mappa: 'giro_del_mondo' },
+      casoDaSeme(1),
+    );
+    if (!creata.ok) throw new Error(creata.messaggio);
+    const stanza: VistaStanza = { ...STANZA, fase: 'partita', partita: creata.stato };
+    const registro: VoceRegistro[] = [
+      { n: 1, quando: 0, evento: { tipo: 'sfida', da: 'a', a: 'b', casella: 5, importo: 70 } },
+      {
+        n: 2,
+        quando: 0,
+        evento: { tipo: 'morra', da: 'a', a: 'b', casella: 5, segni: ['sasso', 'carta'], esito: 'persa', importo: 140, aCaso: 'b' },
+      },
+    ];
+    const [morra, sfida] = righeRegistro(registro, stanza);
+    expect(sfida!.colore).toBe(3);
+    expect(leggi(sfida!.testo).testo).toMatch(/^Anna non vuole pagare 70 € per .+ e sfida Bruno a morra cinese\.$/);
+    expect(leggi(sfida!.testo).grassetto).toEqual(['Anna', 'Bruno']);
+    expect(morra!.colore).toBe(3);
+    expect(leggi(morra!.testo).testo).toContain('Bruno non sceglie in tempo e gioca a caso.');
+    expect(leggi(morra!.testo).testo).toContain('affitto doppio, 140 €');
+  });
 });
 
 describe('durata e volte', () => {
@@ -70,5 +98,35 @@ describe('durata e volte', () => {
   it('una volta, più volte', () => {
     expect(volte(1)).toBe('una volta');
     expect(volte(4)).toBe('4 volte');
+  });
+});
+
+describe('Giro del mondo: le caselle strane nel registro', () => {
+  it('hanno il colore di chi ci finisce, il suo nome in grassetto e dove ricompare', () => {
+    const creata = creaPartita(
+      [
+        { id: 'a', nome: 'Anna', colore: 3 },
+        { id: 'b', nome: 'Bruno', colore: 5 },
+      ],
+      { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, mappa: 'giro_del_mondo' },
+      casoDaSeme(1),
+    );
+    if (!creata.ok) throw new Error(creata.messaggio);
+    const stanza: VistaStanza = { ...STANZA, fase: 'partita', partita: creata.stato };
+    const registro: VoceRegistro[] = [
+      { n: 1, quando: 0, evento: { tipo: 'bermuda', giocatore: 'b', da: 11, a: 35 } },
+      { n: 2, quando: 0, evento: { tipo: 'antipodi', giocatore: 'b', da: 33, a: 9 } },
+      { n: 3, quando: 0, evento: { tipo: 'cambio_data', giocatore: 'b' } },
+      { n: 4, quando: 0, evento: { tipo: 'passaporto', giocatore: 'b' } },
+    ];
+    const [passaporto, cambio, antipodi, bermuda] = righeRegistro(registro, stanza);
+    for (const riga of [passaporto, cambio, antipodi, bermuda]) {
+      expect(riga!.colore).toBe(5);
+      expect(leggi(riga!.testo).grassetto).toEqual(['Bruno']);
+    }
+    expect(leggi(bermuda!.testo).testo).toBe('Bruno sparisce nel Triangolo delle Bermuda e ricompare a Hell.');
+    expect(leggi(antipodi!.testo).testo).toBe('Bruno scava una buca per l’altra parte del mondo e sbuca a Batman.');
+    expect(leggi(cambio!.testo).testo).toContain('guadagna un giorno');
+    expect(leggi(passaporto!.testo).testo).toBe('Bruno ritira il passaporto: da adesso può volare.');
   });
 });

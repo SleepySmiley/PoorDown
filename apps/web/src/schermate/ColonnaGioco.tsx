@@ -25,6 +25,7 @@ import { Pulsante } from '../ui/Pulsante';
 import { PassiDelGioco } from '../ui/Regole';
 import { iniziale, variabili } from '../ui/utili';
 import { Binario } from './Colonne';
+import { PassaportoRiga } from './Passaporto';
 import { ContoAllaRovescia } from './Timer';
 import type { Variazione } from './turno';
 
@@ -248,6 +249,8 @@ export interface DatiGiocatore {
   variazione?: Variazione;
   /** Sta facendo bancarotta adesso: la riga trema e il saldo gira in «Bancarotta». */
   bancarotta?: boolean;
+  /** Giro del mondo: ha il passaporto (può volare). */
+  passaporto?: boolean;
 }
 
 const SPIEGA_BOT = 'Bot: gioca da solo. Compra, costruisce, offre alle aste e risponde agli scambi; in chat non scrive.';
@@ -278,6 +281,10 @@ export function RigaGiocatoreGioco({
   const v = g.variazione;
   const verso = v ? (v.importo < 0 ? 'paga' : 'incassa') : null;
   const togli = puoTogliere && !g.tu && !g.fuori;
+  // Giro del mondo: il passaporto ritirato con la riga già sullo schermo cade come un timbro; all'apertura della pagina no.
+  const ha = g.passaporto === true;
+  const [passaporto, setPassaporto] = useState({ ha, nuovo: false });
+  if (passaporto.ha !== ha) setPassaporto({ ha, nuovo: ha });
   const classi = [
     'riga-giocatore',
     togli ? 'riga-giocatore--togli' : '',
@@ -300,6 +307,8 @@ export function RigaGiocatoreGioco({
           <Pedina colore={g.colore} iniziale={iniziale(g.nome)} className="pedina--grande" />
         </span>
         {g.squadra && <Binario indice={g.squadra.indice} nome={g.squadra.nome} className="binario--maglia" />}
+        {/* Giro del mondo: il passaporto appuntato alla pedina, nello stesso punto in ogni riga. */}
+        {!g.fuori && ha && <PassaportoRiga timbro={passaporto.nuovo} />}
       </span>
       <p className="riga-giocatore__chi">
         <span className="riga-giocatore__nome">

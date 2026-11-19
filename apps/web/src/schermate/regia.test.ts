@@ -18,6 +18,7 @@ import {
 } from '@poordown/engine';
 import type { Collegamento, StatoCollegamento } from '../rete/collegamento';
 import { arrivoDelTurno, movimentiSoldi, Regia, VOLO_GETTONE_MS } from './regia';
+import { quadroSfida } from './sfida';
 
 /** Finto collegamento: basta leggere lo stato e avvisare chi ascolta. */
 class CollegamentoFinto {
@@ -270,6 +271,99 @@ describe('Regia della partita', () => {
     expect(regia.leggi().occupata).toBe(false);
     regia.ferma();
   });
+
+  it('Giro del mondo: le mani della morra restano in scena per TEMPI.morra, poi parte l’affitto', async () => {
+    const creata = creaPartita(
+      [
+        { id: 'a', nome: 'Anna', colore: 1 },
+        { id: 'b', nome: 'Bruno', colore: 2 },
+      ],
+      { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, mappa: 'giro_del_mondo' },
+      casoDaSeme(1),
+    );
+    if (!creata.ok) throw new Error(creata.messaggio);
+    // Anna ha sfidato Bruno con la carta; Bruno risponde forbici e Anna paga il doppio.
+    const prima = structuredClone(creata.stato);
+    prima.sfida = { sfidante: 'a', proprietario: 'b', casella: 5, importo: 70, fase: 'morra', segno: 'carta', scadenza: 10_000 };
+    const dopo = structuredClone(prima);
+    dopo.sfida = null;
+    dopo.giocatori[0]!.saldo -= 140;
+    dopo.giocatori[1]!.saldo += 140;
+    const eventi: Evento[] = [
+      { tipo: 'morra', da: 'a', a: 'b', casella: 5, segni: ['carta', 'forbici'], esito: 'persa', importo: 140 },
+      { tipo: 'affitto', da: 'a', a: 'b', casella: 5, importo: 140 },
+    ];
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    coll.cambia({ stanza: stanzaCon(dopo, 2), registro: voci(eventi, 1) });
+
+    // In scena: i segni e l'esito; la partita mostrata ha ancora la sfida, il riquadro resta aperto per tutti.
+    expect(regia.leggi()).toMatchObject({ occupata: true, morra: { n: 1, da: 'a', a: 'b', segni: ['carta', 'forbici'], esito: 'persa' } });
+    expect(regia.leggi().partita?.sfida?.fase).toBe('morra');
+    expect(quadroSfida(dopo, regia.leggi().partita!, regia.leggi(), 'b')).toMatchObject({ tipo: 'scena', ruolo: 'proprietario', affitto: 70 });
+    expect(regia.leggi().gettoni).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(TEMPI.morra - 1);
+    expect(regia.leggi().morra).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+
+    // Le mani hanno finito: il riquadro si chiude (la sfida è già chiusa) e parte il gettone dell'affitto doppio.
+    expect(regia.leggi().morra).toBeNull();
+    expect(quadroSfida(dopo, regia.leggi().partita!, regia.leggi(), 'b')).toBeNull();
+    expect(regia.leggi().gettoni).toMatchObject([{ da: 'a', a: 'b', importo: 140 }]);
+    // Il gettone vola (la pausa dei soldi, come per i bot), poi la partita mostrata è quella nuova.
+    await vi.advanceTimersByTimeAsync(TEMPI.pausaSoldi);
+    expect(regia.leggi().occupata).toBe(false);
+    expect(regia.leggi().partita?.sfida).toBeNull();
+    expect(durataScena(prima, eventi)).toBe(TEMPI.morra + TEMPI.pausaSoldi);
+    regia.ferma();
+  });
+
+  it('Giro del mondo: il riquadro della sfida aspetta che la pedina riemerga dalle Bermuda', async () => {
+    const creata = creaPartita(
+      [
+        { id: 'a', nome: 'Anna', colore: 1 },
+        { id: 'b', nome: 'Bruno', colore: 2 },
+      ],
+      { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, mappa: 'giro_del_mondo' },
+      casoDaSeme(1),
+    );
+    if (!creata.ok) throw new Error(creata.messaggio);
+    // Anna tira 11, finisce nel Triangolo delle Bermuda e ricompare su Kaliningrad, di Bruno: la sfida si apre.
+    const prima = structuredClone(creata.stato);
+    const dopo = structuredClone(prima);
+    dopo.giocatori[0]!.posizione = 29;
+    dopo.turno.fase = 'dopo_lancio';
+    dopo.turno.dadi = [5, 6];
+    dopo.proprieta[29] = { proprietario: 'b', livello: 0, ipotecata: false };
+    dopo.sfida = { sfidante: 'a', proprietario: 'b', casella: 29, importo: 30, fase: 'scelta', segno: null, scadenza: 15_000 };
+    const eventi: Evento[] = [
+      { tipo: 'dadi', giocatore: 'a', dadi: [5, 6] },
+      { tipo: 'movimento', giocatore: 'a', da: 0, a: 11, dadi: [5, 6] },
+      { tipo: 'bermuda', giocatore: 'a', da: 11, a: 29 },
+    ];
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), voci([{ tipo: 'turno', giocatore: 'a', numero: 1 }], 1));
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    const quadro = () => quadroSfida(vistaPartita(dopo), regia.leggi().partita!, regia.leggi(), 'a');
+
+    // Lo stato nuovo arriva prima delle voci del registro: la pedina sullo schermo non è ancora partita.
+    coll.cambia({ stanza: stanzaCon(dopo, 2) });
+    expect(quadro()).toBeNull();
+    coll.cambia({ registro: [...coll.stato.registro, ...voci(eventi, 2)] });
+
+    // Per tutta la scena (dadi, passi fino alle Bermuda, vortice) il riquadro non c'è.
+    const durata = durataScena(prima, eventi);
+    let comparso = -1;
+    for (let t = 0; t <= durata + 100 && comparso < 0; t += 20) {
+      if (quadro()) comparso = t;
+      await vi.advanceTimersByTimeAsync(20);
+    }
+    expect(comparso).toBeGreaterThanOrEqual(durata - TEMPI.margineDadi - 20);
+    expect(regia.leggi()).toMatchObject({ occupata: false, arrivo: { casella: 29 } });
+    expect(quadro()).toMatchObject({ tipo: 'scelta' });
+    regia.ferma();
+  });
 });
 
 /** Partite intere tra bot, una mossa alla volta, con lo stato prima e dopo e gli eventi di ogni mossa. */
@@ -495,5 +589,94 @@ describe('casella d’arrivo', () => {
   it('sparisce al turno dopo e quando si finisce in prigione', () => {
     expect(arrivoDelTurno([...registro, voce(5, { tipo: 'turno', giocatore: 'b', numero: 2 })])).toBeNull();
     expect(arrivoDelTurno([...registro, voce(5, { tipo: 'prigione', giocatore: 'a', motivo: 'casella' })])).toBeNull();
+  });
+});
+
+describe('Giro del mondo: caselle strane e passaporto', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  function giroDelMondo(): Stato {
+    const creata = creaPartita(
+      [
+        { id: 'a', nome: 'Anna', colore: 1 },
+        { id: 'b', nome: 'Bruno', colore: 2 },
+      ],
+      { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, mappa: 'giro_del_mondo' },
+      casoDaSeme(1),
+    );
+    if (!creata.ok) throw new Error(creata.messaggio);
+    return creata.stato;
+  }
+
+  function inScena(eventi: Evento[]): { regia: Regia; prima: Stato } {
+    const prima = giroDelMondo();
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), []);
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    coll.cambia({ stanza: stanzaCon(prima, 2), registro: voci(eventi, 1) });
+    return { regia, prima };
+  }
+
+  it('Bermuda: la pedina nel vortice per TEMPI.bermuda, poi è arrivata sulla casella a caso', async () => {
+    const { regia } = inScena([{ tipo: 'bermuda', giocatore: 'a', da: 11, a: 30 }]);
+    // La posizione cambia subito (il CSS la fa saltare quando la pedina è sparita), la scena dice chi e cosa.
+    expect(regia.leggi()).toMatchObject({ occupata: true, strana: { n: 1, tipo: 'bermuda', giocatore: 'a' }, posizioni: { a: { casella: 30 } } });
+    await vi.advanceTimersByTimeAsync(TEMPI.bermuda - 1);
+    expect(regia.leggi().strana).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(regia.leggi()).toMatchObject({ occupata: false, strana: null });
+    regia.ferma();
+  });
+
+  it('Antipodi e cambio di data durano quanto aspettano i bot', async () => {
+    const eventi: Evento[] = [
+      { tipo: 'antipodi', giocatore: 'a', da: 33, a: 9 },
+      { tipo: 'cambio_data', giocatore: 'a' },
+    ];
+    const { regia, prima } = inScena(eventi);
+    expect(regia.leggi().strana).toMatchObject({ tipo: 'antipodi' });
+    await vi.advanceTimersByTimeAsync(TEMPI.antipodi);
+    // Il calendario: la pedina resta dov'è.
+    expect(regia.leggi().strana).toMatchObject({ tipo: 'cambio_data', giocatore: 'a' });
+    expect(regia.leggi().posizioni.a?.casella).toBe(9);
+    await vi.advanceTimersByTimeAsync(durataScena(prima, eventi) - TEMPI.antipodi - 1);
+    expect(regia.leggi().occupata).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(regia.leggi()).toMatchObject({ occupata: false, strana: null });
+    regia.ferma();
+  });
+
+  it('il passaporto compare nella riga mentre la pedina passa dalla Partenza, senza allungare la scena', async () => {
+    const eventi: Evento[] = [
+      { tipo: 'movimento', giocatore: 'a', da: 46, a: 3 },
+      { tipo: 'partenza', giocatore: 'a', importo: 200, arrivo: false },
+      { tipo: 'passaporto', giocatore: 'a' },
+    ];
+    const { regia, prima } = inScena(eventi);
+    const passaporto = () => regia.leggi().partita?.giocatori.find((g) => g.id === 'a')?.passaporto;
+    expect(passaporto()).toBeUndefined();
+    // Due passi (46 → 47 → 0): sulla Partenza il passaporto è già timbrato.
+    await vi.advanceTimersByTimeAsync(2 * TEMPI.passoLento - 1);
+    expect(regia.leggi().posizioni.a?.casella).toBe(0);
+    expect(passaporto()).toBe(true);
+    await vi.advanceTimersByTimeAsync(durataScena(prima, eventi) - 2 * TEMPI.passoLento);
+    expect(regia.leggi().occupata).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(regia.leggi().occupata).toBe(false);
+    regia.ferma();
+  });
+
+  it('la casella d’arrivo è quella dove sbuca o ricompare la pedina', () => {
+    const registro = voci(
+      [
+        { tipo: 'turno', giocatore: 'a', numero: 1 },
+        { tipo: 'movimento', giocatore: 'a', da: 22, a: 33, dadi: [5, 6] },
+        { tipo: 'antipodi', giocatore: 'a', da: 33, a: 9 },
+      ],
+      1,
+    );
+    expect(arrivoDelTurno(registro)).toEqual({ casella: 9, tono: 'normale' });
+    expect(arrivoDelTurno(registro, 2)).toEqual({ casella: 33, tono: 'normale' });
   });
 });
