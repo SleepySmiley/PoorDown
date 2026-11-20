@@ -26,6 +26,7 @@ import { PassiDelGioco } from '../ui/Regole';
 import { iniziale, variabili } from '../ui/utili';
 import { Binario } from './Colonne';
 import { PassaportoRiga } from './Passaporto';
+import { usePedinaEvidenzia } from './possessi';
 import { ContoAllaRovescia } from './Timer';
 import type { Variazione } from './turno';
 
@@ -285,6 +286,8 @@ export function RigaGiocatoreGioco({
   const ha = g.passaporto === true;
   const [passaporto, setPassaporto] = useState({ ha, nuovo: false });
   if (passaporto.ha !== ha) setPassaporto({ ha, nuovo: ha });
+  // Il mouse sulla pedina accende sul tabellone solo le sue proprietà (possessi.ts); chi è fuori non ne ha.
+  const { accesa, ...evidenzia } = usePedinaEvidenzia(g.id, !g.fuori);
   const classi = [
     'riga-giocatore',
     togli ? 'riga-giocatore--togli' : '',
@@ -302,7 +305,7 @@ export function RigaGiocatoreGioco({
     <li className={classi} data-giocatore={g.id} style={variabili({ '--colore': `var(--p${g.colore})` })}>
       {/* La tinta della riga a ogni cambio di saldo: rinasce con la variazione (key), poi sfuma. */}
       {v && !g.fuori && <span key={`tinta-${v.n}`} className={`riga-giocatore__tinta riga-giocatore__tinta--${verso}`} aria-hidden="true" />}
-      <span className="riga-giocatore__pedina">
+      <span className={accesa ? 'riga-giocatore__pedina riga-giocatore__pedina--evidenzia' : 'riga-giocatore__pedina'} {...evidenzia}>
         <span className={g.prigione !== null && !g.fuori ? 'in-prigione' : undefined}>
           <Pedina colore={g.colore} iniziale={iniziale(g.nome)} className="pedina--grande" />
         </span>

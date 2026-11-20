@@ -265,6 +265,18 @@ button.casella:hover .casella__sfondo {
   opacity: 0.55;
 }
 
+/* Il mouse sulla pedina di un giocatore nella lista (schermate/possessi.ts): le sue proprietà restano come sono,
+   con il blocco del suo colore, le ipotecate con il loro tratteggio; tutto il resto si spegne, più della regione.
+   Finché il mouse resta lì vince sugli altri veli del tabellone (regione, mete del volo: volo.css), per questo
+   !important; tolto il mouse le classi spariscono e ognuno torna com'era. */
+.tabellone .casella.casella--altrui {
+  opacity: 0.26 !important;
+}
+
+.tabellone .casella.casella--sua {
+  opacity: 1 !important;
+}
+
 /* Gli angoli esterni del tabellone seguono la curva della lastra. */
 .casella--angolo-0 {
   border-top-left-radius: calc(var(--k) * 11);

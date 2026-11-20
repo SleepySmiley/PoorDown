@@ -747,6 +747,14 @@
   width: 2.25rem;
   height: 2.25rem;
   font-size: 1.125rem;
+  transition: box-shadow var(--d-rapida);
+}
+
+/* Il mouse sulla pedina accende le sue proprietà sul tabellone (schermate/possessi.ts): l'anello crema prende il suo colore. */
+.riga-giocatore .riga-giocatore__pedina--evidenzia .pedina.pedina--grande {
+  box-shadow:
+    0 0 0 2.5px var(--quadro),
+    0 0 0 4.5px var(--colore);
 }
 
 .riga-giocatore__pedina .binario.binario--maglia {

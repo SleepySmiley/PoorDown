@@ -27,6 +27,7 @@ import { tintaProprietario } from '../ui/squadre';
 import { iniziali, variabili } from '../ui/utili';
 import { Binario } from './Colonne';
 import { classeStrana, type TipoStrano } from './caselleStrane';
+import { possessiEvidenziati, useGiocatoreEvidenziato } from './possessi';
 import { SegniStrani } from './SegniStrani';
 
 /**
@@ -365,6 +366,8 @@ interface StatoCasella {
   sfila?: number;
   /** Il mouse è su una città: quelle della stessa regione restano accese, le altre si spengono. */
   regione?: 'accesa' | 'spenta';
+  /** Il mouse è sulla pedina di un giocatore nella lista (possessi.ts): le sue proprietà restano accese, il resto si spegne. */
+  possessi?: 'sua' | 'altrui';
   /** Angoli: l'importo sotto il cartello (Partenza: quanto si incassa passando; Vacanza: la cassa). */
   valore?: { segno?: string; etichetta?: string; importo: number };
   /** Al posto dell'importo fisso della casella: il malloppo della Supernova, che cresce con i buchi neri. */
@@ -410,6 +413,7 @@ function CasellaTabellone({
     stato.lampeggia ? 'casella--lampeggia' : '',
     stato.sfila !== undefined ? 'casella--sfila' : '',
     stato.regione ? `casella--${stato.regione}` : '',
+    stato.possessi ? `casella--${stato.possessi}` : '',
     stato.volo === 'no' ? 'casella--non-volabile' : '',
     typeof stato.volo === 'object' ? `casella--volabile casella--fascia-${stato.volo.fascia}` : '',
     typeof stato.volo === 'object' && stato.volo.scelta ? 'casella--volo-scelta' : '',
@@ -806,6 +810,8 @@ export function Tabellone({
   const [natoIl] = useState(() => performance.now());
   // A squadre le proprietà prendono il colore della squadra, se chi guarda non ha scelto quello dei giocatori.
   const perSquadra = useColoriDiSquadra();
+  // Il mouse sulla pedina di un giocatore nella lista: solo le sue proprietà restano accese.
+  const sue = possessiEvidenziati(partita, useGiocatoreEvidenziato());
   const tab = tabellone(mappa);
   const caselle = caselleVista(mappa);
   const geo = geometria(caselle.length);
@@ -899,6 +905,7 @@ export function Tabellone({
                 lampeggia: lampeggia?.includes(c.n) ?? false,
                 sfila: sfila?.includes(c.n) ? sfila.indexOf(c.n) : undefined,
                 regione: regioneAccesa === null ? undefined : c.gruppo === regioneAccesa ? 'accesa' : 'spenta',
+                possessi: sue ? (sue.has(c.n) ? 'sua' : 'altrui') : undefined,
                 valore: valoreAngolo(c),
                 importo: c.speciale === 'supernova' && partita?.cosmo ? euro(partita.cosmo.malloppo) : undefined,
                 volo: statoVolo(c.n),
