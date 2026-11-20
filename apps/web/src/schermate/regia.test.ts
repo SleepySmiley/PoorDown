@@ -99,6 +99,8 @@ describe('Regia della partita', () => {
     // Subito: la scena parte, ma saldi, posizioni e registro restano quelli di prima.
     expect(regia.leggi().occupata).toBe(true);
     expect(regia.leggi().rotola).toBe(true);
+    // In questa scena si è tirato: i dadi si accendono anche se la partita mostrata non ha ancora il tiro.
+    expect(regia.leggi().tirato).toBe(true);
     expect(regia.leggi().registroFino).toBe(1);
     expect(regia.leggi().partita?.giocatori[0]?.posizione).toBe(0);
 
@@ -362,6 +364,42 @@ describe('Regia della partita', () => {
     expect(comparso).toBeGreaterThanOrEqual(durata - TEMPI.margineDadi - 20);
     expect(regia.leggi()).toMatchObject({ occupata: false, arrivo: { casella: 29 } });
     expect(quadro()).toMatchObject({ tipo: 'scelta' });
+    regia.ferma();
+  });
+
+  it('Giro del mondo: un volo non è un tiro, nemmeno quando dopo il vortice delle Bermuda la scena continua', async () => {
+    const creata = creaPartita(
+      [
+        { id: 'a', nome: 'Anna', colore: 1 },
+        { id: 'b', nome: 'Bruno', colore: 2 },
+      ],
+      { ...IMPOSTAZIONI_PREDEFINITE, ordineCasuale: false, mappa: 'giro_del_mondo' },
+      casoDaSeme(1),
+    );
+    if (!creata.ok) throw new Error(creata.messaggio);
+    // Anna vola sulle Bermuda (11) e ricompare a Kaliningrad (29): nel turno nessuno ha tirato i dadi.
+    const prima = structuredClone(creata.stato);
+    const dopo = structuredClone(prima);
+    dopo.giocatori[0]!.posizione = 29;
+    dopo.giocatori[0]!.saldo -= 50;
+    dopo.turno.fase = 'dopo_lancio';
+    const eventi: Evento[] = [
+      { tipo: 'volo', giocatore: 'a', da: 0, a: 11, prezzo: 50, aeroporto: 6, incassa: null },
+      { tipo: 'bermuda', giocatore: 'a', da: 11, a: 29 },
+    ];
+    const coll = new CollegamentoFinto(stanzaCon(prima, 1), voci([{ tipo: 'turno', giocatore: 'a', numero: 1 }], 1));
+    const regia = new Regia(coll as unknown as Collegamento);
+    regia.avvia();
+    coll.cambia({ stanza: stanzaCon(dopo, 2), registro: [...coll.stato.registro, ...voci(eventi, 2)] });
+
+    // Per tutta la scena (aereo, poi vortice) i dadi non risultano tirati: in Gioco.tsx restano spenti.
+    let occupata = false;
+    for (let t = 0; t <= durataScena(prima, eventi) + 100; t += 20) {
+      occupata ||= regia.leggi().occupata;
+      expect(regia.leggi().tirato).toBe(false);
+      await vi.advanceTimersByTimeAsync(20);
+    }
+    expect(occupata).toBe(true);
     regia.ferma();
   });
 });

@@ -2,14 +2,16 @@
  * Giro del mondo, la sfida a morra cinese: il riquadro sopra il tabellone (come l'asta).
  * - Scelta: chi è caduto sulla città di un avversario paga l'affitto oppure lo sfida scegliendo il segno.
  * - Morra: la sfida è lanciata; lo sfidato sceglie il suo segno entro il tempo (poi a caso), gli altri guardano.
- * - Scena: le due mani battono tre volte («sasso, carta, forbici!»), si aprono sui segni e arriva l'esito.
+ * - Scena: le due mani battono tre volte («sasso, carta, forbici!»), si aprono sui segni e sotto arriva il verdetto;
+ *   poi si accende la posta uscita. Un momento per volta, e metà scena per leggere.
+ * Il titolo del riquadro dice chi sfida chi; scelta e morra hanno la stessa altezza, così il riquadro non salta.
  * Cosa mostrare e quando lo decide sfida.ts (`quadroSfida`); la scena la tiene la regia (`scena.morra`), che dura
  * esattamente TEMPI.morra come aspettano i bot. Il tempo che resta si conta con l'orologio del server, come all'asta.
  */
 
 import '../stili/morra.css';
 import type { ReactNode } from 'react';
-import { euro, MORRA_MS, SCELTA_MS, SEGNI, tabellone, verifica, type Azione, type IdGiocatore, type Mossa, type Segno, type Sfida, type Stato } from '@poordown/engine';
+import { MORRA_MS, SCELTA_MS, SEGNI, tabellone, verifica, type Azione, type IdGiocatore, type Mossa, type Segno, type Sfida, type Stato } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
 import { useTicchettio } from '../suoni/richiami';
 import { useBattito } from '../ui/battito';
@@ -69,15 +71,16 @@ export function Morra({
     };
     return (
       <RiquadroTabellone titolo="Paga o sfida" className="morra">
-        <div className="morra__corpo">
+        <div className="morra__corpo morra__corpo--scelta">
           <Citta partita={partita} sfida={sfida} />
           <div className="morra__scelte">
             <section className="morra__paga" aria-label="Paga l’affitto">
               <p className="morra__voce">Paga l’affitto</p>
               <Soldi valore={sfida.importo} misura="l" className="morra__affitto" />
+              {/* Quanto si paga lo dice già la cifra grande qui sopra. */}
               <PulsanteMorra blocco={blocco({ tipo: 'paga_affitto' })} className="morra__pagamento" onClick={() => onMossa({ tipo: 'paga_affitto' })}>
                 <Icona nome="monete" />
-                Paga {euro(sfida.importo)}
+                Paga
               </PulsanteMorra>
             </section>
             <p className="morra__oppure">oppure</p>
@@ -106,16 +109,23 @@ export function Morra({
   const chiave = chiaveSfida(partita, { sfidante: da, casella });
   const ricordato = mioSegno?.chiave === chiave ? mioSegno.segno : null;
   const vince = scena ? vincitore(scena) : null;
-  // Il verdetto: verde o rosso a chi gioca (come i soldi), nel colore di chi vince per gli altri; il pari resta chiaro.
+  // Il verdetto: a chi gioca ambra se vince (il colore del vincitore) e rosso pieno se perde, così non si confonde
+  // con le pedine, che sono tutte chiare; per gli altri il colore di chi vince. Il pari resta chiaro.
   const coloreVerdetto =
-    vince === null ? null : r === 'spettatore' ? coloreDi(partita, vince) : vince === io ? 'var(--verde-testo)' : 'var(--rosso-testo)';
+    vince === null ? null : r === 'spettatore' ? coloreDi(partita, vince) : vince === io ? 'var(--ambra)' : 'var(--rosso)';
+  // Il titolo del riquadro dice chi sfida chi, dal punto di vista di chi guarda.
   const titolo = r === 'proprietario' ? `${nome(da)} ti sfida!` : r === 'sfidante' ? `Hai sfidato ${nome(a)}` : `${nome(da)} sfida ${nome(a)}`;
   const t = tempiMorra();
 
-  // Sotto le mani: i segni per lo sfidato, il segno lanciato per chi ha sfidato, l'attesa per gli altri; in scena l'esito.
+  // Sotto le mani: i segni per lo sfidato, il segno lanciato per chi ha sfidato, l'attesa per gli altri; in scena il
+  // verdetto (quanto passa di mano lo dice la posta che si accende).
   let sotto: ReactNode;
   if (scena) {
-    sotto = <p className="morra__soldi">{soldiEsito(scena, r)}</p>;
+    sotto = (
+      <p className="morra__verdetto" style={coloreVerdetto ? variabili({ '--colore': coloreVerdetto }) : undefined}>
+        {verdetto(scena, r, nome)}
+      </p>
+    );
   } else if (r === 'proprietario') {
     sotto = <Segni blocco={(segno) => blocco({ tipo: 'morra', segno })} onScegli={(segno) => onMossa({ tipo: 'morra', segno })} />;
   } else if (r === 'sfidante') {
@@ -139,7 +149,7 @@ export function Morra({
   }
 
   return (
-    <RiquadroTabellone titolo="Morra cinese" className="morra">
+    <RiquadroTabellone titolo={titolo} className="morra">
       <div
         className="morra__corpo"
         style={variabili({
@@ -148,27 +158,15 @@ export function Morra({
           '--morra-esito': `${t.esito}ms`,
         })}
       >
-        <header className="morra__testata">
-          <h3 className="morra__titolo">{titolo}</h3>
-          <Citta partita={partita} sfida={{ casella, proprietario: a }} breve />
-        </header>
+        <Citta partita={partita} sfida={{ casella, proprietario: a }} breve />
         <div className={scena ? 'morra-palco morra-palco--scena' : 'morra-palco'}>
           <Lato partita={partita} id={da} segno={scena?.segni[0] ?? null} esito={latoEsito(vince, da)} />
-          <div className="morra-palco__centro" aria-live="polite">
+          <div className="morra-palco__centro" aria-hidden={scena ? true : undefined}>
             {scena ? (
               <>
-                <span className="morra-palco__parola morra-palco__parola--1" aria-hidden="true">
-                  Sasso
-                </span>
-                <span className="morra-palco__parola morra-palco__parola--2" aria-hidden="true">
-                  carta
-                </span>
-                <span className="morra-palco__parola morra-palco__parola--3" aria-hidden="true">
-                  forbici!
-                </span>
-                <span className="morra-palco__verdetto" style={coloreVerdetto ? variabili({ '--colore': coloreVerdetto }) : undefined}>
-                  {verdetto(scena, r, nome)}
-                </span>
+                <span className="morra-palco__parola morra-palco__parola--1">Sasso</span>
+                <span className="morra-palco__parola morra-palco__parola--2">carta</span>
+                <span className="morra-palco__parola morra-palco__parola--3">forbici!</span>
               </>
             ) : (
               <span className="morra-palco__contro">contro</span>
@@ -176,7 +174,9 @@ export function Morra({
           </div>
           <Lato partita={partita} id={a} segno={scena?.segni[1] ?? null} esito={latoEsito(vince, a)} destra />
         </div>
-        <div className="morra__sotto">{sotto}</div>
+        <div className="morra__sotto" aria-live="polite">
+          {sotto}
+        </div>
         <Poste affitto={affitto} r={r} sfida={{ sfidante: da, proprietario: a }} nome={nome} uscita={scena?.esito} />
         {quadro.tipo === 'morra' ? (
           <Tempo
@@ -228,7 +228,10 @@ function Citta({ partita, sfida, breve }: { partita: Stato; sfida: Pick<Sfida, '
   );
 }
 
-/** Un lato del palco: la mano nel colore del giocatore (pugno chiuso finché non si apre sul segno), sotto il nome. */
+/**
+ * Un lato del palco: il pugno d'attesa, tenue e senza colore (non è ancora una mossa), che si apre sul segno nel
+ * colore del giocatore; sotto il nome.
+ */
 function Lato({
   partita,
   id,
@@ -355,19 +358,10 @@ function latoEsito(vince: IdGiocatore | null, id: IdGiocatore): 'vince' | 'perde
   return vince === id ? 'vince' : 'perde';
 }
 
-/** La parola grande al centro, quando le mani si sono aperte: a chi gioca parla in seconda persona. */
+/** La parola grande sotto le mani, quando si sono aperte: a chi gioca parla in seconda persona. */
 function verdetto(m: MorraInScena, r: Ruolo, nome: (id: IdGiocatore) => string): string {
   if (m.esito === 'pari') return 'Pari';
   const vince = vincitore(m)!;
   if (r === 'spettatore') return `Vince ${nome(vince)}`;
   return ruolo(vince, m.da, m.a) === r ? 'Hai vinto' : 'Hai perso';
-}
-
-/** Quanto passa di mano, sotto le mani: chi paga e quanto. */
-function soldiEsito(m: MorraInScena, r: Ruolo): string {
-  if (m.esito === 'vinta') return r === 'sfidante' ? 'Non paghi l’affitto' : 'Niente affitto';
-  const quanto = euro(m.importo);
-  if (r === 'sfidante') return m.esito === 'persa' ? `Paghi il doppio: ${quanto}` : `Paghi l’affitto: ${quanto}`;
-  if (r === 'proprietario') return m.esito === 'persa' ? `Incassi il doppio: ${quanto}` : `Incassi l’affitto: ${quanto}`;
-  return m.esito === 'persa' ? `Affitto doppio: ${quanto}` : `Affitto normale: ${quanto}`;
 }

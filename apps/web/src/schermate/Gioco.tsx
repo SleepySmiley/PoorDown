@@ -445,7 +445,8 @@ export function Gioco({
   // la carta no: è già grande al centro del tabellone.
   const voceInCorso = scena.inCorso !== null ? registro.find((v) => v.n === scena.inCorso) : undefined;
   // La morra no: la sua scheda dice già com'è finita, arriva quando le mani si sono aperte.
-  const subito = voceInCorso && !['carta', 'dadi', 'movimento', 'morra'].includes(voceInCorso.evento.tipo);
+  // Le Bermuda nemmeno: la scheda dice dove si ricompare, arriva quando il vortice ha risputato la pedina.
+  const subito = voceInCorso && !['carta', 'dadi', 'movimento', 'morra', 'bermuda'].includes(voceInCorso.evento.tipo);
   const evento = inCorso ? eventoCorrente(registro, subito ? voceInCorso.n : scena.registroFino) : null;
   // Giro del mondo: dove posso volare adesso. La scelta della meta resta aperta solo nel turno in cui l'ho aperta.
   const mete = mioTurno && io && tab.viaggi && !scena.occupata ? meteVolo(partita, io) : null;
@@ -482,10 +483,9 @@ export function Gioco({
       )
     ) : null;
 
-  // I dadi restano spenti finché chi gioca non ha tirato: mostrano il tiro di prima, non il suo.
-  // Anche mentre vola (il volo prende il posto del tiro): la scena è occupata, ma nessuno ha tirato.
-  const spenti =
-    inCorso && partita.turno.dadi === null && (!scena.occupata || Object.keys(scena.aerei).length > 0);
+  // I dadi restano spenti finché chi gioca non ha tirato: mostrano il tiro di prima, non il suo. Durante una scena
+  // si accendono solo se in quella scena si è tirato (non con un volo, né con le Bermuda o gli Antipodi dopo un volo).
+  const spenti = inCorso && partita.turno.dadi === null && !scena.tirato;
   const fermi = inCorso && !spenti && !scena.rotola;
   const doppio = fermi && scena.dadi[0] === scena.dadi[1];
   const classiDadi = [
@@ -521,7 +521,8 @@ export function Gioco({
           faro={partita.cosmo.faro ? partita.giocatori.find((g) => g.id === partita.cosmo?.faro)?.nome : undefined}
         />
       )}
-      <div className="centro-gioco__lancio">
+      {/* Mentre si sceglie dove volare i dadi si nascondono: la carta d'imbarco prende il loro posto (volo.css). */}
+      <div className={voloAperto ? 'centro-gioco__lancio centro-gioco__lancio--via' : 'centro-gioco__lancio'}>
         {doppio && (
           <span className="centro-gioco__doppio" key={`doppio-${scena.lanci}`}>
             Doppio

@@ -2,8 +2,8 @@
  * Giro del mondo: quello che si vede sulla pedina mentre è su una casella strana (caselleStrane.ts).
  * - Bermuda: la spirale della casella si anima in un vortice sotto la pedina, che ci gira dentro e sparisce;
  *   ricompare girando, con il vortice, sulla casella a caso.
- * - Antipodi: si apre la buca, la pedina ci cade, la sua ombra attraversa il tabellone sotto le caselle e la pedina
- *   sbuca dalla buca sul lato opposto.
+ * - Antipodi: si apre la buca, la pedina ci cade, il dosso della «talpa» (chiaro, del colore della pedina) attraversa il
+ *   tabellone sopra di lei e la pedina sbuca dalla buca sul lato opposto.
  * - Cambio di data: sopra la pedina il calendario a palette gira di un giorno.
  * I movimenti della pedina stanno in viaggi.css (classe `segnaposto--…` data da Tabellone.tsx); qui solo i segni in più.
  */
@@ -47,7 +47,12 @@ export function SegniStrani({ tipo }: { tipo: TipoStrano }): ReactNode {
         </span>
       );
     case 'antipodi':
-      return <span className="buca-strana" aria-hidden="true" />;
+      return (
+        <>
+          <span className="buca-strana" aria-hidden="true" />
+          <span className="talpa-strana" aria-hidden="true" />
+        </>
+      );
     case 'cambio_data':
       return <Calendario />;
   }

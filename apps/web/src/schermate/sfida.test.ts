@@ -88,8 +88,8 @@ describe('la scena della morra', () => {
     expect(t.battute[1] - t.battute[0]).toBe(t.battute[0]);
     expect(t.battute[2]).toBeLessThan(t.apertura);
     expect(t.apertura).toBeLessThan(t.esito);
-    // Dopo l'esito resta il tempo di leggerlo.
-    expect(TEMPI.morra - t.esito).toBeGreaterThanOrEqual(600);
+    // Dopo l'esito resta il tempo di leggerlo: metà della scena.
+    expect(TEMPI.morra - t.esito).toBeGreaterThanOrEqual(TEMPI.morra / 2);
   });
 
   it('chi vince, e l’affitto normale anche quando chi vince non paga', () => {

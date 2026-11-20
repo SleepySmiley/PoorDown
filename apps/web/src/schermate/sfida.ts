@@ -71,9 +71,9 @@ export function affittoNormale(m: Pick<MorraInScena, 'casella' | 'esito' | 'impo
 /**
  * I momenti della scena, in frazioni di TEMPI.morra: le mani battono tre volte (a 1, 2 e 3 volte `battuta`),
  * si aprono sui segni (`apertura`) e poi arriva l'esito (`esito`). Li usano le animazioni (Morra.tsx) e i suoni
- * (regia.ts), così mani e colpi vanno insieme.
+ * (regia.ts), così mani e colpi vanno insieme. L'esito arriva a metà: l'altra metà (900 ms) serve a leggerlo.
  */
-export const MOMENTI_MORRA = { battuta: 0.14, apertura: 0.5, esito: 0.6 } as const;
+export const MOMENTI_MORRA = { battuta: 0.12, apertura: 0.42, esito: 0.5 } as const;
 
 /** I momenti della scena in millisecondi: i tre colpi, l'apertura delle mani e l'esito. */
 export function tempiMorra(durata = TEMPI.morra): { battute: [number, number, number]; apertura: number; esito: number } {

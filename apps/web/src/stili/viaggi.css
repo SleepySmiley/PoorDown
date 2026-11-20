@@ -55,6 +55,26 @@
   pointer-events: none;
 }
 
+/* La talpa: mentre la pedina passa sotto il tabellone il piano si solleva sopra di lei, come sopra una talpa. Un dosso
+   largo del colore della pedina, preso in cima dalla luce (che viene dall'alto) e con l'ombra sotto: chiaro sul centro
+   scuro, corre con la pedina dalla buca di partenza a quella d'arrivo, così l'occhio segue il viaggio sotto il mondo. */
+.segnaposto .talpa-strana {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--k) * var(--s, 1) * 10);
+  z-index: -1;
+  width: calc(var(--k) * var(--s, 1) * 72);
+  height: calc(var(--k) * var(--s, 1) * 42);
+  translate: -50% -50%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 46% 40% at 50% 40%, color-mix(in srgb, var(--colore) 70%, transparent), transparent),
+    radial-gradient(ellipse 50% 46% at 50% 44%, color-mix(in srgb, var(--quadro-testo) 22%, transparent), transparent),
+    radial-gradient(ellipse 50% 36% at 50% 72%, rgb(0 0 0 / 0.6), transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ---------- Linea del cambio di data ---------- */
 
 /* Il calendario sopra la pedina: la fascia blu del mese e il giorno a palette, come il tabellone delle partenze. */
@@ -120,20 +140,25 @@
   }
 
   /* Antipodi: la pedina cade, la posizione scorre sotto il tabellone (passando dal centro, cioè dall'altra parte del
-     mondo) mentre la buca è chiusa, poi la pedina sbuca sul lato opposto. */
+     mondo) mentre la buca è chiusa, poi la pedina sbuca sul lato opposto. La corsa sotto il tabellone prende quasi metà
+     della scena (26–72 %): caduta e risalita sono svelte, così il dosso della talpa va piano e l'occhio lo segue. */
   .segnaposto.segnaposto--antipodi {
     transition:
-      left calc(var(--d-antipodi) * 0.24) var(--c-viaggio) calc(var(--d-antipodi) * 0.38),
-      top calc(var(--d-antipodi) * 0.24) var(--c-viaggio) calc(var(--d-antipodi) * 0.38);
+      left calc(var(--d-antipodi) * 0.46) var(--c-viaggio) calc(var(--d-antipodi) * 0.26),
+      top calc(var(--d-antipodi) * 0.46) var(--c-viaggio) calc(var(--d-antipodi) * 0.26);
   }
 
   .segnaposto--antipodi .segnaposto__salto {
     animation: antipodi-pedina var(--d-antipodi) linear both;
   }
 
-  /* Sotto il tabellone si vede solo l'ombra che passa, come una talpa. */
+  /* Sotto il tabellone l'ombra sparisce: si vede il dosso della talpa che passa. */
   .segnaposto--antipodi .segnaposto__ombra {
     animation: antipodi-ombra var(--d-antipodi) linear both;
+  }
+
+  .segnaposto--antipodi .talpa-strana {
+    animation: antipodi-talpa var(--d-antipodi) linear both;
   }
 
   .segnaposto--antipodi .buca-strana {
@@ -258,27 +283,27 @@
     animation-timing-function: cubic-bezier(0.3, 0, 0.5, 1);
   }
 
-  9% {
+  8% {
     transform: translateY(-18%);
     clip-path: inset(-80% -80% -18% -80%);
     animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
   }
 
   /* Più giù della sua altezza: anche l'alone del turno, che sporge dal disco, finisce sotto il bordo della buca. */
-  34%,
-  63% {
+  24%,
+  74% {
     transform: translateY(135%);
     clip-path: inset(-80% -80% 135% -80%);
     animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
   }
 
-  79% {
+  86% {
     transform: translateY(-30%);
     clip-path: inset(-80% -80% -30% -80%);
     animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1);
   }
 
-  90% {
+  94% {
     transform: translateY(4%);
     clip-path: inset(-80% -80% 4% -80%);
   }
@@ -289,23 +314,14 @@
   }
 }
 
+/* L'ombra della pedina: si stringe mentre cade nella buca, torna quando è uscita dall'altra parte. */
 @keyframes antipodi-ombra {
   0% {
     opacity: 0.8;
   }
 
-  30% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.6);
-  }
-
-  38%,
-  62% {
-    opacity: 0.85;
-    transform: translate(-50%, -50%) scale(1.25, 0.9);
-  }
-
-  70% {
+  20%,
+  86% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.6);
   }
@@ -315,26 +331,49 @@
   }
 }
 
+/* Il dosso si alza appena la buca si chiude sopra la pedina, resta per tutta la corsa sotto il tabellone (26–72 %)
+   e si abbassa quando la buca d'arrivo si apre. */
+@keyframes antipodi-talpa {
+  0%,
+  23% {
+    opacity: 0;
+    scale: 0.4 0.3;
+  }
+
+  29%,
+  69% {
+    opacity: 1;
+    scale: 1;
+  }
+
+  75%,
+  100% {
+    opacity: 0;
+    scale: 0.4 0.3;
+  }
+}
+
 @keyframes antipodi-buca {
   0% {
     opacity: 0;
     scale: 0 0.4;
   }
 
-  9%,
-  33% {
+  8%,
+  23% {
     opacity: 1;
     scale: 1;
   }
 
-  40%,
-  59% {
+  /* Chiusa mentre la pedina corre sotto il tabellone: la buca viaggia con lei, non si deve vedere. */
+  28%,
+  70% {
     opacity: 0;
     scale: 0 0.4;
   }
 
-  66%,
-  84% {
+  75%,
+  90% {
     opacity: 1;
     scale: 1;
   }

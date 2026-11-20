@@ -121,6 +121,11 @@ export interface Scena {
   /** Cresce a ogni lancio: fa ripartire l'animazione dei dadi. */
   lanci: number;
   rotola: boolean;
+  /**
+   * Nella scena in corso i dadi sono stati tirati: la partita mostrata non ha ancora il tiro, ma i dadi sì.
+   * Senza un tiro (un volo, le Bermuda dopo un volo, l'inizio del turno) i dadi restano spenti.
+   */
+  tirato: boolean;
   /** Una scena è in corso: i pulsanti del turno aspettano. */
   occupata: boolean;
   carta: CartaInScena | null;
@@ -414,6 +419,7 @@ export class Regia {
       dadi: partita?.turno.dadi ?? [5, 2],
       lanci: 0,
       rotola: false,
+      tirato: false,
       occupata: false,
       carta: null,
       cosmo: null,
@@ -542,6 +548,7 @@ export class Regia {
       meta: null,
       arrivo: arrivoDelTurno(s.registro, this.ultimaVista),
       rotola: false,
+      tirato: false,
       occupata: false,
       carta: null,
       cosmo: null,
@@ -586,7 +593,7 @@ export class Regia {
     const tab = tabellone(partita.mappa);
     switch (e.tipo) {
       case 'dadi': {
-        this.cambia({ rotola: true, lanci: this.scena.lanci + 1, meta: null, arrivo: null });
+        this.cambia({ rotola: true, tirato: true, lanci: this.scena.lanci + 1, meta: null, arrivo: null });
         suona('dadi', { forza: this.forza(e.giocatore) });
         // Con le regole folli rotola anche il dado cosmico, tra le facce del suo tabellone.
         const facceCosmiche = e.cosmico ? (tab.follie?.dadoCosmico ?? []).map((f) => f.faccia) : [];

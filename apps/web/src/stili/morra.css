@@ -5,8 +5,12 @@
    I tempi della scena arrivano da sfida.ts (MOMENTI_MORRA) come variabili: --morra-battuta, --morra-apertura,
    --morra-esito. Così mani, parole e suoni battono insieme e la scena dura TEMPI.morra. */
 
+/* La scelta (paga o sfida) e la morra hanno la stessa altezza: quando si lancia il segno il riquadro non cresce e il
+   titolo non salta. L'altezza è quella della morra (città, palco, riga sotto le mani, poste, tempo): 586 px a 1440 e
+   616 a 1920, cioè 266 px più 20 rem. Se la morra crescesse, il riquadro cresce con lei. */
 .sul-tabellone__riquadro.morra {
   width: min(640px, 100%);
+  min-height: calc(266px + 20rem);
 }
 
 /* Il riquadro parte poco sopra il cartello del turno (che comincia a circa 131 k dall'alto) e lo copre tutto:
@@ -16,10 +20,25 @@
   padding-top: calc(var(--k) * 120);
 }
 
+/* Il titolo dice chi sfida chi: su una riga sola, così con due nomi lunghi il riquadro non cresce. */
+.sul-tabellone__riquadro.morra > .sul-tabellone__testa h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Il corpo riempie il riquadro: lo spazio in più va alla riga che può crescere (le due scelte, o la riga sotto
+   le mani), non in fondo. */
 .morra .morra__corpo {
   display: grid;
+  flex: 1 0 auto;
+  grid-template-rows: auto auto 1fr auto auto;
   gap: var(--s-4);
   padding: var(--s-4) var(--s-5) var(--s-5);
+}
+
+.morra .morra__corpo--scelta {
+  grid-template-rows: auto 1fr auto;
 }
 
 /* ---------- La città ---------- */
@@ -114,12 +133,20 @@
   text-align: center;
 }
 
-.morra .morra__affitto {
+/* La cifra da pagare e i tre segni stanno a metà dei loro riquadri, alla stessa altezza; il pulsante e le poste in
+   fondo. Così l'altezza in più della scelta diventa respiro intorno a ciò che si sceglie. */
+.morra .morra__affitto,
+.morra .morra__sfida .morra__segni {
   margin: auto 0;
 }
 
 .morra .con-suggerimento {
   display: flex;
+}
+
+/* «Paga» è largo quanto il suo riquadro, come i segni accanto: la cifra la dice il cartello sopra. */
+.morra .morra__paga > .con-suggerimento {
+  align-self: stretch;
 }
 
 .pulsante.morra__pagamento {
@@ -159,6 +186,16 @@
   height: 52px;
   stroke-width: 1.6;
   transition: transform var(--d-rapida) var(--c-arrivo);
+}
+
+/* Nella scelta c'è spazio (ha l'altezza della morra): i segni crescono, sono loro la mossa. */
+.morra .morra__sfida .pulsante.morra__segno {
+  height: 8rem;
+}
+
+.morra .morra__sfida .pulsante.morra__segno .icona {
+  width: 4rem;
+  height: 4rem;
 }
 
 .pulsante.morra__segno:hover:not(:disabled) {
@@ -247,23 +284,11 @@
 
 /* ---------- Il palco: chi sfida a sinistra, chi è sfidato a destra ---------- */
 
-.morra .morra__testata {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  text-align: center;
-}
-
-.morra .morra__titolo {
-  color: var(--testo-1);
-  font: var(--t-titolo-1);
-  font-size: 2.25rem;
-  text-wrap: balance;
-}
-
+/* Al centro solo «contro» e le tre parole («forbici!» è la più larga): il verdetto sta sotto, così i nomi lunghi dei
+   due giocatori hanno più spazio. */
 .morra .morra-palco {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(170px, 230px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 180px) minmax(0, 1fr);
   align-items: center;
   padding: var(--s-5) var(--s-3) var(--s-4);
   border-radius: var(--r-3);
@@ -296,7 +321,7 @@
   color: var(--colore);
 }
 
-/* La luce su chi vince: un alone del suo colore dietro la mano, acceso all'esito. */
+/* La luce su chi vince: un alone del suo colore dietro la mano, acceso poco dopo il verdetto. */
 .morra .morra-mano::before {
   position: absolute;
   inset: -22%;
@@ -338,6 +363,12 @@
 
 .morra .morra-palco__lato--destra .morra-mano .icona {
   transform: scaleX(-1);
+}
+
+/* Il pugno d'attesa è di tutti e due allo stesso modo: tenue, senza il colore del giocatore, così non si legge come
+   «Sasso» già scelto. Il colore arriva quando la mano si apre sul segno. */
+.morra .morra-mano__pugno {
+  color: var(--testo-3);
 }
 
 .morra .morra-mano__segno {
@@ -384,29 +415,28 @@
   font: 600 1.25rem/1 var(--stretto);
 }
 
-.morra .morra-palco__parola,
-.morra .morra-palco__verdetto {
-  opacity: 0;
-}
-
 .morra .morra-palco__parola {
   color: var(--testo-1);
   font: 700 2.25rem/1 var(--stretto);
+  opacity: 0;
 }
 
-/* «Vince Valigia Loquace»: con i nomi lunghi va a capo invece di finire sotto le mani. */
-.morra .morra-palco__verdetto {
-  max-width: 230px;
-  color: var(--colore, var(--testo-1));
-  font: 700 2.75rem/1 var(--stretto);
-  text-wrap: balance;
-}
-
-/* Sotto il palco: i segni dello sfidato, il segno lanciato, l'attesa o i soldi dell'esito. Altezza fissa: non salta. */
+/* Sotto il palco: i segni dello sfidato, il segno lanciato, l'attesa; in scena il verdetto. Altezza fissa: non salta. */
 .morra .morra__sotto {
   display: grid;
   place-items: center;
   min-height: 100px;
+}
+
+/* Il verdetto, sotto le mani aperte: l'unica parola grande dell'esito, su tutta la larghezza («Vince Valigia
+   Loquace» sta su una riga). Il colore lo decide Morra.tsx: mai quello chiaro di una pedina, se non per dire chi vince
+   a chi guarda. */
+.morra .morra__verdetto {
+  max-width: 100%;
+  color: var(--colore, var(--testo-1));
+  font: 700 2.75rem/1 var(--stretto);
+  text-align: center;
+  text-wrap: balance;
 }
 
 .morra .morra__stato {
@@ -433,21 +463,13 @@
   height: 26px;
 }
 
-.morra .morra__soldi {
-  color: var(--testo-1);
-  font: 700 1.625rem/1.1 var(--stretto);
-  opacity: 0;
-}
-
 /* Senza animazioni (o se la scena è già passata) si vede tutto subito. */
 .morra .morra-palco--scena .morra-mano__pugno {
   opacity: 0;
 }
 
 .morra .morra-palco--scena .morra-mano__segno,
-.morra .morra-palco--scena .morra-palco__segno,
-.morra .morra-palco--scena .morra-palco__verdetto,
-.morra .morra-palco--scena ~ .morra__sotto .morra__soldi {
+.morra .morra-palco--scena .morra-palco__segno {
   opacity: 1;
 }
 
@@ -477,7 +499,10 @@
   box-shadow: inset 0 0 0 2px var(--posta-anello);
 }
 
-/* ---------- La scena: tre colpi, le mani si aprono, l'esito ---------- */
+/* ---------- La scena: tre colpi, le mani si aprono, il verdetto, la posta ----------
+   Un momento forte per volta: le mani si aprono sui segni (--morra-apertura); poi il timbro del verdetto sotto le mani
+   (--morra-esito); 150 ms dopo si accende la posta, senza colpi; per ultime, piano, le mani dicono chi ha vinto
+   (la luce dietro chi vince, chi perde sbiadisce). Dal verdetto alla fine della scena resta metà scena per leggere. */
 
 @media (prefers-reduced-motion: no-preference) {
   .morra .morra-palco--scena .morra-mano {
@@ -491,17 +516,11 @@
   .morra .morra-palco--scena .morra-palco__lato--perde .morra-mano {
     animation:
       morra-batte var(--morra-battuta) var(--c-viaggio) 0ms 3 both,
-      morra-perde 260ms var(--c-arrivo) var(--morra-esito) both;
-  }
-
-  .morra .morra-palco--scena .morra-palco__lato--vince .morra-mano {
-    animation:
-      morra-batte var(--morra-battuta) var(--c-viaggio) 0ms 3 both,
-      morra-vince 360ms var(--c-arrivo) var(--morra-esito) both;
+      morra-perde 400ms var(--c-arrivo) calc(var(--morra-esito) + 300ms) both;
   }
 
   .morra .morra-palco--scena .morra-palco__lato--vince .morra-mano::before {
-    animation: morra-alone 420ms var(--c-arrivo) var(--morra-esito) both;
+    animation: morra-alone 400ms var(--c-arrivo) calc(var(--morra-esito) + 300ms) both;
   }
 
   .morra .morra-palco--scena .morra-mano__pugno {
@@ -538,20 +557,17 @@
     animation-delay: calc(var(--morra-battuta) * 2.7);
   }
 
-  .morra .morra-palco--scena .morra-palco__verdetto {
+  /* Il momento forte dell'esito: l'unico con il colpo. */
+  .morra .morra__sotto .morra__verdetto {
     animation: morra-timbro 320ms var(--c-timbro) var(--morra-esito) both;
   }
 
-  .morra .morra-palco--scena ~ .morra__sotto .morra__soldi {
-    animation: morra-compare 260ms var(--c-arrivo) var(--morra-esito) both;
-  }
-
   .morra .morra__poste--esito .morra__posta {
-    animation: morra-perde 260ms var(--c-arrivo) var(--morra-esito) both;
+    animation: morra-perde 240ms var(--c-arrivo) calc(var(--morra-esito) + 150ms) both;
   }
 
   .morra .morra__poste--esito .morra__posta--uscita {
-    animation: morra-posta 360ms var(--c-timbro) var(--morra-esito) both;
+    animation: morra-posta 240ms var(--c-arrivo) calc(var(--morra-esito) + 150ms) both;
   }
 }
 
@@ -676,35 +692,16 @@
   }
 }
 
-/* Chi vince: la mano si illumina nel suo colore. */
-@keyframes morra-vince {
+/* Fino all'esito la posta resta com'era; poi si accende, senza colpi: il colpo è del verdetto. */
+@keyframes morra-posta {
   from {
-    filter: drop-shadow(0 0 0 transparent);
+    background: var(--quadro);
+    box-shadow: inset 0 0 0 1px var(--quadro-linea);
   }
 
   to {
-    filter: drop-shadow(0 0 16px color-mix(in srgb, var(--colore) 70%, transparent));
-  }
-}
-
-/* Fino all'esito la posta resta com'era; poi si accende con un piccolo colpo. */
-@keyframes morra-posta {
-  0% {
-    background: var(--quadro);
-    box-shadow: inset 0 0 0 1px var(--quadro-linea);
-    transform: scale(1);
-  }
-
-  45% {
     background: var(--posta-fondo);
     box-shadow: inset 0 0 0 2px var(--posta-anello);
-    transform: scale(1.08);
-  }
-
-  100% {
-    background: var(--posta-fondo);
-    box-shadow: inset 0 0 0 2px var(--posta-anello);
-    transform: scale(1);
   }
 }
 

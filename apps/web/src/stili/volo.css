@@ -12,23 +12,29 @@
   cursor: pointer;
 }
 
-/* Il velo ambra delle mete: più è carico, più il biglietto costa (vicino, medio, lontano). */
+/* Le mete: un velo crema e il filetto chiaro, in un neutro (l'ambra vuol dire «tocca a te»: solo sotto il mouse e sulla
+   meta scelta). Più è chiaro, più il biglietto costa: vicino, medio, lontano. Il velo sta sotto il contenuto (il corpo
+   sale di un piano): nomi, prezzi e bandiere restano nitidi. */
+.casella.casella--volabile > .casella__corpo {
+  z-index: 1;
+}
+
 .casella .casella__volo {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 0;
   border-radius: inherit;
-  background: rgb(255 184 28 / var(--velo-volo, 0.06));
-  box-shadow: inset 0 0 0 calc(var(--k) * 1.5) rgb(255 184 28 / 0.5);
+  background: color-mix(in srgb, var(--quadro-testo) var(--velo-volo, 6%), transparent);
+  box-shadow: inset 0 0 0 calc(var(--k) * 1.5) color-mix(in srgb, var(--quadro-testo) 32%, transparent);
   pointer-events: none;
 }
 
 .casella.casella--fascia-2 .casella__volo {
-  --velo-volo: 0.2;
+  --velo-volo: 17%;
 }
 
 .casella.casella--fascia-3 .casella__volo {
-  --velo-volo: 0.42;
+  --velo-volo: 31%;
 }
 
 .casella.casella--volabile:hover,
@@ -41,16 +47,21 @@
     0 0 0 calc(var(--k) * 4.5) var(--ambra);
 }
 
-/* Il prezzo, dove comincia ogni fascia: un cartellino sul bordo verso il centro, a cavallo del confine con la casella
-   prima (le caselle vanno in senso orario). Sta tra due bandiere, non sopra una: le bandiere dicono il paese, e per
-   completare un paese si vola. */
+/* Scelta la meta, le altre si spengono: resta accesa solo quella (e quella sotto il mouse, per cambiare idea). */
+.tabellone:has(.casella--volo-scelta) .casella.casella--volabile:not(.casella--volo-scelta, :hover, :focus-visible) {
+  opacity: 0.42;
+}
+
+/* Il prezzo, dove comincia ogni fascia: un cartellino crema (neutro, come le mete) sul bordo verso il centro, a cavallo
+   del confine con la casella prima (le caselle vanno in senso orario). Sta tra due bandiere, non sopra una: le bandiere
+   dicono il paese, e per completare un paese si vola. */
 .casella .casella__biglietto {
   position: absolute;
   z-index: 5;
   padding: calc(var(--k) * 3) calc(var(--k) * 6);
   border-radius: var(--r-tondo);
-  background: var(--ambra);
-  color: var(--su-ambra);
+  background: var(--quadro-testo);
+  color: var(--inchiostro);
   font: 700 calc(var(--k) * 13) / 1 var(--stretto);
   white-space: nowrap;
   pointer-events: none;
@@ -109,6 +120,11 @@
 }
 
 /* ---------- La carta d'imbarco ---------- */
+
+/* I dadi non servono mentre si sceglie dove volare (il volo prende il posto del tiro): la carta sale al loro posto. */
+.centro-gioco .centro-gioco__lancio--via {
+  display: none;
+}
 
 .scelta-volo {
   display: flex;
@@ -231,21 +247,24 @@
   gap: calc(var(--k) * 6);
 }
 
-/* Il campione della fascia: lo stesso velo ambra delle caselle accese, su un fondo scuro come il tabellone. */
+/* Il campione della fascia: una casella in miniatura, con lo stesso velo crema e lo stesso filetto delle mete. */
 .imbarco__campione {
-  width: calc(var(--k) * 14);
-  height: calc(var(--k) * 14);
-  border-radius: calc(var(--k) * 3);
+  width: calc(var(--k) * 18);
+  height: calc(var(--k) * 18);
+  border-radius: calc(var(--k) * 4);
   background:
-    linear-gradient(rgb(255 184 28 / var(--velo-volo, 0.06)), rgb(255 184 28 / var(--velo-volo, 0.06))),
-    var(--tab-casella, #2a2e37);
-  box-shadow: inset 0 0 0 calc(var(--k) * 1.5) rgb(255 184 28 / 0.5);
+    linear-gradient(
+      color-mix(in srgb, var(--quadro-testo) var(--velo-volo, 6%), transparent),
+      color-mix(in srgb, var(--quadro-testo) var(--velo-volo, 6%), transparent)
+    ),
+    var(--tab-casella, #2b2f39);
+  box-shadow: inset 0 0 0 calc(var(--k) * 1.5) color-mix(in srgb, var(--quadro-testo) 32%, transparent);
 }
 
 .imbarco__fascia--2 .imbarco__campione {
-  --velo-volo: 0.2;
+  --velo-volo: 17%;
 }
 
 .imbarco__fascia--3 .imbarco__campione {
-  --velo-volo: 0.42;
+  --velo-volo: 31%;
 }
