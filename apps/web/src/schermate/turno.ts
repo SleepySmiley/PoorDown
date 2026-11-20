@@ -57,16 +57,23 @@ export type Momento =
   /** Giro del mondo: le caselle strane (caselleStrane.ts). */
   | { tipo: 'bermuda' }
   | { tipo: 'antipodi' }
-  | { tipo: 'cambio_data' };
+  | { tipo: 'cambio_data' }
+  /** I blocchi di chi gioca si sfilano dal tabellone: fa bancarotta. */
+  | { tipo: 'bancarotta' }
+  /** Carte rare: il Reset, le proprietà di tutti tornano alla banca. */
+  | { tipo: 'reset' };
 
 /** Il momento della scena di chi gioca, dal più vistoso: carta, volo in prigione, teletrasporto, dadi, viaggio, arrivo. */
 export function momentoScena(
   scena: Pick<Scena, 'carta' | 'voli' | 'rotola' | 'meta' | 'arrivo'> &
-    Partial<Pick<Scena, 'teletrasporti' | 'roulette' | 'aerei' | 'posizioni' | 'morra' | 'strana'>>,
+    Partial<Pick<Scena, 'teletrasporti' | 'roulette' | 'aerei' | 'posizioni' | 'morra' | 'strana' | 'bancarotta' | 'reset'>>,
   giocatore: IdGiocatore,
 ): Momento | null {
   if (scena.morra?.da === giocatore) return { tipo: 'morra', avversario: scena.morra.a };
   if (scena.carta?.giocatore === giocatore) return { tipo: 'carta', mazzo: scena.carta.mazzo };
+  // Bancarotta e Reset tolgono la casella d'arrivo: senza un momento il cartello direbbe «sta tirando i dadi…».
+  if (scena.reset) return { tipo: 'reset' };
+  if (scena.bancarotta?.giocatore === giocatore) return { tipo: 'bancarotta' };
   if (scena.roulette?.giocatore === giocatore) return { tipo: 'roulette' };
   if (scena.voli[giocatore]) return { tipo: 'prigione' };
   if (scena.teletrasporti?.[giocatore]) return { tipo: 'teletrasporto' };
@@ -115,6 +122,10 @@ function fraseMomento(
       return mio ? 'Sbuchi dall’altra parte del mondo…' : 'sbuca dall’altra parte del mondo…';
     case 'cambio_data':
       return mio ? 'Guadagni un giorno: ti muovi ancora' : 'guadagna un giorno: si muove ancora';
+    case 'bancarotta':
+      return mio ? 'Fai bancarotta…' : 'fa bancarotta…';
+    case 'reset':
+      return mio ? 'Reset: le proprietà tornano alla banca…' : 'fa il Reset: le proprietà tornano alla banca…';
     case 'dadi':
       return mio ? 'Tiro in corso…' : 'sta tirando i dadi…';
     case 'viaggio': {

@@ -23,6 +23,7 @@ import {
   type Segno,
   type Stato,
 } from '@poordown/engine';
+import { nomeInRiga } from '../ui/caselle';
 import { Pedina, Stemma, type RigaRegistro } from '../ui/comuni';
 import { ICONA_FACCIA } from '../ui/facce-cosmiche';
 import { RiquadroTabellone } from '../ui/Finestra';
@@ -88,8 +89,7 @@ function contenuto(e: EventoStanza, partita: Stato, io: IdGiocatore | null): Con
   // Il nome intero; quello breve solo se l'intero non sta nella scheda (Bangkok e i suoi 168 caratteri), come nel volo.
   const nomeCasella = (n: number) => {
     const c = casella(n);
-    if (!c) return '?';
-    return c.breve && c.nome.length > 24 ? c.breve : c.nome;
+    return c ? nomeInRiga(c) : '?';
   };
   // «a Hell», «all’Aeroporto di Lukla», «alla casella Busta».
   const verso = (n: number) => {

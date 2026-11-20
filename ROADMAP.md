@@ -249,9 +249,9 @@ Scelta del 2026-11-19: un sesto tabellone di posti veri ma assurdi, con regole s
 - [x] Bot: volano quando la meta migliore, tolto il biglietto, vale almeno 40 € più del tiro medio dei dadi (per comprare la città che completa un paese, o per scappare da una fila di alberghi); sfidano gli affitti che fanno male (almeno 100 € e un terzo del contante), pagano gli altri; rispondono alla morra con un segno a caso. L'equilibrio si cura con regole della mappa, non ritoccando i bot
 - [x] Nel browser le carte rare: il timbro «Carta rara», la pedina che rinasce sulla Partenza, i blocchi che si sfilano con il Reset, la frase del turno con il conto alla rovescia
 - [x] Nel browser il volo: pulsante «Vola» accanto ai dadi («Vola gratis» con il Biglietto omaggio), carta d'imbarco al centro del tabellone con «Vola» e «Annulla», caselle volabili con il cartellino del prezzo per fascia, aereo che vola ad arco, icona degli aeroporti, schede del volo e del passaporto
-- [ ] La sfida a morra nel browser
-- [ ] Le scene delle caselle strane, il passaporto e i suoni
-- [ ] Prova con più giocatori
+- [x] La sfida a morra nel browser: riquadro «paga o sfida» con sasso, carta e forbici, risposta dello sfidato entro 10 s, palco con le mani che battono tre volte e il verdetto
+- [x] Le scene delle caselle strane (vortice delle Bermuda, buca degli Antipodi, calendario del cambio di data), il passaporto sulla pedina con il timbro e i suoni
+- [x] Prova con più giocatori: tre browser e un bot dai pulsanti veri, con volo, morra tra persone, contro il bot e scaduta, caselle strane, carte rare, ultimo rimasto, ricarica a metà sfida, riavvio del server e fine partita; saldi uguali dappertutto. Più una revisione di design delle scene nuove
 
 ---
 

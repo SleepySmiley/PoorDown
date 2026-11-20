@@ -28,7 +28,7 @@ import {
 } from '@poordown/engine';
 import { collegamento } from '../rete/sessione';
 import { avvisa } from '../ui/avvisi';
-import { caselleVista } from '../ui/caselle';
+import { caselleVista, nomeInRiga } from '../ui/caselle';
 import { Chip } from '../ui/Chip';
 import { Palette, Pedina, Soldi, Stemma } from '../ui/comuni';
 import { Icona } from '../ui/icone';
@@ -636,7 +636,7 @@ export function StatisticheComplete({ partita, onChiudi }: { partita: Stato; onC
                   ) : (
                     casella.icona && <Icona nome={casella.icona} className="cella__icona" />
                   )}
-                  {casella.nome}
+                  {nomeInRiga(casella)}
                 </>
               ) : (
                 'Nessuna'

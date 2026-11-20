@@ -8,6 +8,7 @@
 import '../stili/volo.css';
 import { useEffect, type ReactNode } from 'react';
 import { destinazione, euro, tabellone, type IdGiocatore, type Stato } from '@poordown/engine';
+import { nomeInRiga } from '../ui/caselle';
 import { Palette } from '../ui/comuni';
 import { Icona } from '../ui/icone';
 import { Pulsante } from '../ui/Pulsante';
@@ -53,7 +54,7 @@ export function SceltaVolo({
   // Il nome intero («Città del Vaticano»); quello breve solo se l'intero non sta sulla carta né sul pulsante (Bangkok).
   const breve = (n: number) => {
     const c = tab.caselle[n];
-    return c ? { ...c, nome: c.breve && c.nome.length > 24 ? c.breve : c.nome } : undefined;
+    return c ? { ...c, nome: nomeInRiga(c) } : undefined;
   };
   const arrivo = meta === null ? undefined : breve(meta);
 

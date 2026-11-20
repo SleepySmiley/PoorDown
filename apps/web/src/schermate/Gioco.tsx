@@ -34,7 +34,7 @@ import { suona } from '../suoni/audio';
 import { useGongTurno } from '../suoni/richiami';
 import { avvisa } from '../ui/avvisi';
 import { destinoDeiBeni } from '../ui/beni';
-import { caselleVista } from '../ui/caselle';
+import { caselleVista, nomeInRiga } from '../ui/caselle';
 import { CartaPescata } from '../ui/Carta';
 import { Dado, Palette, Pedina, Stemma } from '../ui/comuni';
 import { AnnuncioCosmo, DadoCosmico, DadoQuantico, DadoSupernova, PannelloCosmo, RiquadroDadoCosmico, RouletteCosmica } from '../ui/Cosmo';
@@ -483,7 +483,9 @@ export function Gioco({
     ) : null;
 
   // I dadi restano spenti finché chi gioca non ha tirato: mostrano il tiro di prima, non il suo.
-  const spenti = inCorso && !scena.occupata && partita.turno.dadi === null;
+  // Anche mentre vola (il volo prende il posto del tiro): la scena è occupata, ma nessuno ha tirato.
+  const spenti =
+    inCorso && partita.turno.dadi === null && (!scena.occupata || Object.keys(scena.aerei).length > 0);
   const fermi = inCorso && !spenti && !scena.rotola;
   const doppio = fermi && scena.dadi[0] === scena.dadi[1];
   const classiDadi = [
@@ -921,9 +923,11 @@ export function Gioco({
                     <TimbroScambio key={`timbro-${timbro.n}`} partita={vivo} io={io} tipo={timbro.tipo} da={timbro.da} a={timbro.a} />
                   )}
                 </AnimatePresence>
-                {/* Le proposte arrivate quando non potevano aprirsi da sole (dopo il timbro di un esito: una cosa alla volta). */}
+                {/* Le proposte arrivate quando non potevano aprirsi da sole. Una cosa alla volta: il biglietto aspetta che si
+                    chiudano il timbro di un esito e i riquadri sopra il tabellone (asta, morra, registro), così non ne copre
+                    i pulsanti; la proposta intanto è già nella colonna degli scambi. */}
                 <AnimatePresence>
-                  {giocoIo && daVedere.length > 0 && !finestraScambio && !timbro && (
+                  {giocoIo && daVedere.length > 0 && !finestraScambio && !finestraSopra && !timbro && (
                     <BigliettoProposta
                       key="biglietto"
                       partita={vivo}
@@ -998,7 +1002,7 @@ export function Gioco({
                             ) : (
                               c.icona && <Icona nome={c.icona} className="mie__icona" />
                             )}
-                            <span className="mie__nome">{c.nome}</span>
+                            <span className="mie__nome">{nomeInRiga(c)}</span>
                             {p?.ipotecata && <Icona nome="banca" className="mie__icona" titolo="Ipotecata" />}
                             {livello > 0 && (
                               <span className="mie__case">

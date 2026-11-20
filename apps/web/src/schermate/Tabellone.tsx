@@ -866,6 +866,8 @@ export function Tabellone({
       className={geo.lato > 10 ? 'tabellone tabellone--13' : 'tabellone'}
       style={variabili({
         '--scala': String(geo.scala),
+        // Dove comincia il centro (cornice + spessore delle caselle): lo usano i riquadri del livello sopra il tabellone.
+        '--margine': `${geo.margine}%`,
         '--cornice': String(CORNICE),
         '--fuga': String(FUGA),
         '--fascia': String(FASCIA_VISITA),

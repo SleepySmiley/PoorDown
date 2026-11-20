@@ -1131,27 +1131,45 @@ button.voce-scambio[aria-pressed='true']:hover {
   height: 1.375rem;
 }
 
-/* ---------- Biglietto: una proposta arrivata, in alto sul tabellone ----------
-   Sta nel livello sopra il tabellone (.tabellone): scende dall'alto e si ferma sotto il cartello del turno,
-   sopra i dadi. Chi lo mette altrove cambia --biglietto-alto. */
+/* ---------- Biglietto: una proposta arrivata, in fondo al centro del tabellone ----------
+   Sta nel livello sopra il tabellone (.tabellone) e si posa in fondo al centro, sopra le ultime righe del registro:
+   il cartello del turno, i dadi e i pulsanti restano sempre liberi. */
 
 .biglietto-proposta {
   position: absolute;
-  /* Sotto il cartello del turno (che dice «Tocca a te»), sopra i dadi: «Tira i dadi» resta libero. */
-  top: var(--biglietto-alto, 26.5%);
+  /* --margine (Tabellone.tsx, da geometria.ts) è dove comincia il centro; 26 k lasciano liberi gli stemmi della fila
+     in basso, che entrano nel centro per metà della loro altezza. */
+  bottom: calc(var(--margine, 12.75%) + var(--k) * 26);
   left: 50%;
-  z-index: 25;
+  /* Sopra le pedine (stesso livello, ma viene dopo), sotto tutto quello che si apre sul tabellone: la scheda di una
+     casella aperta con un clic (6), le carte pescate e i timbri (17–19), i riquadri (20). */
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: var(--s-3);
   width: min(32rem, calc(100% - var(--s-6)));
-  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+  /* Basso: con il cartellino «2 proposte» che sporge sopra deve stare nello spazio del registro, tra la scheda
+     dell'evento e gli stemmi, anche sul 13×13 a 1440 (dove --k è più piccola). */
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-4);
   border-radius: var(--r-2);
   background: var(--sup-2);
   box-shadow:
     inset 4px 0 0 var(--ambra),
     var(--e2);
   translate: -50% 0;
+}
+
+/* Le ultime righe del registro, sotto il biglietto, si spengono finché il biglietto c'è: una cosa alla volta.
+   Anche «Tutto il registro» sparisce del tutto (visibility): un pulsante invisibile non si deve poter cliccare. */
+.tabellone .registro-corto {
+  transition:
+    opacity var(--d-rapida),
+    visibility var(--d-rapida);
+}
+
+.tabellone:has(.biglietto-proposta) .registro-corto {
+  visibility: hidden;
+  opacity: 0;
 }
 
 /* Più proposte: il bordo di un altro biglietto sotto. */
@@ -1227,7 +1245,8 @@ button.voce-scambio[aria-pressed='true']:hover {
   --chip-testo: var(--su-ambra);
 
   position: absolute;
-  top: -10px;
+  /* Sporge un po' più di metà: sotto resta respiro per «Vedi». */
+  top: -12px;
   right: var(--s-3);
   box-shadow: 0 0 0 2px var(--sup-1);
 }

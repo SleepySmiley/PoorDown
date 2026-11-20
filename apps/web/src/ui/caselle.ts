@@ -30,6 +30,14 @@ export interface CasellaVista {
   speciale?: Speciale['tipo'];
 }
 
+/**
+ * Il nome da scrivere in una riga di testo (liste, riquadri): quello intero, o quello breve se l'intero non ci sta
+ * (Krung Thep Maha Nakhon… diventa Bangkok). Il nome intero resta nella scheda.
+ */
+export function nomeInRiga(c: Pick<CasellaVista, 'nome' | 'breve'>): string {
+  return c.breve && c.nome.length > 24 ? c.breve : c.nome;
+}
+
 /** Il pittogramma di ogni casella folle. */
 const ICONE_SPECIALI: Record<Speciale['tipo'], NomeIcona> = {
   fionda: 'fionda',

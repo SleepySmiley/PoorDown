@@ -39,7 +39,7 @@ import {
   type Scambio,
   type Stato,
 } from '@poordown/engine';
-import { caselleVista } from '../ui/caselle';
+import { caselleVista, nomeInRiga } from '../ui/caselle';
 import { Chip } from '../ui/Chip';
 import { Palette, Pedina, Soldi, Stemma } from '../ui/comuni';
 import { Icona, type NomeIcona } from '../ui/icone';
@@ -478,7 +478,7 @@ function Lato({
                   ) : (
                     c.icona && <Icona nome={c.icona} className="voce-scambio__icona" />
                   )}
-                  <span className="voce-scambio__nome">{c.nome}</span>
+                  <span className="voce-scambio__nome">{nomeInRiga(c)}</span>
                   {stato === 'nuova' && <Chip tono="ambra">Nuova</Chip>}
                   {prop.tipo === 'citta' && <PuntiRegione partita={partita} casella={n} />}
                   {ipotecata && <Icona nome="banca" className="voce-scambio__icona" titolo="Ipotecata" />}
@@ -1063,7 +1063,7 @@ export function VediScambio({
 /* ---------------- Notifiche ---------------- */
 
 /**
- * Il biglietto che scende dall'alto del tabellone quando arriva una proposta: chi la manda, cosa c'è dentro,
+ * Il biglietto che si posa in fondo al centro del tabellone quando arriva una proposta: chi la manda, cosa c'è dentro,
  * «Vedi» e «Dopo». Con più proposte si mostra l'ultima arrivata e si contano le altre.
  * Va nel livello sopra il tabellone (prop `sopra` di Tabellone), dentro un <AnimatePresence>.
  */

@@ -13,7 +13,7 @@ import { euro, MORRA_MS, SCELTA_MS, SEGNI, tabellone, verifica, type Azione, typ
 import { collegamento } from '../rete/sessione';
 import { useTicchettio } from '../suoni/richiami';
 import { useBattito } from '../ui/battito';
-import { caselleVista } from '../ui/caselle';
+import { caselleVista, nomeInRiga } from '../ui/caselle';
 import { Pedina, Soldi, Stemma } from '../ui/comuni';
 import { RiquadroTabellone } from '../ui/Finestra';
 import { Icona } from '../ui/icone';
@@ -215,7 +215,7 @@ function Citta({ partita, sfida, breve }: { partita: Stato; sfida: Pick<Sfida, '
       )}
       <span>
         {breve ? 'Per l’affitto di ' : ''}
-        <b>{c?.nome}</b>
+        <b>{c && nomeInRiga(c)}</b>
       </span>
       {!breve && padrone && (
         <span className="morra__padrone">

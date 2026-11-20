@@ -48,6 +48,17 @@ describe('momentoScena', () => {
     });
   });
 
+  it('bancarotta e Reset hanno il loro momento (senza, il cartello direbbe «sta tirando i dadi…»)', () => {
+    expect(momentoScena({ ...vuota, reset: { caselle: [1, 3] } }, 'a')).toEqual({ tipo: 'reset' });
+    expect(momentoScena({ ...vuota, bancarotta: { giocatore: 'a', caselle: [] } }, 'a')).toEqual({ tipo: 'bancarotta' });
+    // La bancarotta di un altro non è il momento di chi gioca.
+    expect(momentoScena({ ...vuota, bancarotta: { giocatore: 'b', caselle: [] } }, 'a')).toBeNull();
+    const s = partita();
+    expect(frase(s, 'a', { occupata: true, momento: { tipo: 'reset' } })).toBe('Reset: le proprietà tornano alla banca…');
+    expect(frase(s, 'b', { occupata: true, momento: { tipo: 'reset' } })).toBe('fa il Reset: le proprietà tornano alla banca…');
+    expect(frase(s, 'b', { occupata: true, momento: { tipo: 'bancarotta' } })).toBe('fa bancarotta…');
+  });
+
   it('Giro del mondo: la morra cinese di chi gioca, contro il padrone della città', () => {
     const morra = { n: 4, da: 'a', a: 'b', casella: 5, segni: ['sasso', 'carta'] as ['sasso', 'carta'], esito: 'persa' as const, importo: 140 };
     const scena = { ...vuota, arrivo: { casella: 5, tono: 'normale' as const }, morra };

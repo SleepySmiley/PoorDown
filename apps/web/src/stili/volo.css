@@ -91,6 +91,23 @@
   translate: 50% 50%;
 }
 
+/* La casella con il cartellino sta sopra le vicine (4, come quella sotto il mouse): il cartellino sporge su di loro,
+   e una casella che viene dopo non deve coprirlo con la sua bandiera (la Vacanza sotto Istanbul). */
+.casella.casella--volabile:has(> .casella__biglietto) {
+  z-index: 4;
+}
+
+/* Prigione: la targa «PRIGIONE» arriva al bordo interno, proprio dove cade il confine con la prima casella di destra.
+   Lì il cartellino scende lungo la colonna, tra la targa e la bandiera di quella casella (la fuga è 2,5 k, la bandiera
+   comincia 19 k sotto il confine); anche quello della Prigione stessa, che sta un filo più in alto. */
+.casella--angolo-1 .casella__biglietto {
+  translate: -50% calc(50% + var(--k) * 10.8);
+}
+
+.casella--angolo-1 + .casella .casella__biglietto {
+  translate: -50% calc(-50% + var(--k) * 8.3);
+}
+
 /* ---------- La carta d'imbarco ---------- */
 
 .scelta-volo {
@@ -120,7 +137,7 @@
   gap: calc(var(--k) * 8);
   padding: calc(var(--k) * 7) calc(var(--k) * 14);
   background: var(--segnaletica);
-  color: #f4f6f9;
+  color: #fff;
   font: 700 calc(var(--k) * 14) / 1 var(--stretto);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -171,7 +188,7 @@
 }
 
 .imbarco__freccia {
-  color: var(--segnaletica);
+  color: var(--link);
 }
 
 .imbarco__freccia .icona {
