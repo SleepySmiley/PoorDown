@@ -12,6 +12,13 @@
   width: min(700px, 100%);
 }
 
+/* Il riquadro parte poco sopra il cartello del turno (che comincia a circa 131 k dall'alto) e lo copre tutto, come
+   quello della morra: centrato, a 1440 ne lasciava fuori una striscia ambra in alto e a 1920 ne copriva solo il fondo. */
+.sul-tabellone:has(> .sul-tabellone__riquadro.asta) {
+  place-items: start center;
+  padding-top: calc(var(--k) * 120);
+}
+
 .asta__proprieta {
   display: flex;
   align-items: center;
